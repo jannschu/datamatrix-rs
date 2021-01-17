@@ -1,7 +1,10 @@
+mod decodation;
 mod encodation;
 // mod errorcode
 // mod placement;
 mod symbol_size;
 
-pub use encodation::{EncodationError, Encoder};
+pub mod raw;
+
+pub use encodation::EncodationError;
 pub use symbol_size::SymbolSize;

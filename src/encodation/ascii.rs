@@ -1,15 +1,15 @@
 use super::{EncodationError, EncodingContext};
 
-pub(super) const LATCH_C40: u8 = 230;
-pub(super) const LATCH_BASE256: u8 = 231;
-pub(super) const LATCH_X12: u8 = 238;
-pub(super) const LATCH_TEXT: u8 = 239;
-pub(super) const LATCH_EDIFACT: u8 = 240;
-pub(super) const PAD: u8 = 129;
+pub(crate) const LATCH_C40: u8 = 230;
+pub(crate) const LATCH_BASE256: u8 = 231;
+pub(crate) const LATCH_X12: u8 = 238;
+pub(crate) const LATCH_TEXT: u8 = 239;
+pub(crate) const LATCH_EDIFACT: u8 = 240;
+pub(crate) const PAD: u8 = 129;
 
-const UPPER_SHIFT: u8 = 235;
+pub(crate) const UPPER_SHIFT: u8 = 235;
 
-fn two_digits_coming(rest: &[u8]) -> bool {
+pub(super) fn two_digits_coming(rest: &[u8]) -> bool {
     match rest {
         [a, b, ..] => a.is_ascii_digit() && b.is_ascii_digit(),
         _ => false,
@@ -18,18 +18,16 @@ fn two_digits_coming(rest: &[u8]) -> bool {
 
 pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationError> {
     loop {
+        // If two digits are next, encode without asking for mode switch
         let two_digits = two_digits_coming(ctx.rest());
         if two_digits {
             let a = ctx.eat().unwrap();
             let b = ctx.eat().unwrap();
-            println!("push two digits {} {}", a, b);
             ctx.push((a - b'0') * 10 + (b - b'0') + 130);
-        }
-        if ctx.maybe_switch_mode() {
-            return Ok(());
-        }
-        if two_digits {
             continue;
+        }
+        if ctx.maybe_switch_mode(false, 0)? {
+            return Ok(());
         }
         match ctx.eat() {
             None => return Ok(()),
@@ -42,6 +40,7 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationEr
     }
 }
 
+/// Compute the number of bytes needed to encode `rest` in Ascii mode
 pub(super) fn encoding_size(mut rest: &[u8]) -> usize {
     let mut count = 0;
     loop {

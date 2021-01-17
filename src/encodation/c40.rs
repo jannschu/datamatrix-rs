@@ -41,11 +41,15 @@ pub(super) fn low_ascii_to_c40_symbols(ctx: &mut ArrayVec<[u8; 6]>, ch: u8) {
     }
 }
 
+pub(super) fn in_base_set(ch: u8) -> bool {
+    matches!(ch, b' ' | b'0'..=b'9' | b'A'..=b'Z')
+}
+
 pub(super) fn val_size(ch: u8) -> u8 {
     match ch {
         b' ' | b'0'..=b'9' | b'A'..=b'Z' => 1,
         0..=31 | 33..=47 | 58..=64 | 91..=127 => 2,
-        ch => 2 + val_size(ch - 128)
+        ch => 2 + val_size(ch - 128),
     }
 }
 
@@ -73,11 +77,7 @@ where
             .symbol_size_left(buf.len())
             .ok_or(EncodationError::NotEnoughSpace)?;
         match (size_left + buf.len(), buf.len()) {
-            // case a)
-            (2, 3) => {
-                write_three_values(ctx, buf[0], buf[1], buf[2]);
-                return Ok(());
-            }
+            // case a) handled by standard loop
             // case b)
             (2, 2) => {
                 write_three_values(ctx, buf[0], buf[1], SHIFT1);
@@ -133,10 +133,8 @@ where
         if buf.len() >= 3 {
             let at_new_pair = buf.len() == 3;
             write_three_values(ctx, buf[0], buf[1], buf[2]);
-            // println!("words: {:?}", ctx.codewords());
             buf.drain(0..3).for_each(std::mem::drop);
-            if at_new_pair && ctx.maybe_switch_mode() {
-                // println!("rest: {:?}", std::str::from_utf8(ctx.rest()));
+            if at_new_pair && ctx.maybe_switch_mode(false, 0)? {
                 break;
             }
         }

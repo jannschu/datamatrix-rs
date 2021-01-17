@@ -11,6 +11,10 @@ fn low_ascii_to_text_symbols(ctx: &mut ArrayVec<[u8; 6]>, ch: u8) {
     c40::low_ascii_to_c40_symbols(ctx, new_ch);
 }
 
+pub fn in_base_set(ch: u8) -> bool {
+    matches!(ch, b' ' | b'0'..=b'9' | b'a'..=b'z')
+}
+
 pub fn val_size(ch: u8) -> u8 {
     let new_ch = match ch {
         // switch case

@@ -3,10 +3,10 @@ use arrayvec::ArrayVec;
 use super::encodation_type::EncodationType;
 use super::{ascii, EncodationError, EncodingContext};
 
-pub(super) const UNLATCH: u8 = 0b011111;
+pub(crate) const UNLATCH: u8 = 0b011111;
 
 #[inline]
-fn is_encodable(ch: u8) -> bool {
+pub(crate) fn is_encodable(ch: u8) -> bool {
     matches!(ch, 32..=94)
 }
 
@@ -70,16 +70,20 @@ fn handle_end<T: EncodingContext>(
             ctx.push(UNLATCH << 2);
         }
     } else {
-        // eod, maybe add UNLATCH for padding if space allows
         debug_assert!(s.len() <= 3);
-        debug_assert!(!ctx.has_more_characters());
-        let space_left = ctx
-            .symbol_size_left(s.len())
-            .ok_or(EncodationError::NotEnoughSpace)?
-            > 0;
-        if space_left || s.len() == 3 {
+        if !ctx.has_more_characters() {
+            // eod, maybe add UNLATCH for padding if space allows
+            let space_left = ctx
+                .symbol_size_left(s.len())
+                .ok_or(EncodationError::NotEnoughSpace)?
+                > 0;
+            if space_left || s.len() == 3 {
+                s.push(UNLATCH);
+                ctx.set_mode(EncodationType::Ascii);
+            }
+        } else {
+            // illegal character encounted
             s.push(UNLATCH);
-            ctx.set_mode(EncodationType::Ascii);
         }
         write4(ctx, &s);
     }
@@ -90,22 +94,16 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationEr
     let mut symbols = ArrayVec::<[u8; 4]>::new();
     while let Some(ch) = ctx.eat() {
         if !is_encodable(ch) {
-            return Err(EncodationError::IllegalEdifactCharacter);
-            // otherwise treat this as mode switch, like
-            //   ctx.backup(symbols.len() + 1);
-            //   ctx.push(UNLATCH);
-            //   ctx.set_mode(EncodationType::Ascii);
-            //   return Ok(());
-            // but this can lead to the encoder getting "stuck" if
-            // it switches back to edifact directly, this is probably
-            // and look_ahead issue.
+            ctx.backup(1);
+            ctx.set_mode(EncodationType::Ascii);
+            break;
         }
         symbols.push(ch);
 
         if symbols.len() == 4 {
             write4(ctx, &symbols);
             symbols.clear();
-            if ctx.maybe_switch_mode() {
+            if ctx.maybe_switch_mode(false, 0)? {
                 break;
             }
         }

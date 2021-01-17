@@ -1,19 +1,21 @@
+//! Implementation of the data encodation using all specified modes.
 use crate::symbol_size::{Size, SymbolSize};
 
-mod ascii;
+pub(crate) mod ascii;
 mod base256;
 mod c40;
-mod edifact;
+pub(crate) mod edifact;
 mod text;
 mod x12;
 
 mod encodation_type;
-mod look_ahead;
+// mod look_ahead;
+mod planner;
 
 #[cfg(test)]
 mod tests;
 
-use encodation_type::EncodationType;
+pub(super) use encodation_type::EncodationType;
 
 // The following is not implemented
 // const MACRO05: u8 = 236;
@@ -23,25 +25,28 @@ use encodation_type::EncodationType;
 // const STRUCT_APPEND: u8 = 233;
 // const READER_PROGRAMMING: u8 = 234;
 
-const UNLATCH: u8 = 254;
+pub(crate) const UNLATCH: u8 = 254;
 
 #[derive(Debug)]
 pub enum EncodationError {
     NotEnoughSpace,
-    Base256TooLong,
-    IllegalEdifactCharacter,
-    IllegalX12Character,
 }
 
 trait EncodingContext {
     /// Look ahead and switch the mode if necessary.
     ///
     /// Return `true` if the mode was switched.
-    fn maybe_switch_mode(&mut self) -> bool;
+    fn maybe_switch_mode(
+        &mut self,
+        free_unlatch: bool,
+        base256_written: usize,
+    ) -> Result<bool, EncodationError>;
 
     /// Compute how much space would be left in the symbol.
     ///
     /// `extra_codewords` is the number of additional codewords to be written.
+    /// This number is not included in the left space. So if the symbol has
+    /// two spaces left and `extra_codewords` is 1, then the function returns `Some(1)`.
     fn symbol_size_left(&mut self, extra_codewords: usize) -> Option<usize>;
 
     fn eat(&mut self) -> Option<u8>;
@@ -56,6 +61,7 @@ trait EncodingContext {
 
     fn insert(&mut self, index: usize, ch: u8);
 
+    /// Get the codewords written so far.
     fn codewords(&self) -> &[u8];
 
     fn set_mode(&mut self, mode: EncodationType);
@@ -64,10 +70,12 @@ trait EncodingContext {
         self.rest().get(n).cloned()
     }
 
+    /// Number of characters yet to be encoded.
     fn characters_left(&self) -> usize {
         self.rest().len()
     }
 
+    /// Are there more characters to process?
     fn has_more_characters(&self) -> bool {
         !self.rest().is_empty()
     }
@@ -83,18 +91,29 @@ pub struct GenericEncoder<'a, S: Size> {
 }
 
 impl<'a, S: Size> EncodingContext for GenericEncoder<'a, S> {
-    fn maybe_switch_mode(&mut self) -> bool {
-        let new_mode = look_ahead::look_ahead(self.encodation, &self.data);
+    fn maybe_switch_mode(
+        &mut self,
+        free_unlatch: bool,
+        base256_written: usize,
+    ) -> Result<bool, EncodationError> {
+        let new_mode = planner::optimize(
+            &self.data,
+            self.codewords.len(),
+            self.encodation,
+            free_unlatch,
+            self.symbol_size,
+            base256_written,
+        )
+        .ok_or(EncodationError::NotEnoughSpace)?;
         let switch = new_mode != self.encodation;
         if switch {
-            println!("{:?} => {:?}", self.encodation, new_mode);
             // switch to new mode if not ASCII
             if !new_mode.is_ascii() {
                 self.new_mode = Some(new_mode.latch_from_ascii());
             }
             self.set_mode(new_mode);
         }
-        switch
+        Ok(switch)
     }
 
     fn symbol_size_left(&mut self, extra_codewords: usize) -> Option<usize> {
@@ -163,12 +182,24 @@ impl<'a, S: Size> GenericEncoder<'a, S> {
 
         self.codewords
             .reserve(self.upper_limit_for_number_of_codewords());
-        
+
+        let mut no_write_run = 0;
         while self.has_more_characters() {
             if let Some(new_mode) = self.new_mode.take() {
                 self.push(new_mode);
             }
+            let len = self.codewords.len();
             self.encodation.clone().encode(&mut self)?;
+            let words_written = self.codewords.len() - len;
+            if words_written <= 1 {
+                // no mode can do something useful in 1 word (at EOD, but that is fine)
+                no_write_run += 1;
+                if no_write_run > 2 {
+                    panic!("no progress in encoder, this is a bug");
+                }
+            } else {
+                no_write_run = 0;
+            }
         }
 
         self.symbol_size = self.symbol_for(0).ok_or(EncodationError::NotEnoughSpace)?;
@@ -178,10 +209,8 @@ impl<'a, S: Size> GenericEncoder<'a, S> {
     }
 
     fn symbol_for(&self, extra_codewords: usize) -> Option<S> {
-        let size_used = self.codewords.len() + extra_codewords;
         self.symbol_size
-            .candidates()
-            .find(|s| s.num_data_codewords().unwrap() >= size_used)
+            .symbol_for(self.codewords.len() + extra_codewords)
     }
 
     fn add_padding(&mut self) {
@@ -215,7 +244,7 @@ impl<'a, S: Size> GenericEncoder<'a, S> {
         if let Some(size) = self.symbol_size.num_data_codewords() {
             size
         } else {
-            // Auto case, try to find a good upper limit
+            // Min case, try to find a good upper limit
             let upper_limit = self
                 .symbol_size
                 .candidates()
@@ -231,4 +260,4 @@ impl<'a, S: Size> GenericEncoder<'a, S> {
     }
 }
 
-pub type Encoder<'a> = GenericEncoder<'a, SymbolSize>;
+pub type RawEncoder<'a> = GenericEncoder<'a, SymbolSize>;

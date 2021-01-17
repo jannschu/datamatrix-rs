@@ -1,8 +1,9 @@
+use std::fmt::Debug;
 use std::iter::Cloned;
 use std::slice::Iter;
 
 #[doc(hidden)]
-pub trait Size: Copy {
+pub trait Size: Copy + Debug {
     const DEFAULT: Self;
 
     fn candidates(&self) -> Cloned<Iter<Self>>;
@@ -12,6 +13,11 @@ pub trait Size: Copy {
     fn max_capacity(&self) -> Capacity;
 
     fn num_data_codewords(&self) -> Option<usize>;
+
+    fn symbol_for(&self, size_needed: usize) -> Option<Self> {
+        self.candidates()
+            .find(|s| s.num_data_codewords().unwrap() >= size_needed)
+    }
 }
 
 #[doc(hidden)]
@@ -58,9 +64,9 @@ pub enum SymbolSize {
     Rect12x36,
     Rect16x36,
     Rect16x48,
-    Auto,
-    AutoRect,
-    AutoSquare,
+    Min,
+    MinRect,
+    MinSquare,
 }
 
 #[rustfmt::skip]
@@ -97,12 +103,12 @@ const SYMBOL_SIZES_RECT: [SymbolSize; 6] = [
 
 impl SymbolSize {
     fn is_auto(&self) -> bool {
-        matches!(self, Self::Auto | Self::AutoSquare | Self::AutoRect)
+        matches!(self, Self::Min | Self::MinSquare | Self::MinRect)
     }
 }
 
 impl Size for SymbolSize {
-    const DEFAULT: Self = SymbolSize::AutoSquare;
+    const DEFAULT: Self = SymbolSize::MinSquare;
 
     fn num_data_codewords(&self) -> Option<usize> {
         match self {
@@ -136,7 +142,7 @@ impl Size for SymbolSize {
             Self::Square120 => Some(1050),
             Self::Square132 => Some(1304),
             Self::Square144 => Some(1558),
-            SymbolSize::Auto | SymbolSize::AutoRect | SymbolSize::AutoSquare => None,
+            SymbolSize::Min | SymbolSize::MinRect | SymbolSize::MinSquare => None,
         }
     }
 
@@ -165,15 +171,13 @@ impl Size for SymbolSize {
             Self::Square104 => Capacity::new(1632, 813),
             Self::Square120 => Capacity::new(2100, 1047),
             Self::Square132 => Capacity::new(2608, 1301),
-            Self::Square144 | SymbolSize::Auto | SymbolSize::AutoSquare => {
-                Capacity::new(3116, 1555)
-            }
+            Self::Square144 | SymbolSize::Min | SymbolSize::MinSquare => Capacity::new(3116, 1555),
             Self::Rect8x18 => Capacity::new(10, 3),
             Self::Rect8x32 => Capacity::new(20, 8),
             Self::Rect12x26 => Capacity::new(32, 14),
             Self::Rect12x36 => Capacity::new(44, 20),
             Self::Rect16x36 => Capacity::new(64, 30),
-            Self::Rect16x48 | Self::AutoRect => Capacity::new(98, 47),
+            Self::Rect16x48 | Self::MinRect => Capacity::new(98, 47),
         }
     }
 
@@ -182,8 +186,8 @@ impl Size for SymbolSize {
             return num;
         }
         match self {
-            Self::Auto | Self::AutoSquare => 1558,
-            Self::AutoRect => 49,
+            Self::Min | Self::MinSquare => 1558,
+            Self::MinRect => 49,
             _ => unreachable!(),
         }
     }
@@ -198,9 +202,9 @@ impl Size for SymbolSize {
                 .unwrap()
                 .0;
             SYMBOL_SIZES[index..index + 1].as_ref()
-        } else if matches!(self, Self::AutoSquare) {
+        } else if matches!(self, Self::MinSquare) {
             SYMBOL_SIZES_SQUARE.as_ref()
-        } else if matches!(self, Self::AutoRect) {
+        } else if matches!(self, Self::MinRect) {
             SYMBOL_SIZES_RECT.as_ref()
         } else {
             SYMBOL_SIZES.as_ref()
@@ -218,14 +222,14 @@ fn test_size_candidates_for_non_auto() {
 
 #[test]
 fn test_size_candidates_auto() {
-    let all: Vec<SymbolSize> = SymbolSize::Auto.candidates().collect();
+    let all: Vec<SymbolSize> = SymbolSize::Min.candidates().collect();
     let expected: Vec<SymbolSize> = SYMBOL_SIZES.into();
     assert_eq!(all, expected);
 }
 
 #[test]
 fn test_size_candidates_auto_rect() {
-    let all: Vec<SymbolSize> = SymbolSize::AutoRect.candidates().collect();
+    let all: Vec<SymbolSize> = SymbolSize::MinRect.candidates().collect();
     let expected = vec![
         SymbolSize::Rect8x18,
         SymbolSize::Rect8x32,
@@ -239,7 +243,7 @@ fn test_size_candidates_auto_rect() {
 
 #[test]
 fn test_size_candidates_auto_square() {
-    let all: Vec<SymbolSize> = SymbolSize::AutoSquare.candidates().collect();
+    let all: Vec<SymbolSize> = SymbolSize::MinSquare.candidates().collect();
     let expected = vec![
         SymbolSize::Square10,
         SymbolSize::Square12,

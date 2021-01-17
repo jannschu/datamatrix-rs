@@ -1,7 +1,9 @@
 use std::iter::Cloned;
 use std::slice::Iter;
 
-use super::{encodation_type::EncodationType, Encoder, EncodingContext, GenericEncoder};
+use super::{
+    encodation_type::EncodationType, EncodationError, EncodingContext, GenericEncoder, RawEncoder,
+};
 use crate::symbol_size::{Capacity, Size, SymbolSize};
 
 pub(super) trait TestEncoderLogic: Sized {
@@ -76,8 +78,12 @@ impl<T: TestEncoderLogic> TestEncodingContext<T> {
 }
 
 impl<T: TestEncoderLogic> EncodingContext for TestEncodingContext<T> {
-    fn maybe_switch_mode(&mut self) -> bool {
-        T::maybe_switch_mode(self)
+    fn maybe_switch_mode(
+        &mut self,
+        _free_unlatch: bool,
+        _base256_written: usize,
+    ) -> Result<bool, EncodationError> {
+        Ok(T::maybe_switch_mode(self))
     }
 
     fn symbol_size_left(&mut self, extra_codewords: usize) -> Option<usize> {
@@ -134,18 +140,21 @@ pub(super) enum TestSymbol {
     Square8,  // 10, 12, 12, 1),
     Rect10,   // 11, 14, 6, 2),
     Square13, // 0, 0, 0, 1),
+    Square1X,
+    Square2X,
     Square77, // 0, 0, 0, 1)
-    Auto,
+    Min,
 }
 
 #[rustfmt::skip]
-static SYMBOLS: [TestSymbol; 7] = [
+static SYMBOLS: [TestSymbol; 9] = [
     TestSymbol::Square3, TestSymbol::Square5, TestSymbol::Rect5, TestSymbol::Square8,
-    TestSymbol::Rect10, TestSymbol::Square13, TestSymbol::Square77,
+    TestSymbol::Rect10, TestSymbol::Square13, TestSymbol::Square1X, TestSymbol::Square2X,
+    TestSymbol::Square77,
 ];
 
 impl Size for TestSymbol {
-    const DEFAULT: Self = TestSymbol::Auto;
+    const DEFAULT: Self = TestSymbol::Min;
 
     fn num_data_codewords(&self) -> Option<usize> {
         match self {
@@ -155,13 +164,15 @@ impl Size for TestSymbol {
             Self::Square8 => Some(8),
             Self::Rect10 => Some(10),
             Self::Square13 => Some(13),
+            Self::Square1X => Some(19),
+            Self::Square2X => Some(24),
             Self::Square77 => Some(77),
-            Self::Auto => None,
+            Self::Min => None,
         }
     }
 
     fn candidates(&self) -> Cloned<Iter<Self>> {
-        if self == &Self::Auto {
+        if self == &Self::Min {
             return SYMBOLS.iter().cloned();
         }
         let index = SYMBOLS
@@ -188,7 +199,9 @@ impl Size for TestSymbol {
             Self::Square8 => Capacity::new(16, 7),
             Self::Rect10 => Capacity::new(20, 9),
             Self::Square13 => Capacity::new(26, 12),
-            Self::Square77 | Self::Auto => Capacity::new(154, 76),
+            Self::Square1X => Capacity::new(32, 15),
+            Self::Square2X => Capacity::new(40, 15),
+            Self::Square77 | Self::Min => Capacity::new(154, 76),
         }
     }
 }
@@ -197,7 +210,7 @@ type TestEncoder<'a> = GenericEncoder<'a, TestSymbol>;
 
 #[cfg(test)]
 fn enc(data: &[u8]) -> Vec<u8> {
-    Encoder::with_size(data, SymbolSize::Auto)
+    RawEncoder::with_size(data, SymbolSize::Min)
         .codewords()
         .unwrap()
 }
@@ -233,89 +246,57 @@ fn test_ascii_encodation_example1() {
 }
 
 #[test]
-fn test_c40_basic1() {
-    assert_eq!(enc(b"AIMAIMAIM"), vec![230, 91, 11, 91, 11, 91, 11, 254]);
-}
-
-#[test]
-fn test_c40_basic2_1() {
-    // "B" is normally encoded as "15" (one C40 value)
-    // "else" case: "B" is encoded as ASCII
-    assert_eq!(enc(b"AIMAIAB"), vec![230, 91, 11, 90, 255, 254, 67, 129]);
-}
-
-#[test]
-fn test_c40_basic2_2() {
-    // Encoded as ASCII
-    // Alternative solution:
-    // assert_eq!(words, vec![230, 91, 11, 90, 255, 254, 99, 129]);
-    // "b" is normally encoded as "Shift 3, 2" (two C40 values)
-    // "else" case: "b" is encoded as ASCII
-    assert_eq!(enc(b"AIMAIAb"), vec![66, 74, 78, 66, 74, 66, 99, 129]);
-}
-
-#[test]
 fn test_c40_basic2_3() {
     assert_eq!(
         enc(b"AIMAIMAIM\xcb"),
-        vec![230, 91, 11, 91, 11, 91, 11, 254, 235, 76]
+        vec![230, 91, 11, 91, 11, 91, 11, 11, 9, 254],
     );
     // Alternative solution:
-    // assert_eq!(words, vec![230, 91, 11, 91, 11, 91, 11, 11, 9, 254]);
+    // assert_eq!(words, vec![230, 91, 11, 91, 11, 91, 11, 254, 235, 76]);
     // Expl: 230 = shift to C40, "91, 11" = "AIM",
     // "11, 9" = "\xcb" = "Shift 2, UpperShift, <char>
     // "else" case
 }
 
 #[test]
-fn test_c40_basic2_4() {
-    assert_eq!(
-        enc(b"AIMAIMAIM\xeb"),
-        vec![230, 91, 11, 91, 11, 91, 11, 254, 235, 108]
-    );
-    // Activate when additional rectangulars are available
-    // Expl: 230 = shift to C40, "91, 11" = "AIM",
-    // "\xeb" in C40 encodes to: 1, 30, 2, 11 which doesn't fit into a triplet
-    // "10, 243" =
-    // 254 = unlatch, 235 = Upper Shift, 108 = 0xEB/235 - 128 + 1
-    // "else" case
-}
-
-#[test]
 fn test_c40_spec_example() {
     assert_eq!(
-        enc(b"A1B2C3D4E5F6G7H8I9J0K1L2"),
-        vec![230, 88, 88, 40, 8, 107, 147, 59, 67, 126, 206, 78, 126, 144, 121, 35, 47, 254]
+        enc(b"A_2_D_5_G7H_9J_1L2"),
+        vec![66, 96, 51, 96, 69, 96, 54, 96, 230, 126, 206, 10, 94, 144, 3, 35, 47, 254],
+        // vec![230, 88, 88, 40, 8, 107, 147, 59, 67, 126, 206, 78, 126, 144, 121, 35, 47, 254]
     );
 }
 
 #[test]
 fn test_c40_special_case_a() {
     // case "a": Unlatch is not required
-    let words = TestEncoder::new(b"AIMAIMAIMAIMAIMAIM").codewords().unwrap();
+    let words = TestEncoder::new(b"AI_IM_MA_AI_IM").codewords().unwrap();
     assert_eq!(
         words,
-        vec![230, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11]
+        vec![230, 90, 242, 166, 11, 10, 107, 87, 195, 90, 242, 166, 11]
     );
 }
 
 #[test]
 fn test_c40_special_case_b() {
     // case "b": Add trailing shift 0 and Unlatch is not required
-    let words = TestEncoder::new(b"AIMAIMAIMAIMAIMAI").codewords().unwrap();
     assert_eq!(
-        words,
-        vec![230, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 90, 241]
+        enc(b"AI_MA_MA_MA"),
+        vec![230, 90, 242, 166, 159, 10, 107, 87, 195, 254, 78, 66]
     );
 }
 
 #[test]
 fn test_c40_special_case_c() {
     //case "c": Unlatch and write last character in ASCII
-    let words = TestEncoder::new(b"AIMAIMAIMAIMAIMA").codewords().unwrap();
+    let words = TestEncoder::new(b"AI_AI_AI_IM_IM_IM_AI")
+        .codewords()
+        .unwrap();
     assert_eq!(
         words,
-        vec![230, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 254, 66]
+        vec![
+            230, 90, 242, 164, 199, 10, 95, 137, 195, 141, 146, 166, 11, 10, 103, 162, 195, 90, 241
+        ]
     );
 }
 
@@ -332,7 +313,10 @@ fn test_c40_partial_triple() {
 #[test]
 fn test_c40_special_case_d() {
     // case "d": Skip Unlatch and write last character in ASCII
-    assert_eq!(enc(b"AIMAIMAIMA"), vec![230, 91, 11, 91, 11, 91, 11, 66]);
+    assert_eq!(
+        enc(b"AI_MA_MA_M"),
+        vec![230, 90, 242, 166, 159, 10, 107, 87, 195, 78]
+    );
 }
 
 #[test]
@@ -347,7 +331,7 @@ fn test_c40_special_cases2() {
 #[test]
 fn test_text_encoding_1() {
     // 239 shifts to Text encodation, 254 unlatches
-    let words = Encoder::with_size(b"aimaimaim", SymbolSize::Auto)
+    let words = RawEncoder::with_size(b"aimaimaim", SymbolSize::Min)
         .codewords()
         .unwrap();
     assert_eq!(words, vec![239, 91, 11, 91, 11, 91, 11, 254]);
@@ -388,24 +372,36 @@ fn test_text_encoding_5() {
 fn test_x12_1() {
     // 238 shifts to X12 encodation, 254 unlatches
     assert_eq!(
-        enc(b"ABC>ABC123>AB"),
-        vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 67,]
+        enc(b"AB\x0d>ABC123>AB"),
+        vec![238, 89, 217, 14, 192, 100, 207, 44, 31, 67,]
     );
 }
 
 #[test]
-fn test_x12_2() {
+fn test_x12_2a() {
     assert_eq!(
-        enc(b"ABC>ABC123>ABC"),
-        vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 254, 67, 68]
+        enc(b"AB\x0d>ABC123>ABC"),
+        // BC will remain as an incomplete triple in X12,
+        // end rule does not apply
+        vec![238, 89, 217, 14, 192, 100, 207, 44, 31, 254, 67, 68]
+    );
+}
+
+#[test]
+fn test_x12_2b() {
+    assert_eq!(
+        enc(b"AB\x0d>ABC123>A00"),
+        // 00 will remain as an incomplete triple in X12,
+        // end rule does apply, can be encoded as one ASCII (130)
+        vec![238, 89, 217, 14, 192, 100, 207, 44, 31, 130]
     );
 }
 
 #[test]
 fn test_x12_3() {
     assert_eq!(
-        enc(b"ABC>ABC123>ABCD"),
-        vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 96, 82, 254]
+        enc(b"AB\x0d>ABC123>ABCD"),
+        vec![238, 89, 217, 14, 192, 100, 207, 44, 31, 96, 82, 254]
     );
 }
 
@@ -413,7 +409,15 @@ fn test_x12_3() {
 fn test_x12_4() {
     assert_eq!(
         enc(b"ABC>ABC123>ABCDE"),
-        vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 96, 82, 70]
+        vec![
+            238, // UNLATCH
+            89, 233, // ABC
+            14, 192, // >AB
+            100, 207, // C12
+            44, 31, // 3>A
+            96, 82, // BCD
+            70  // E (ASCII)
+        ]
     );
 }
 
@@ -421,7 +425,8 @@ fn test_x12_4() {
 fn test_x12_5() {
     assert_eq!(
         enc(b"ABC>ABC123>ABCDEF"),
-        vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 96, 82, 254, 70, 71, 129, 237]
+        vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 96, 82, 254, 70, 71, 129, 237] // Alternative:
+                                                                                     // vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 254, 230, 96, 82, 254, 70, 71]
     );
 }
 
@@ -473,6 +478,10 @@ fn test_edifact_5() {
 fn test_edifact_6() {
     assert_eq!(
         enc(b".A.C1.3.X."),
+        // 240 LATCH
+        // ".A.C" 184 27 131
+        // "1.3." 198 236 238
+        // X." 98 231 192
         vec![240, 184, 27, 131, 198, 236, 238, 98, 231, 192]
     );
 }
@@ -492,10 +501,9 @@ fn test_edifact_8() {
         enc(b".XXX.XXX.XXX.XXX.XXX.XXX.\xFCXX.XXX.XXX.XXX.XXX.XXX.XXX"),
         vec![
             240, 185, 134, 24, 185, 134, 24, 185, 134, 24, 185, 134, 24, 185, 134, 24, 185, 134,
-            24,
-            // 124 == UNLATCH << 2 (so edifact encoding of single value UNLATCH)
-            124, 47, 235, 125, 240, 97, 139, 152, 97, 139, 152, 97, 139, 152, 97, 139, 152, 97, 139,
-            152, 97, 139, 152, 89, 89
+            24, // 124 == UNLATCH << 2 (so edifact encoding of single value UNLATCH)
+            124, 47, 235, 125, 240, 97, 139, 152, 97, 139, 152, 97, 139, 152, 97, 139, 152, 97,
+            139, 152, 97, 139, 152, 89, 89
         ]
     );
 }
@@ -546,7 +554,8 @@ fn test_base256_5() {
     // Mixed Base256 + ASCII
     assert_eq!(
         enc(b"\xab\xe4\xf6\xfc\xe9\xbb 234"),
-        vec![231, 51, 108, 59, 226, 126, 1, 104, 99, 153, 53, 129]
+        vec![231, 51, 108, 59, 226, 126, 1, 104, 99, 153, 53, 129] // Alternative:
+                                                                   // vec![231, 50, 108, 59, 226, 126, 1, 104, 33, 153, 53, 129]
     );
 }
 
@@ -554,9 +563,10 @@ fn test_base256_5() {
 fn test_base256_6() {
     assert_eq!(
         enc(b"\xab\xe4\xf6\xfc\xe9\xbb 23\xa3 1234567890123456789"),
+        // Many alternatives are possible
         vec![
-            231, 55, 108, 59, 226, 126, 1, 104, 99, 10, 161, 167, 185, 142, 164, 186, 208, 220,
-            142, 164, 186, 208, 58, 129, 59, 209, 104, 254, 150, 45
+            231, 51, 108, 59, 226, 126, 1, 104, 99, 153, 235, 36, 33, 142, 164, 186, 208, 220, 142,
+            164, 186, 208, 58, 129, 59, 209, 104, 254, 150, 45,
         ]
     );
 }
@@ -606,7 +616,7 @@ fn test_base256_10() {
 fn test_unlatching_from_c40() {
     assert_eq!(
         enc(b"AIMAIMAIMAIMaimaimaim"),
-        vec![230, 91, 11, 91, 11, 91, 11, 254, 66, 74, 78, 239, 91, 11, 91, 11, 91, 11]
+        vec![230, 91, 11, 91, 11, 91, 11, 91, 11, 254, 239, 91, 11, 91, 11, 91, 11, 254]
     );
 }
 
@@ -620,40 +630,77 @@ fn test_unlatching_from_text() {
 
 #[test]
 fn test_hello_world() {
+    let opts = [
+        // two c40 options
+        vec![73, 239, 116, 130, 175, 123, 148, 64, 158, 234, 254, 34],
+        vec![73, 239, 116, 130, 175, 123, 148, 64, 158, 233, 254, 34],
+        // one text variant
+        vec![239, 13, 211, 160, 69, 19, 40, 179, 242, 106, 105, 254],
+    ];
+    let out = enc(b"Hello World!");
+    assert!(opts.iter().any(|v| v == &out), "no match for {:?}", out);
+}
+
+#[test]
+fn test_edifact_short() {
+    assert_eq!(enc(b"CR%X-----"), vec![240, 13, 41, 88, 182, 219, 109, 46]);
+}
+
+#[test]
+fn test_ascii_short() {
     assert_eq!(
-        enc(b"Hello World!"),
-        // zxing has 233 instead of 234 because of the different
-        // backstep behavior in c40, we cut values they zero them
-        vec![73, 239, 116, 130, 175, 123, 148, 64, 158, 234, 254, 34]
+        // no need to use EDIFACT, ASCII also has 5
+        enc(b"CR%X-"),
+        vec![68, 83, 38, 89, 46]
     );
 }
 
 #[test]
-fn test_bug_1664266() {
-    // There was an exception and the encoder did not handle the unlatching from
-    // EDIFACT encoding correctly
+fn test_bug_1664266_1() {
     assert_eq!(
         enc(b"CREX-TAN:h"),
-        vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105]
+        vec![230, 104, 235, 231, 117, 208, 140, 8, 155, 105],
+        // Alternative: EDIFACT
+        // vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105],
     );
+}
+
+#[test]
+fn test_bug_1664266_2() {
     assert_eq!(
         enc(b"CREX-TAN:hh"),
-        vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105, 105, 129]
+        vec![230, 104, 235, 231, 117, 208, 140, 8, 155, 50, 89, 254],
+        // Alternative: EDIFACT
+        // vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105, 105, 129]
     );
+}
+
+#[test]
+fn test_bug_1664266_3() {
     assert_eq!(
         enc(b"CREX-TAN:hhh"),
+        // Alternative
+        // vec![68, 83, 70, 89, 46, 85, 66, 79, 59, 105, 105, 105],
         vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105, 105, 105]
     );
 }
 
 #[test]
-fn test_x12_unlatch() {
-    assert_eq!(enc(b"*DTCP01"), vec![238, 9, 10, 104, 141, 254, 50, 129]);
+fn test_x12_unlatch_ascii() {
+    assert_eq!(
+        enc(b"*\x0d*******00"),
+        vec![238, 6, 66, 6, 106, 6, 106, 130]
+    );
+}
+
+#[test]
+fn test_x12_unlatch_1() {
+    assert_eq!(enc(b"*\x0dTCP0*"), vec![238, 6, 98, 104, 141, 254, 43, 129]);
 }
 
 #[test]
 fn test_x12_unlatch_2() {
-    assert_eq!(enc(b"*DTCP0"), vec![238, 9, 10, 104, 141]);
+    assert_eq!(enc(b"*\x0dTCP0"), vec![238, 6, 98, 104, 141]);
 }
 
 #[test]

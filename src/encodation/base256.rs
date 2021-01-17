@@ -22,14 +22,15 @@ fn write_length<T: EncodingContext>(ctx: &mut T, start: usize) -> Result<(), Enc
     let mut data_written = ctx.codewords().len() - start;
     if ctx.has_more_characters() || space_left > 0 {
         let data_count = data_written - 1;
-        if dbg!(data_count) <= 249 {
+        if data_count <= 249 {
             ctx.replace(start, data_count as u8)
         } else if data_count <= 1555 {
             ctx.replace(start, ((data_count / 250) + 249) as u8);
             ctx.insert(start + 1, (data_count % 250) as u8);
             data_written += 1;
         } else {
-            return Err(EncodationError::Base256TooLong);
+            // if we get here the planner has a bug
+            panic!("base256 data too long, this is an encoding bug");
         }
     }
     for i in 0..data_written {
@@ -47,7 +48,9 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationEr
         if let Some(ch) = ctx.eat() {
             ctx.push(ch);
         }
-        if !ctx.has_more_characters() || ctx.maybe_switch_mode() {
+        if !ctx.has_more_characters()
+            || ctx.maybe_switch_mode(true, ctx.codewords().len() - 1 - start)?
+        {
             write_length(ctx, start)?;
             if !ctx.has_more_characters() {
                 ctx.set_mode(EncodationType::Ascii);

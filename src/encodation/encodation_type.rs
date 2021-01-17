@@ -2,7 +2,7 @@ use super::{ascii, base256, c40, edifact, text, x12, EncodationError, GenericEnc
 use crate::symbol_size::Size;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub(super) enum EncodationType {
+pub(crate) enum EncodationType {
     Ascii,
     C40,
     Text,
