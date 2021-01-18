@@ -107,6 +107,7 @@ impl<'a, S: Size> EncodingContext for GenericEncoder<'a, S> {
         .ok_or(EncodationError::NotEnoughSpace)?;
         let switch = new_mode != self.encodation;
         if switch {
+            // println!("MODE SWITCH: {:?} => {:?}", self.encodation, new_mode);
             // switch to new mode if not ASCII
             if !new_mode.is_ascii() {
                 self.new_mode = Some(new_mode.latch_from_ascii());

@@ -30,9 +30,8 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationEr
     }
 
     // 5.2.7.2, special case for X12 compared to C40, single space left and and one symbol
-    let one_ascii_remain_maybe = (ctx.characters_left() == 2
-        && ascii::two_digits_coming(ctx.rest()))
-        || ctx.characters_left() == 1;
+    let one_ascii_remain_maybe =
+        ctx.characters_left() <= 2 && ascii::encoding_size(ctx.rest()) == 1;
     if one_ascii_remain_maybe
         && ctx
             .symbol_size_left(1)
@@ -48,6 +47,7 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationEr
             .ok_or(EncodationError::NotEnoughSpace)?
             > 0
     {
+        // println!("add UNLATCH");
         if !switch {
             ctx.set_mode(EncodationType::Ascii);
         }

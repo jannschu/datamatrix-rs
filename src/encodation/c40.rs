@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 
-use super::{encodation_type::EncodationType, EncodationError, EncodingContext};
+use super::{ascii, encodation_type::EncodationType, EncodationError, EncodingContext};
 
 const SHIFT1: u8 = 0;
 const SHIFT2: u8 = 1;
@@ -56,6 +56,7 @@ pub(super) fn val_size(ch: u8) -> u8 {
 /// Encode three C40 values into two codewords.
 pub(super) fn write_three_values<T: EncodingContext>(ctx: &mut T, c1: u8, c2: u8, c3: u8) {
     let enc = 1600 * c1 as u16 + 40 * c2 as u16 + c3 as u16 + 1;
+    // println!("{} {} {} => {} {}", c1, c2, c3, (enc >> 8) as u8, (enc & 0xFF) as u8);
     ctx.push((enc >> 8) as u8);
     ctx.push((enc & 0xFF) as u8);
 }
@@ -63,12 +64,14 @@ pub(super) fn write_three_values<T: EncodingContext>(ctx: &mut T, c1: u8, c2: u8
 pub(super) fn handle_end<T>(
     ctx: &mut T,
     n_vals_last_ch: usize,
+    last_ch: u8,
     buf: ArrayVec<[u8; 6]>,
 ) -> Result<(), EncodationError>
 where
     T: EncodingContext,
 {
     debug_assert!(buf.len() <= 2);
+
     // this method is called after a requested mode switch if and only if
     // there are characters left
     let mode_switch = ctx.has_more_characters();
@@ -92,16 +95,17 @@ where
             }
             // case d), implicit unlatch, then ascii
             (1, 1) => {
-                ctx.set_mode(EncodationType::Ascii);
-                ctx.backup(1);
-                return Ok(());
+                if ascii::encoding_size(&[last_ch]) == 1 {
+                    ctx.set_mode(EncodationType::Ascii);
+                    ctx.backup(1);
+                    return Ok(());
+                }
             }
             _ => (),
         }
     }
     if !buf.is_empty() {
-        // buf contains one or two symbols, but we can not encode this since
-        // we need three. we backup just enough chars
+        // buf contains one or two symbols, we backup just enough chars
         ctx.backup(1);
         if n_vals_last_ch == 1 && buf.len() == 2 {
             // one backup was not enough
@@ -114,7 +118,12 @@ where
             ctx.set_mode(EncodationType::Ascii);
         }
     }
-    if ctx.has_more_characters() {
+    if ctx.has_more_characters()
+        || ctx
+            .symbol_size_left(0)
+            .ok_or(EncodationError::NotEnoughSpace)?
+            > 0
+    {
         ctx.push(super::UNLATCH);
     }
     Ok(())
@@ -127,19 +136,21 @@ where
 {
     let mut buf = ArrayVec::new();
     let mut n_vals = 0;
+    let mut last_ch = 0;
     while let Some(ch) = ctx.eat() {
         // encode the character into buf
         n_vals = to_vals(&mut buf, ch, &low_ascii_write);
-        if buf.len() >= 3 {
-            let at_new_pair = buf.len() == 3;
+        last_ch = ch;
+        let at_new_pair = buf.len() % 3 == 0;
+        while buf.len() >= 3 {
             write_three_values(ctx, buf[0], buf[1], buf[2]);
             buf.drain(0..3).for_each(std::mem::drop);
-            if at_new_pair && ctx.maybe_switch_mode(false, 0)? {
-                break;
-            }
+        }
+        if at_new_pair && ctx.maybe_switch_mode(false, 0)? {
+            break;
         }
     }
-    handle_end(ctx, n_vals, buf)
+    handle_end(ctx, n_vals, last_ch, buf)
 }
 
 fn to_vals<F>(buf: &mut ArrayVec<[u8; 6]>, ch: u8, low_ascii_write: F) -> usize
