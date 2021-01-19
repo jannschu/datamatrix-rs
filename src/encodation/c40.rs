@@ -65,12 +65,12 @@ pub(super) fn handle_end<T>(
     ctx: &mut T,
     n_vals_last_ch: usize,
     last_ch: u8,
-    buf: ArrayVec<[u8; 6]>,
+    mut buf: ArrayVec<[u8; 6]>,
 ) -> Result<(), EncodationError>
 where
     T: EncodingContext,
 {
-    debug_assert!(buf.len() <= 2);
+    assert!(buf.len() <= 2);
 
     // this method is called after a requested mode switch if and only if
     // there are characters left
@@ -105,12 +105,11 @@ where
         }
     }
     if !buf.is_empty() {
-        // buf contains one or two symbols, we backup just enough chars
-        ctx.backup(1);
-        if n_vals_last_ch == 1 && buf.len() == 2 {
-            // one backup was not enough
-            ctx.backup(1);
+        buf.push(SHIFT2);
+        if buf.len() == 2 {
+            buf.push(UPPER_SHIFT);
         }
+        write_three_values(ctx, buf[0], buf[1], buf[2]);
         // if we were at a "end of data" situtation but there was too
         // much space for one of the cases a) - d) above, we need to explicitely
         // set the new mode, otherwise infinite loop
@@ -118,13 +117,30 @@ where
             ctx.set_mode(EncodationType::Ascii);
         }
     }
-    if ctx.has_more_characters()
-        || ctx
-            .symbol_size_left(0)
-            .ok_or(EncodationError::NotEnoughSpace)?
-            > 0
+    let chars_left = ctx.characters_left();
+    if chars_left > 0 {
+        // exactly two remaining digits?
+        if chars_left == 2 && ascii::two_digits_coming(ctx.rest()) {
+            // we can encode them with one ASCII byte, maybe with UNLATCH before
+            let space_left = ctx
+                .symbol_size_left(1)
+                .ok_or(EncodationError::NotEnoughSpace)?;
+            ctx.set_mode(EncodationType::Ascii);
+            if space_left >= 1 {
+                ctx.push(super::UNLATCH);
+            }
+            return Ok(());
+        }
+        ctx.push(super::UNLATCH);
+    } else if ctx
+        .symbol_size_left(0)
+        .ok_or(EncodationError::NotEnoughSpace)?
+        > 0
     {
         ctx.push(super::UNLATCH);
+        if !mode_switch {
+            ctx.set_mode(EncodationType::Ascii);
+        }
     }
     Ok(())
 }
@@ -138,15 +154,25 @@ where
     let mut n_vals = 0;
     let mut last_ch = 0;
     while let Some(ch) = ctx.eat() {
+        // buf empty and only two digits remain?
+        if buf.is_empty()
+            && ch.is_ascii_digit()
+            && matches!(ctx.rest(), [ch1] if ch1.is_ascii_digit())
+        {
+            ctx.backup(1);
+            // then we can finish with:
+            // - 1 codeword if 1 space is left in symbol, or with
+            // - UNLATCH + 1 codeword if 2 spaces are left in the codeword
+            break;
+        }
         // encode the character into buf
         n_vals = to_vals(&mut buf, ch, &low_ascii_write);
         last_ch = ch;
-        let at_new_pair = buf.len() % 3 == 0;
         while buf.len() >= 3 {
             write_three_values(ctx, buf[0], buf[1], buf[2]);
             buf.drain(0..3).for_each(std::mem::drop);
         }
-        if at_new_pair && ctx.maybe_switch_mode(false, 0)? {
+        if ctx.maybe_switch_mode(false, 0)? {
             break;
         }
     }

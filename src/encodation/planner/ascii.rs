@@ -30,11 +30,12 @@ impl<T: ContextInformation> Plan for AsciiPlan<T> {
         Some(self.cost.ceil())
     }
 
-    fn cost(&self) -> Option<Frac> {
-        Some(self.cost.ceil())
+    fn cost(&self) -> Frac {
+        self.cost
     }
 
     fn write_unlatch(&self) -> T {
+        assert_eq!(self.digits_ahead, 0);
         self.ctx.clone()
     }
 
@@ -42,7 +43,7 @@ impl<T: ContextInformation> Plan for AsciiPlan<T> {
         // compute optimal chars, only do this when we are at a boundary and if not
         // already done
         if self.digits_ahead == 0 {
-            // count number of base set characters coming, watch out for digits
+            // count number digits coming
             for ch in self.ctx.rest().iter() {
                 if ch.is_ascii_digit() {
                     self.digits_ahead += 1;

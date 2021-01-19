@@ -12,6 +12,18 @@ pub(crate) enum EncodationType {
 }
 
 impl EncodationType {
+    pub fn index(&self) -> usize {
+        match self {
+            // This order is also used to decide a tie in the planner
+            Self::Ascii => 0,
+            Self::Base256 => 1,
+            Self::Edifact => 2,
+            Self::X12 => 3,
+            Self::C40 => 4,
+            Self::Text => 5,
+        }
+    }
+
     pub(super) fn encode<'a, 'b: 'a, S: Size>(
         &self,
         encoder: &'a mut GenericEncoder<'b, S>,

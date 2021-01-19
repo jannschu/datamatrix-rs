@@ -13,21 +13,7 @@ pub(super) struct Frac(C);
 
 impl Debug for Frac {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        let (mut a, b) = (self.0, DENUM);
-        let i = if a >= b {
-            let i = a / b;
-            a = a % b;
-            i
-        } else {
-            0
-        };
-        if a == 0 {
-            f.write_fmt(format_args!("{}", i))
-        } else if i == 0 {
-            f.write_fmt(format_args!("{}/{}", a, b))
-        } else {
-            f.write_fmt(format_args!("{} + {}/{}", i, a, b))
-        }
+        f.write_fmt(format_args!("{:.2}", self.0 as f32 / DENUM as f32))
     }
 }
 
@@ -163,11 +149,4 @@ fn test_sub() {
 fn test_ceil() {
     assert_eq!(Frac::new(1, 1).ceil(), Frac::new(1, 1));
     assert_eq!(Frac::new(13, 12).ceil(), Frac::new(2, 1));
-}
-
-#[test]
-fn test_debug() {
-    assert_eq!(format!("{:?}", Frac::new(4, 3)), "1 + 4/12");
-    assert_eq!(format!("{:?}", Frac::new(3, 3)), "1");
-    assert_eq!(format!("{:?}", Frac::new(3, 6)), "6/12");
 }

@@ -12,6 +12,8 @@ pub(crate) fn is_encodable(ch: u8) -> bool {
 
 /// Encode 1 to 4 characters using EDIFACT and write it to the context.
 fn write4<T: EncodingContext>(ctx: &mut T, s: &ArrayVec<[u8; 4]>) {
+    // println!("EDFIACT, encode {:?}", s);
+
     let s1 = s.get(1).cloned().unwrap_or(0) & 0b11_1111;
     ctx.push((s[0] << 2) | (s1 >> 4));
 
@@ -28,15 +30,15 @@ fn write4<T: EncodingContext>(ctx: &mut T, s: &ArrayVec<[u8; 4]>) {
 
 fn handle_end<T: EncodingContext>(
     ctx: &mut T,
-    mut s: ArrayVec<[u8; 4]>,
+    mut symbols: ArrayVec<[u8; 4]>,
 ) -> Result<(), EncodationError> {
     // check case "encoding with <= 2 ASCII, no UNLATCH"
-    let rest_chars = s.len() + ctx.characters_left();
-    if 0 < rest_chars && rest_chars <= 4 {
+    let rest_chars = symbols.len() + ctx.characters_left();
+    if rest_chars <= 4 {
         // The standard allows ASCII encoding without UNLATCH if there
         // are <= 2 words of space left in the symbol and
         // we can encode the rest with ASCII in this space.
-        let rest: ArrayVec<[u8; 4]> = s
+        let rest: ArrayVec<[u8; 4]> = symbols
             .iter()
             .cloned()
             .chain(ctx.rest().iter().cloned())
@@ -45,7 +47,7 @@ fn handle_end<T: EncodingContext>(
         if ascii_size <= 2 {
             match ctx.symbol_size_left(ascii_size).map(|x| x + ascii_size) {
                 Some(space) if space <= 2 && ascii_size <= space => {
-                    ctx.backup(s.len());
+                    ctx.backup(symbols.len());
                     ctx.set_mode(EncodationType::Ascii);
                     return Ok(());
                 }
@@ -53,15 +55,16 @@ fn handle_end<T: EncodingContext>(
             }
         }
     }
-    if s.is_empty() {
+    if symbols.is_empty() {
         if !ctx.has_more_characters() {
             // eod
             let space_left = ctx
                 .symbol_size_left(0)
-                .ok_or(EncodationError::NotEnoughSpace)?
-                > 0;
-            if space_left {
-                // padding case
+                .ok_or(EncodationError::NotEnoughSpace)?;
+            // padding case
+            if space_left > 0 {
+                // the other case is caught in the "special end of data rule" above
+                assert!(space_left > 2);
                 ctx.push(UNLATCH << 2);
                 ctx.set_mode(EncodationType::Ascii);
             }
@@ -70,22 +73,21 @@ fn handle_end<T: EncodingContext>(
             ctx.push(UNLATCH << 2);
         }
     } else {
-        debug_assert!(s.len() <= 3);
+        assert!(symbols.len() <= 3);
         if !ctx.has_more_characters() {
             // eod, maybe add UNLATCH for padding if space allows
             let space_left = ctx
-                .symbol_size_left(s.len())
+                .symbol_size_left(symbols.len())
                 .ok_or(EncodationError::NotEnoughSpace)?
                 > 0;
-            if space_left || s.len() == 3 {
-                s.push(UNLATCH);
+            if space_left || symbols.len() == 3 {
+                symbols.push(UNLATCH);
                 ctx.set_mode(EncodationType::Ascii);
             }
         } else {
-            // illegal character encounted
-            s.push(UNLATCH);
+            symbols.push(UNLATCH);
         }
-        write4(ctx, &s);
+        write4(ctx, &symbols);
     }
     Ok(())
 }
@@ -93,11 +95,6 @@ fn handle_end<T: EncodingContext>(
 pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationError> {
     let mut symbols = ArrayVec::<[u8; 4]>::new();
     while let Some(ch) = ctx.eat() {
-        if !is_encodable(ch) {
-            ctx.backup(1);
-            ctx.set_mode(EncodationType::Ascii);
-            break;
-        }
         symbols.push(ch);
 
         if symbols.len() == 4 {
@@ -106,6 +103,9 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationEr
             if ctx.maybe_switch_mode(false, 0)? {
                 break;
             }
+        } else if ctx.maybe_switch_mode(symbols.len() == 3, 0)? {
+            // dbg!(&symbols, ctx.codewords(), ctx.rest().len());
+            break;
         }
     }
     handle_end(ctx, symbols)

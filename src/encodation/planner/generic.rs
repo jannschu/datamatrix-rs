@@ -9,8 +9,8 @@ use super::{
 
 #[derive(Clone, PartialEq)]
 pub(super) struct GenericPlan<'a, S: Size> {
-    start: EncodationType,
     extra: Frac,
+    pub(super) switches: Vec<(usize, EncodationType)>,
     plan: PlanImpl<'a, S>,
 }
 
@@ -18,52 +18,46 @@ impl<'a, S: Size> Debug for GenericPlan<'a, S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match &self.plan {
             PlanImpl::Ascii(pl) => f.write_fmt(format_args!(
-                "Ascii(start {:?}, {:?} + {:?}, rest {:?}, written {})",
-                self.start,
-                pl.cost(),
-                self.extra,
-                std::str::from_utf8(pl.context().rest()),
+                "Ascii(start {:?}, {:?}, cw {:?}, rest {:?})",
+                self.start_mode(),
+                pl.cost() + self.extra,
                 pl.context().written,
+                pl.context().rest().len(),
             )),
             PlanImpl::C40(pl) => f.write_fmt(format_args!(
-                "C40(start {:?}, {:?} + {:?}, rest {:?}, written {})",
-                self.start,
-                pl.cost(),
-                self.extra,
-                std::str::from_utf8(pl.context().rest()),
+                "C40(start {:?}, {:?}, cw {:?}, rest {:?})",
+                self.start_mode(),
+                pl.cost() + self.extra,
                 pl.context().written,
+                pl.context().rest().len(),
             )),
             PlanImpl::Text(pl) => f.write_fmt(format_args!(
-                "Text(start {:?}, {:?} + {:?}, rest {:?}, written {})",
-                self.start,
-                pl.cost(),
-                self.extra,
-                std::str::from_utf8(pl.context().rest()),
+                "Text(start {:?}, {:?}, cw {:?}, rest {:?})",
+                self.start_mode(),
+                pl.cost() + self.extra,
                 pl.context().written,
+                pl.context().rest().len(),
             )),
             PlanImpl::Base256(pl) => f.write_fmt(format_args!(
-                "B256(start {:?}, {:?} + {:?}, rest {:?}, written {})",
-                self.start,
-                pl.cost(),
-                self.extra,
-                std::str::from_utf8(pl.context().rest()),
+                "B256(start {:?}, {:?}, cw {:?}, rest {:?})",
+                self.start_mode(),
+                pl.cost() + self.extra,
                 pl.context().written,
+                pl.context().rest().len(),
             )),
             PlanImpl::Edifact(pl) => f.write_fmt(format_args!(
-                "EDF(start {:?}, {:?} + {:?}, rest {:?}, written {})",
-                self.start,
-                pl.cost(),
-                self.extra,
-                std::str::from_utf8(pl.context().rest()),
+                "EDF(start {:?}, {:?}, cw {:?}, rest {:?})",
+                self.start_mode(),
+                pl.cost() + self.extra,
                 pl.context().written,
+                pl.context().rest().len(),
             )),
             PlanImpl::X12(pl) => f.write_fmt(format_args!(
-                "X12(start {:?}, {:?} + {:?}, rest {:?}, written {})",
-                self.start,
-                pl.cost(),
-                self.extra,
-                std::str::from_utf8(pl.context().rest()),
+                "X12(start {:?}, {:?}, cw {:?}, rest {:?})",
+                self.start_mode(),
+                pl.cost() + self.extra,
                 pl.context().written,
+                pl.context().rest().len(),
             )),
         }
     }
@@ -108,15 +102,15 @@ impl<'a, S: Size> GenericPlan<'a, S> {
             }
         };
         Self {
-            start: mode,
             extra: 0.into(),
+            switches: vec![(data.len(), mode)],
             plan,
         }
     }
 
     /// Get the mode this plan started with.
     pub(super) fn start_mode(&self) -> EncodationType {
-        self.start
+        self.switches[0].1
     }
 
     /// Get the current encodation type (mode).
@@ -131,7 +125,7 @@ impl<'a, S: Size> GenericPlan<'a, S> {
         }
     }
 
-    pub(super) fn add_switches(self, list: &mut Vec<Self>, as_start: bool) {
+    pub(super) fn add_switches(self, list: &mut Vec<Self>, rest_len: usize, as_start: bool) {
         let ascii_cost = if let Some(cost) = self.mode_switch_cost() {
             cost
         } else {
@@ -141,24 +135,26 @@ impl<'a, S: Size> GenericPlan<'a, S> {
 
         macro_rules! add_switch {
             ($plan:ident, $enum:ident, $cost_extra:expr) => {
+                let switches = if as_start {
+                    assert_eq!(self.switches.len(), 1);
+                    vec![(rest_len, EncodationType::$enum)]
+                } else {
+                    let mut switches = self.switches.clone();
+                    switches.push((rest_len, EncodationType::$enum));
+                    switches
+                };
                 let mut ctx = ctx.clone();
-                ctx.write($cost_extra);
+                ctx.write($cost_extra); // LATCH byte
                 let mut new = $plan::new(ctx);
                 if let Some(_) = new.step() {
                     list.push(Self {
                         extra: ascii_cost + $cost_extra,
-                        start: if as_start {
-                            EncodationType::$enum
-                        } else {
-                            self.start
-                        },
+                        switches,
                         plan: PlanImpl::$enum(new),
                     });
                 }
             };
         }
-
-        // This order also specifies the preference for ties
 
         // Add switch to ASCII
         if !self.is_ascii() {
@@ -179,9 +175,6 @@ impl<'a, S: Size> GenericPlan<'a, S> {
         if !self.is_x12() {
             add_switch!(X12Plan, X12, 1);
         }
-
-        // We put these last because their decoding is more complicated.
-        // A decoder/encoder bug is more likely here
 
         // Add switch to Text
         if !matches!(self.plan, PlanImpl::Text(_)) {
@@ -210,29 +203,16 @@ impl<'a, S: Size> GenericPlan<'a, S> {
     pub(super) fn cost_for_switching_to(&self, other: EncodationType) -> Option<Frac> {
         // switchting to the mode itself is free
         if self.current() == other {
-            return self.cost();
+            return Some(self.cost());
         }
         match (&self.plan, other) {
-            // From Ascii it is always 1 extra
-            (PlanImpl::Ascii(pl), _) => pl.cost().map(|x| x + 1),
             // To Ascii is provided by the mode_switch_cost()
             (_, EncodationType::Ascii) => self.mode_switch_cost(),
-
             // For others its the leave to ASCII, and +1 if not ASCII
+            (_, EncodationType::Base256) => self.mode_switch_cost().map(|x| x + 2),
             (_, _) => self.mode_switch_cost().map(|x| x + 1),
         }
     }
-
-    // pub(super) fn context(&self) -> &Context<'a, S> {
-    //     match &self.plan {
-    //         PlanImpl::Ascii(pl) => pl.context(),
-    //         PlanImpl::C40(pl) => pl.context(),
-    //         PlanImpl::Text(pl) => pl.context(),
-    //         PlanImpl::X12(pl) => pl.context(),
-    //         PlanImpl::Base256(pl) => pl.context(),
-    //         PlanImpl::Edifact(pl) => pl.context(),
-    //     }
-    // }
 }
 
 impl<'a, S: Size> Plan for GenericPlan<'a, S> {
@@ -250,15 +230,15 @@ impl<'a, S: Size> Plan for GenericPlan<'a, S> {
         }
     }
 
-    fn cost(&self) -> Option<Frac> {
+    fn cost(&self) -> Frac {
         // only add costs from previous modes
         match &self.plan {
-            PlanImpl::Ascii(pl) => pl.cost().map(|x| x + self.extra),
-            PlanImpl::C40(pl) => pl.cost().map(|x| x + self.extra),
-            PlanImpl::Text(pl) => pl.cost().map(|x| x + self.extra),
-            PlanImpl::X12(pl) => pl.cost().map(|x| x + self.extra),
-            PlanImpl::Base256(pl) => pl.cost().map(|x| x + self.extra),
-            PlanImpl::Edifact(pl) => pl.cost().map(|x| x + self.extra),
+            PlanImpl::Ascii(pl) => pl.cost() + self.extra,
+            PlanImpl::C40(pl) => pl.cost() + self.extra,
+            PlanImpl::Text(pl) => pl.cost() + self.extra,
+            PlanImpl::X12(pl) => pl.cost() + self.extra,
+            PlanImpl::Base256(pl) => pl.cost() + self.extra,
+            PlanImpl::Edifact(pl) => pl.cost() + self.extra,
         }
     }
 
@@ -344,15 +324,15 @@ fn test_add_switch_ascii() {
     plan.step();
     plan.step();
     plan.step();
-    assert_eq!(plan.cost(), Some(3.into()));
+    assert_eq!(plan.cost(), 3.into());
     let mut list = vec![];
-    plan.add_switches(&mut list, false);
+    plan.add_switches(&mut list, 20, false);
     match &list[4].plan {
         PlanImpl::C40(pl) => {
             // one char was consumed
-            assert_eq!(pl.cost(), Some(Frac::new(2, 3)));
+            assert_eq!(pl.cost(), Frac::new(2, 3));
         }
         other => panic!("wrong return type, {:?}", other),
     }
-    assert_eq!(list[4].cost(), Some(Frac::new(2, 3) + 4));
+    assert_eq!(list[4].cost(), Frac::new(2, 3) + 4);
 }

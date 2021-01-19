@@ -43,15 +43,15 @@ impl<T: ContextInformation> Plan for EdifactPlan<T> {
         }
     }
 
-    fn cost(&self) -> Option<Frac> {
-        Some(self.cost)
+    fn cost(&self) -> Frac {
+        self.cost
     }
 
     fn write_unlatch(&self) -> Self::Context {
+        assert!(self.ascii_end.is_none());
         let mut ctx = self.ctx.clone();
-        if self.written < 3 {
-            ctx.write(1);
-        }
+        // the encoder will call this before any bytes are written
+        ctx.write((self.written + 1).min(3));
         ctx
     }
 
@@ -69,18 +69,18 @@ impl<T: ContextInformation> Plan for EdifactPlan<T> {
                     }
                 }
             }
-            if self.ascii_end.is_none() && !is_encodable(self.ctx.eat().unwrap()) {
+            if self.ascii_end.is_none() && !is_encodable(self.ctx.peek(0).unwrap()) {
                 return None;
             }
+            let _ = self.ctx.eat().unwrap();
             if let Some(portion_per_char) = self.ascii_end {
-                let _ = self.ctx.eat().unwrap();
                 // add (ascii_size / chars_to_read) every char read to get the correct size
                 self.cost += portion_per_char;
             } else {
                 self.cost += Frac::new(3, 4);
                 self.written = (self.written + 1) % 4;
-                if self.written != 0 {
-                    self.ctx.write(1);
+                if self.written == 0 {
+                    self.ctx.write(3);
                 }
             }
         }

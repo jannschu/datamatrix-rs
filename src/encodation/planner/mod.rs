@@ -53,7 +53,7 @@ trait Plan: Clone {
     fn mode_switch_cost(&self) -> Option<Frac>;
 
     /// Get the current cost.
-    fn cost(&self) -> Option<Frac>;
+    fn cost(&self) -> Frac;
 
     /// Read the next char (if any), return None if this failed.
     fn step(&mut self) -> Option<StepResult>;

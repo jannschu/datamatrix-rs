@@ -86,6 +86,7 @@ pub struct GenericEncoder<'a, S: Size> {
     input: &'a [u8],
     encodation: EncodationType,
     symbol_size: S,
+    planned_switches: Vec<(usize, EncodationType)>,
     new_mode: Option<u8>,
     codewords: Vec<u8>,
 }
@@ -96,22 +97,34 @@ impl<'a, S: Size> EncodingContext for GenericEncoder<'a, S> {
         free_unlatch: bool,
         base256_written: usize,
     ) -> Result<bool, EncodationError> {
-        let new_mode = planner::optimize(
-            &self.data,
-            self.codewords.len(),
-            self.encodation,
-            free_unlatch,
-            self.symbol_size,
-            base256_written,
-        )
-        .ok_or(EncodationError::NotEnoughSpace)?;
+        if self.planned_switches.is_empty() {
+            self.planned_switches = planner::optimize(
+                self.rest(),
+                self.codewords.len(),
+                self.encodation,
+                free_unlatch,
+                self.symbol_size,
+                base256_written,
+            )
+            .ok_or(EncodationError::NotEnoughSpace)?;
+            // dbg!(&self.planned_switches);
+        }
+        let chars_left = self.characters_left();
+        assert!(
+            chars_left >= self.planned_switches[0].0,
+            "expected to call maybe_switch_mode when {} chars left, but now {}",
+            self.planned_switches[0].0,
+            chars_left
+        );
+        let new_mode = if chars_left > 0 && chars_left == self.planned_switches[0].0 {
+            let switch = self.planned_switches.remove(0);
+            switch.1
+        } else {
+            self.encodation
+        };
         let switch = new_mode != self.encodation;
         if switch {
-            // println!("MODE SWITCH: {:?} => {:?}", self.encodation, new_mode);
             // switch to new mode if not ASCII
-            if !new_mode.is_ascii() {
-                self.new_mode = Some(new_mode.latch_from_ascii());
-            }
             self.set_mode(new_mode);
         }
         Ok(switch)
@@ -155,7 +168,11 @@ impl<'a, S: Size> EncodingContext for GenericEncoder<'a, S> {
     }
 
     fn set_mode(&mut self, mode: EncodationType) {
+        // println!("=> MODE SWITCH: {:?} => {:?} (cw: {}, rem: {})\n", self.encodation, mode, self.codewords.len(), self.data.len());
         self.encodation = mode;
+        if !mode.is_ascii() {
+            self.new_mode = Some(mode.latch_from_ascii());
+        }
     }
 }
 
@@ -172,6 +189,7 @@ impl<'a, S: Size> GenericEncoder<'a, S> {
             new_mode: None,
             encodation: EncodationType::Ascii,
             codewords: Vec::new(),
+            planned_switches: vec![],
         }
     }
 
@@ -190,7 +208,11 @@ impl<'a, S: Size> GenericEncoder<'a, S> {
                 self.push(new_mode);
             }
             let len = self.codewords.len();
+
+            // println!("encode: {:?}, rest: {:?}", self.encodation, self.rest());
             self.encodation.clone().encode(&mut self)?;
+            // println!("codewords: {:?}", &self.codewords);
+
             let words_written = self.codewords.len() - len;
             if words_written <= 1 {
                 // no mode can do something useful in 1 word (at EOD, but that is fine)

@@ -32,21 +32,19 @@ impl<T: ContextInformation> Plan for X12Plan<T> {
 
     fn mode_switch_cost(&self) -> Option<Frac> {
         if self.values == 0 {
-            Some(self.cost)
+            Some(self.cost + 1)
         } else {
             None
         }
     }
 
-    fn cost(&self) -> Option<Frac> {
-        if !self.ctx.has_more_characters() && self.values > 0 {
-            None
-        } else {
-            Some(self.cost)
-        }
+    fn cost(&self) -> Frac {
+        self.cost
     }
 
     fn write_unlatch(&self) -> Self::Context {
+        assert_eq!(self.values, 0);
+        assert!(self.ascii_end.is_none());
         let mut ctx = self.ctx.clone();
         ctx.write(1);
         ctx
@@ -111,7 +109,7 @@ fn test_eod_case1() {
     for _ in 0..7 {
         assert!(plan.step().is_some());
     }
-    assert_eq!(plan.cost(), Some(5.into()));
+    assert_eq!(plan.cost(), 5.into());
 }
 
 #[test]
@@ -123,11 +121,11 @@ fn test_eod_case2() {
     for i in 0..12 {
         assert!(plan.step().is_some(), "char {}", i + 1);
     }
-    assert_eq!(plan.cost(), Some(8.into()));
+    assert_eq!(plan.cost(), 8.into());
     // there are two chars (AI) remaining but the symbol is too large,
     // total cost 3, split ov
     assert!(plan.step().is_some());
-    assert_eq!(plan.cost(), Some(10.into()));
+    assert_eq!(plan.cost(), 10.into());
     assert!(plan.step().is_some());
-    assert_eq!(plan.cost(), Some(11.into()));
+    assert_eq!(plan.cost(), 11.into());
 }

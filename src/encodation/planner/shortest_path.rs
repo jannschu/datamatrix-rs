@@ -21,25 +21,29 @@ pub(crate) fn optimize<S: Size>(
     free_unlatch: bool,
     size: S,
     base256_written: usize,
-) -> Option<EncodationType> {
+) -> Option<Vec<(usize, EncodationType)>> {
     let start_plan =
         GenericPlan::for_mode(mode, data, written, size, free_unlatch, base256_written);
 
     let mut plans = Vec::with_capacity(36);
     let mut new_plan = Vec::with_capacity(36);
+    // println!("optimize plan for {:?}, written {}", data, written);
 
     plans.push(start_plan);
 
-    let mut first_iteration = true;
-    loop {
+    for iteration in 0usize.. {
         let mut at_end = false;
-        let use_as_start = first_iteration;
-        first_iteration = false;
+        let use_as_start = iteration == 0;
         for mut plan in plans.drain(0..) {
             let plan_copy_before_step = plan.clone();
             let result = if let Some(result) = plan.step() {
                 result
             } else {
+                plan_copy_before_step.add_switches(
+                    &mut new_plan,
+                    data.len() - iteration,
+                    use_as_start,
+                );
                 // remove plan, it can not process input
                 continue;
             };
@@ -49,39 +53,67 @@ pub(crate) fn optimize<S: Size>(
             // the step was optimal (unbeatable) or we are at the end.
             if !result.unbeatable && !result.end {
                 // this also calls step() one time.
-                plan_copy_before_step.add_switches(&mut new_plan, use_as_start);
+                plan_copy_before_step.add_switches(
+                    &mut new_plan,
+                    data.len() - iteration,
+                    use_as_start,
+                );
             }
             if result.end {
                 // since all modes step one character at a time,
                 // we can set this for all modes
                 at_end = true;
             }
+            assert_eq!(result.end, at_end);
         }
 
+        // dbg!(&new_plan);
         remove_hopeless_cases(&mut new_plan);
+        // dbg!(iteration);
+        // dbg!(&new_plan);
 
         if new_plan.is_empty() {
             return None;
         }
 
-        if let Some(best_choice) = have_winner(&new_plan) {
-            return Some(best_choice);
-        }
+        // if let Some(best_choice) = have_winner(&mut new_plan) {
+        //     return Some(best_choice);
+        // }
 
         if at_end {
             // all plans are at the end of data, pick the best one,
             // they are sorted by `remove_hopeless_cases`
-            return Some(new_plan[0].start_mode());
+            let mut plan = new_plan
+                .into_iter()
+                .min_by_key(|p| (p.cost().ceil(), p.start_mode().index()))
+                .unwrap();
+            plan.switches.push((0, plan.current()));
+            return Some(plan.switches);
         }
         std::mem::swap(&mut plans, &mut new_plan);
     }
+    unreachable!()
 }
 
 // Only keep one minimizer for every start mode.
 fn remove_hopeless_cases<'a, S: Size>(list: &mut Vec<GenericPlan<'a, S>>) {
-    list.sort_by_key(|a| a.cost().unwrap());
-    let mut start = 0;
+    list.sort_unstable_by_key(|a| a.cost());
 
+    // only keep min among all plans with tuple (start mode, current mode)
+    let mut seen = [false; 6 * 6];
+    let mut removed = 0;
+    for i in 0..list.len() {
+        let pl = &list[i - removed];
+        let pl_idx = pl.start_mode().index() * 6 + pl.current().index();
+        if seen[pl_idx] {
+            list.remove(i - removed);
+            removed += 1;
+        } else {
+            seen[pl_idx] = true;
+        }
+    }
+
+    let mut start = 0;
     while start + 1 < list.len() {
         let first = list[start].clone();
         // Let's say `first` has current mode A.
@@ -92,13 +124,14 @@ fn remove_hopeless_cases<'a, S: Size>(list: &mut Vec<GenericPlan<'a, S>>) {
         for i in start + 1..list.len() {
             let second = &list[i - removed];
             if let Some(first_cost) = first.cost_for_switching_to(second.current()) {
-                let second_cost = second.cost().unwrap();
+                let second_cost = second.cost();
                 if first_cost < second_cost {
                     list.remove(i - removed);
                     removed += 1;
                 }
             } else {
                 uncomparable = true;
+                break;
             }
         }
         if uncomparable {
@@ -109,11 +142,14 @@ fn remove_hopeless_cases<'a, S: Size>(list: &mut Vec<GenericPlan<'a, S>>) {
     }
 }
 
-fn have_winner<'a, S: Size>(list: &[GenericPlan<'a, S>]) -> Option<EncodationType> {
+fn have_winner<'a, 'b, S: Size>(
+    list: &mut Vec<GenericPlan<'a, S>>,
+) -> Option<Vec<(usize, EncodationType)>> {
     // the list now contains at most one plan for each encodation type
-    match list {
-        [m] => Some(m.start_mode()),
-        _ => None,
+    if list.len() == 1 {
+        Some(list.remove(0).switches)
+    } else {
+        None
     }
 }
 
@@ -130,16 +166,6 @@ fn test_hopeless_remove_duplicates() {
     );
     a.step(); // cost = 1
     let mut b = GenericPlan::for_mode(
-        EncodationType::Ascii,
-        &[1, 2, 3],
-        0,
-        SymbolSize::Min,
-        false,
-        0,
-    );
-    b.step();
-    b.step(); // cost = 2
-    let mut c = GenericPlan::for_mode(
         EncodationType::C40,
         &[b'A', b'C', b'D'],
         0,
@@ -147,10 +173,21 @@ fn test_hopeless_remove_duplicates() {
         false,
         0,
     );
+    b.step();
+    b.step(); // cost = 4/3
+    let mut c = GenericPlan::for_mode(
+        EncodationType::X12,
+        &[b'A', b'C', b'D'],
+        0,
+        SymbolSize::Min,
+        false,
+        0,
+    );
     c.step();
+    c.step(); // cost = 4/3
     let mut list = vec![a.clone(), b.clone(), c.clone()];
     remove_hopeless_cases(&mut list);
-    assert_eq!(list, vec![c, a, b]);
+    assert_eq!(list, vec![a, b, c]);
 }
 
 #[test]
@@ -208,21 +245,11 @@ fn test_hopeless_remove_2() {
 }
 
 #[test]
-fn test_c40_case1() {
-    use crate::SymbolSize::Min;
-    // C40: <latch> + DEA + BC1 + 23F + ascii('G') = 8
-    // EDIFACT: <latch> + DEAB + C123 UNLATCH G =  9
-    // X12: <latch> + DEA + BC1 + 23F + ascii('G) = 8
-    let result = optimize(b"DEAbC123FG", 0, EncodationType::Ascii, false, Min, 0);
-    assert_eq!(result, Some(EncodationType::C40));
-}
-
-#[test]
 fn test_ascii_case1() {
     use crate::SymbolSize::Min;
 
     let result = optimize(b"ab*de", 0, EncodationType::Ascii, false, Min, 0);
-    assert_eq!(result, Some(EncodationType::Ascii));
+    assert_eq!(result.map(|v| v[0].1), Some(EncodationType::Ascii));
 }
 
 #[test]
@@ -230,14 +257,14 @@ fn test_x12_case1() {
     use crate::SymbolSize::Min;
     // from b"ABC>ABC123>ABCDE", which should switches to X12 until end
     let result = optimize(b"BCDE", 0, EncodationType::X12, false, Min, 0);
-    assert_eq!(result, Some(EncodationType::X12));
+    assert_eq!(result.map(|v| v[0].1), Some(EncodationType::X12));
 }
 
 #[test]
 fn test_x12_case2() {
     use crate::SymbolSize::Min;
     let result = optimize(b"CP0*", 3, EncodationType::X12, false, Min, 0);
-    assert_eq!(result, Some(EncodationType::X12));
+    assert_eq!(result.map(|v| v[0].1), Some(EncodationType::X12));
 }
 
 #[test]
@@ -246,12 +273,36 @@ fn test_x12_case3() {
     // X12 Size: Latch + 3 * 2 + ascii(00) = 8
     // EDIFACT Size: Latch + 2 * 3 + UNLATCH + ascii(00) = 9
     let result = optimize(b"*********00", 0, EncodationType::Ascii, false, Min, 0);
-    assert_eq!(result, Some(EncodationType::X12));
+    assert_eq!(result.map(|v| v[0].1), Some(EncodationType::X12));
 }
 
 #[test]
 fn test_edifact_case1() {
     use crate::SymbolSize::Min;
     let result = optimize(b"XX", 42, EncodationType::Edifact, false, Min, 0);
-    assert_eq!(result, Some(EncodationType::Edifact));
+    assert_eq!(result.map(|v| v[0].1), Some(EncodationType::Edifact));
+}
+
+#[test]
+fn test_edifact_case2() {
+    use crate::SymbolSize::Min;
+
+    // Next char is not encodable for edifact
+    let result = optimize(
+        &[140, 77, 37, 91, 75, 91, 89, 91],
+        971,
+        EncodationType::Edifact,
+        false,
+        Min,
+        0,
+    );
+    assert!(result.is_some());
+}
+
+#[test]
+fn test_x12_case4() {
+    use crate::SymbolSize::Min;
+
+    let result = optimize(b"AIMaimaimaim", 11, EncodationType::X12, false, Min, 0);
+    assert_eq!(result.map(|v| v[0].1), Some(EncodationType::X12));
 }

@@ -11,14 +11,17 @@ pub(super) struct Base256Plan<T: ContextInformation> {
 
 impl<T: ContextInformation> Base256Plan<T> {
     pub(super) fn with_written(mut ctx: T, written: usize) -> Self {
-        if written == 0 {
+        let cost = if written == 0 {
             // for length byte
             ctx.write(1);
-        }
+            1
+        } else {
+            0
+        };
         Self {
             ctx,
             written,
-            cost: 1.into(), // initial length byte
+            cost: cost.into(), // initial length byte
         }
     }
 
@@ -35,18 +38,22 @@ impl<T: ContextInformation> Plan for Base256Plan<T> {
     type Context = T;
 
     fn mode_switch_cost(&self) -> Option<Frac> {
-        Some(self.cost)
+        if self.written >= 250 {
+            Some(self.cost + 1)
+        } else {
+            Some(self.cost)
+        }
     }
 
-    fn cost(&self) -> Option<Frac> {
+    fn cost(&self) -> Frac {
         if !self.ctx.has_more_characters() {
-            let left = self.ctx.symbol_size_left(0)?;
+            let left = self.ctx.symbol_size_left(0).unwrap_or(1);
             if left > 0 && self.written > 249 {
                 // we can must use 1 extra byte for the length
-                return Some(self.cost + 1);
+                return self.cost + 1;
             }
         }
-        Some(self.cost)
+        self.cost
     }
 
     fn write_unlatch(&self) -> T {
@@ -65,10 +72,6 @@ impl<T: ContextInformation> Plan for Base256Plan<T> {
             self.written += 1;
             self.cost += 1;
             self.ctx.write(1);
-            if self.written == 250 {
-                // length now needs two bytes
-                self.cost += 1;
-            }
             if self.written == 1556 {
                 return None;
             }

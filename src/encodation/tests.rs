@@ -281,8 +281,9 @@ fn test_c40_special_case_a() {
 fn test_c40_special_case_b() {
     // case "b": Add trailing shift 0 and Unlatch is not required
     assert_eq!(
-        enc(b"AI_MA_MA_MA"),
-        vec![230, 90, 242, 166, 159, 10, 107, 87, 195, 254, 78, 66]
+        // enc(b"AI_MA_MA_MA"),
+        enc(b" 9 9t"),
+        vec![239, 20, 204, 86, 105],
     );
 }
 
@@ -320,10 +321,19 @@ fn test_c40_special_case_d() {
 }
 
 #[test]
+fn test_c40_special_case2_d() {
+    // case "d": Skip Unlatch and write last two digits in ASCII
+    assert_eq!(
+        enc(b" 9 aaabbb00"),
+        vec![239, 20, 204, 89, 191, 96, 40, 130]
+    );
+}
+
+#[test]
 fn test_c40_special_cases2() {
     // available > 2, rest = 2 --> unlatch and encode as ASCII
     assert_eq!(
-        enc(b"AIMAIMAIMAIMAIMAIMAI"),
+        enc(b"aimaimaimaimaimaimai"),
         vec![230, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 254, 66, 74]
     );
 }
@@ -631,10 +641,10 @@ fn test_unlatching_from_text() {
 #[test]
 fn test_hello_world() {
     let opts = [
-        // two c40 options
+        // variants
         vec![73, 239, 116, 130, 175, 123, 148, 64, 158, 234, 254, 34],
         vec![73, 239, 116, 130, 175, 123, 148, 64, 158, 233, 254, 34],
-        // one text variant
+        vec![73, 102, 239, 160, 69, 19, 40, 179, 242, 106, 105, 254],
         vec![239, 13, 211, 160, 69, 19, 40, 179, 242, 106, 105, 254],
     ];
     let out = enc(b"Hello World!");

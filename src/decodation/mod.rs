@@ -3,9 +3,12 @@
 //! It performs the inverse of the `encodation` module.
 use super::encodation::{ascii, edifact, EncodationType, UNLATCH};
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Debug, PartialEq)]
 pub enum DecodingError {
-    UnexpectedCharacter(u8),
+    UnexpectedCharacter(&'static str, u8),
     NotImplemented(&'static str),
     UnexpectedEnd,
 }
@@ -105,7 +108,7 @@ fn decode_ascii<'a>(
             ascii::LATCH_TEXT => return Ok((data, EncodationType::Text)),
             ascii::LATCH_EDIFACT => return Ok((data, EncodationType::Edifact)),
             241 => return Err(DecodingError::NotImplemented("ECI")),
-            ch @ _ => return Err(DecodingError::UnexpectedCharacter(ch)),
+            ch @ _ => return Err(DecodingError::UnexpectedCharacter("illegal in ascii", ch)),
         }
     }
     Ok((data, EncodationType::Ascii))
@@ -132,7 +135,8 @@ fn decode_base256<'a>(
         } else if ch1 < 250 {
             ch1
         } else {
-            let ch2 = derandomize_255_state(data.eat()?, data.pos()) as usize;
+            let ch2 = data.eat()?;
+            let ch2 = derandomize_255_state(ch2, data.pos() - 1) as usize;
             250 * (ch1 - 249) + ch2
         }
     } else {
@@ -161,15 +165,15 @@ fn decode_edifact<'a>(
     out: &mut Vec<u8>,
 ) -> Result<(Reader<'a>, EncodationType), DecodingError> {
     while !data.is_empty() {
+        if data.len() <= 2 {
+            // rest is encoded as ASCII
+            break;
+        }
         if data.peek(0).unwrap() >> 2 == edifact::UNLATCH {
             data.eat().unwrap();
             break;
         }
-        if data.len() <= 2 {
-            // encoded with ASCII
-            break;
-        }
-
+        // dbg!(&data.0[..3]);
         let mut chunk: u32 = (data.eat().unwrap() as u32) << 16;
         let val = (chunk >> 18) as u8;
         if val == edifact::UNLATCH {
@@ -210,6 +214,14 @@ fn decode_c40_tuple(a: u8, b: u8) -> (u8, u8, u8) {
     let c1 = tmp as u8;
     full -= tmp * 1600;
     let tmp = full / 40;
+    // println!(
+    //     "{} {} => {} {} {}",
+    //     a,
+    //     b,
+    //     c1,
+    //     tmp as u8,
+    //     (full - tmp * 40) as u8
+    // );
     (c1, tmp as u8, (full - tmp * 40) as u8)
 }
 
@@ -221,7 +233,7 @@ fn dec_x12_val(ch: u8) -> Result<u8, DecodingError> {
         3 => Ok(b' '),
         ch @ 4..=13 => Ok(b'0' + (ch - 4)),
         ch @ 14..=39 => Ok(b'A' + (ch - 14)),
-        ch => Err(DecodingError::UnexpectedCharacter(ch)),
+        ch => Err(DecodingError::UnexpectedCharacter("not x12", ch)),
     }
 }
 
@@ -234,19 +246,27 @@ fn decode_x12<'a>(
         if first == UNLATCH {
             break;
         }
-        let (c1, c2, c3) = decode_c40_tuple(first, data.eat().unwrap());
+        let second = data.eat().unwrap();
+        let (c1, c2, c3) = decode_c40_tuple(first, second);
+        // dbg!((first, second), (dec_x12_val(c1), dec_x12_val(c2), dec_x12_val(c3)));
+
         out.push(dec_x12_val(c1)?);
         out.push(dec_x12_val(c2)?);
         out.push(dec_x12_val(c3)?);
+    }
+    // dbg!(data.0);
+    if data.peek(0) == Some(UNLATCH) {
+        // single UNLATCH at end of data
+        let _ = data.eat().unwrap();
     }
     Ok((data, EncodationType::Ascii))
 }
 
 const BASE_C40: &[u8; 37] = b" 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const SHIFT3_C40: &[u8; 32] = b"'abcdefghijklmnopqrstuvwxyz{|}~\x7f";
+const SHIFT3_C40: &[u8; 32] = b"`abcdefghijklmnopqrstuvwxyz{|}~\x7f";
 
 const BASE_TEXT: &[u8; 37] = b" 0123456789abcdefghijklmnopqrstuvwxyz";
-const SHIFT3_TEXT: &[u8; 32] = b"'ABCDEFGHIJKLMNOPQRSTUVWXYZ{|}~\x7f";
+const SHIFT3_TEXT: &[u8; 32] = b"`ABCDEFGHIJKLMNOPQRSTUVWXYZ{|}~\x7f";
 
 const SHIFT2: &[u8] = b"!\"#$%&'()*+,-./:;<=>?@[\\]^_";
 
@@ -263,8 +283,12 @@ fn decode_c40_like<'a>(
         if first == UNLATCH {
             break;
         }
+        // println!("{}, {:?}", first, &data);
         let (c1, c2, c3) = decode_c40_tuple(first, data.eat().unwrap());
         for ch in [c1, c2, c3].iter().cloned() {
+            // println!("ch {}, shift {}, upper {}", ch, shift, upper_shift);
+            // println!("out: {:?}", &out);
+
             if shift == 0 {
                 match ch {
                     ch @ 0..=2 => shift = ch + 1,
@@ -277,7 +301,12 @@ fn decode_c40_like<'a>(
                             out.push(text);
                         }
                     }
-                    ch => return Err(DecodingError::UnexpectedCharacter(ch)),
+                    ch => {
+                        return Err(DecodingError::UnexpectedCharacter(
+                            "not in base c40/text",
+                            ch,
+                        ))
+                    }
                 }
             } else if shift == 1 {
                 match ch {
@@ -288,9 +317,13 @@ fn decode_c40_like<'a>(
                         } else {
                             out.push(ch);
                         }
-                        out.push(ch);
                     }
-                    ch => return Err(DecodingError::UnexpectedCharacter(ch)),
+                    ch => {
+                        return Err(DecodingError::UnexpectedCharacter(
+                            "not in shift1 c40/text",
+                            ch,
+                        ))
+                    }
                 }
                 shift = 0;
             } else if shift == 2 {
@@ -306,7 +339,12 @@ fn decode_c40_like<'a>(
                     }
                     27 => return Err(DecodingError::NotImplemented("FNC1 in C40/Text")),
                     30 => upper_shift = true,
-                    _ => return Err(DecodingError::UnexpectedCharacter(ch)),
+                    _ => {
+                        return Err(DecodingError::UnexpectedCharacter(
+                            "not in shift2 c40/text",
+                            ch,
+                        ))
+                    }
                 }
                 shift = 0;
             } else {
@@ -320,11 +358,21 @@ fn decode_c40_like<'a>(
                             out.push(text);
                         }
                     }
-                    _ => return Err(DecodingError::UnexpectedCharacter(ch)),
+                    _ => {
+                        return Err(DecodingError::UnexpectedCharacter(
+                            "not in shift3 c40/text",
+                            ch,
+                        ))
+                    }
                 }
                 shift = 0;
             }
+            // println!("{:?}", &out);
         }
+    }
+    if data.peek(0) == Some(UNLATCH) {
+        // single UNLATCH at end of data
+        let _ = data.eat().unwrap();
     }
     Ok((data, EncodationType::Ascii))
 }

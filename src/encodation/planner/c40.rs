@@ -32,6 +32,7 @@ pub(super) struct C40LikePlan<T: ContextInformation, U: CharsetInfo> {
     values: u8,
     unbeatable_reads: usize,
     ch: u8,
+    two_digit_ascii_end: bool,
     cost: Frac,
     dummy: PhantomData<U>,
 }
@@ -44,6 +45,7 @@ impl<T: ContextInformation, U: CharsetInfo> C40LikePlan<T, U> {
             ch: 0,
             unbeatable_reads: 0,
             cost: 0.into(),
+            two_digit_ascii_end: false,
             dummy: PhantomData,
         }
     }
@@ -94,27 +96,30 @@ impl<T: ContextInformation, U: CharsetInfo> Plan for C40LikePlan<T, U> {
     fn write_unlatch(&self) -> Self::Context {
         let mut ctx = self.ctx.clone();
         if self.values > 0 {
+            // finish C40 pair
             ctx.write(2);
         }
         ctx.write(1);
         ctx
     }
 
-    fn cost(&self) -> Option<Frac> {
+    fn cost(&self) -> Frac {
         if self.ctx.has_more_characters() {
-            return Some(self.cost + Frac::new(2 * self.values as C, 3));
+            return self.cost + Frac::new(2 * self.values as C, 3);
         }
         // compute additional cost to store remaining values
         let extra = if self.values == 2 {
-            let space_left = self.ctx.symbol_size_left(1)?;
+            let space_left = self.ctx.symbol_size_left(2).unwrap_or(0);
             if space_left == 0 {
                 2
             } else {
-                // SHIFT1 is added to pad
+                // encode (val1, val2, 0) = 2 codewords
+                // and final unlatch to continue with padding
                 3
             }
         } else if self.values == 1 {
-            let space_left = self.ctx.symbol_size_left(1)?;
+            let space_left = self.ctx.symbol_size_left(1).unwrap_or(0);
+            // this also includes the `self.two_digit_ascii_end` case...
             let ascii_size = ascii::encoding_size(&[self.ch]);
             if space_left == 0 {
                 if ascii_size == 1 {
@@ -130,28 +135,46 @@ impl<T: ContextInformation, U: CharsetInfo> Plan for C40LikePlan<T, U> {
         } else {
             0
         };
-        Some(self.cost + extra as C)
+        self.cost + extra as C
     }
 
     fn step(&mut self) -> Option<StepResult> {
         // compute optimal chars, only do this when we are at a boundary and if not
         // already done
         if self.values == 0 && self.unbeatable_reads == 0 {
-            // count number of base set characters coming, watch out for digits
-            self.unbeatable_reads = unbeatable_strike(self.ctx.rest(), U::in_base_set);
-            self.ctx.write((self.unbeatable_reads / 3) * 2);
+            // are the only remaining charactes two ascii digits?
+            if matches!(self.ctx.rest(), [a, b] if a.is_ascii_digit() && b.is_ascii_digit()) {
+                let space_left = self.ctx.symbol_size_left(1)?;
+                self.two_digit_ascii_end = space_left <= 1;
+                if space_left == 1 {
+                    // UNLATCH + ASCII(two digits)
+                    self.unbeatable_reads = 2;
+                    self.ctx.write(2);
+                } else if space_left == 0 {
+                    // implicit UNLATCH, ASCII(two digits);
+                    self.unbeatable_reads = 2;
+                    self.ctx.write(1);
+                }
+            }
+            if !self.two_digit_ascii_end {
+                // count number of base set characters coming, watch out for digits
+                self.unbeatable_reads = unbeatable_strike(self.ctx.rest(), U::in_base_set);
+                self.ctx.write((self.unbeatable_reads / 3) * 2);
+            }
         }
         let unbeatable = self.unbeatable_reads > 0;
         let end = !self.ctx.has_more_characters();
         if !end {
             self.ch = self.ctx.eat().unwrap();
             if self.unbeatable_reads > 0 {
-                self.values += 1;
+                if !self.two_digit_ascii_end || self.values == 0 {
+                    self.values += 1;
+                }
                 self.unbeatable_reads -= 1;
             } else {
                 self.values += U::val_size(self.ch);
             }
-            if self.values >= 3 {
+            while self.values >= 3 {
                 self.cost += 2;
                 if !unbeatable {
                     self.ctx.write(2);
@@ -173,5 +196,5 @@ fn test_eod_case1() {
     for _ in 0..7 {
         plan.step();
     }
-    assert_eq!(plan.cost(), Some(5.into()));
+    assert_eq!(plan.cost(), 5.into());
 }
