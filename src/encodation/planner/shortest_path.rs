@@ -71,11 +71,14 @@ pub(crate) fn optimize<S: Size>(
         }
 
         if at_end {
-            // all plans are at the end of data, pick the best one,
-            // they are sorted by `remove_hopeless_cases`
+            // all plans are at the end of data, pick the best one
             let mut plan = new_plan
                 .into_iter()
-                .min_by_key(|p| (p.cost().ceil(), p.start_mode().index()))
+                .min_by_key(|p| {
+                    // To decide a tie we use the ordering given by ".index()"
+                    let max_enc = p.switches.iter().map(|e| e.1.index()).max().unwrap();
+                    (p.cost().ceil(), max_enc, p.switches.len())
+                })
                 .unwrap();
             plan.switches.push((0, plan.current()));
             return Some(plan.switches);

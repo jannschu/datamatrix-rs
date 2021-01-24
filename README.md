@@ -11,7 +11,7 @@ noticable in most cases, though).  The new optimizer is unique about this
 implementation, something similar could not be found in any open source
 implementation.
 
-It is also a completely fresh implementation overall -- with all its pros and cons.
+It is also a completely fresh implementation overall, with all its pros and cons.
 
 See the list of related projects below for credits.
 
@@ -51,7 +51,7 @@ and stealing some of their test cases and bug reports.
 - [zxing](https://github.com/zxing/zxing) is a Google library to encode
   and decode multiple 1D and 2D codes including Data Matrix. The core part
   is written in Java.
-- [barcode4j](http://barcode4j.sourceforge.net/) is the predecessor of zxing,
+- [barcode4j](http://barcode4j.sourceforge.net/) is a predecessor of zxing,
   the Data Matrix code was forked into zxing and improved.
 - [libdmtx](https://github.com/dmtx/libdmtx) is the most promiment open source
   C library for encoding and decoding Data Matrix. It has a limited but
