@@ -31,12 +31,6 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn drain(mut self) -> Self {
-        self.1 += self.0.len();
-        self.0 = &[];
-        self
-    }
-
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
