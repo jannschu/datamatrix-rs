@@ -25,6 +25,7 @@
 //! a * b = x^i * x^j = x^(i + j). Doing the inverse lookup of x^(i + j)
 //! gives us the result. These two lookup tables are called LOG and ANTI_LOG
 //! in this module.
+use std::iter::Sum;
 use std::ops::{Add, Div, Mul, Sub};
 use std::{
     convert::{From, Into},
@@ -71,6 +72,15 @@ impl GF {
     // Return iterator for 1, x, x^2, x^3, ...
     pub fn primitive_powers() -> impl Iterator<Item = Self> {
         ANTI_LOG.iter().map(|x| Self(*x)).cycle()
+    }
+
+    pub fn primitive_power(i: u8) -> Self {
+        GF(ANTI_LOG[i as usize])
+    }
+
+    pub fn log(self) -> usize {
+        assert!(self != GF(0), "log of 0");
+        LOG[self.0 as usize] as usize
     }
 }
 
@@ -163,6 +173,12 @@ impl Into<u8> for GF {
 impl From<u8> for GF {
     fn from(i: u8) -> Self {
         GF(i)
+    }
+}
+
+impl Sum for GF {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(GF(0), |a, b| a + b)
     }
 }
 

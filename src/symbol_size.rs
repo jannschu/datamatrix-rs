@@ -38,6 +38,7 @@ pub(crate) struct BlockSetup {
     pub(crate) num_ecc_per_block: usize,
 }
 
+/// The symbol sizes supported by Data Matrix.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SymbolSize {
     Square10,
@@ -70,8 +71,12 @@ pub enum SymbolSize {
     Rect12x36,
     Rect16x36,
     Rect16x48,
+    /// If chose, the library automatically choses the smallest symbol to
+    /// fit the data.
     Min,
+    /// Similar to [Min](Self::Min) but limits to considered symbols only to non-square ones.
     MinRect,
+    /// Similar to [Min](Self::Min) but limits to considered symbols only to square ones.
     MinSquare,
 }
 

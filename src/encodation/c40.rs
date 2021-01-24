@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 
-use super::{ascii, encodation_type::EncodationType, EncodationError, EncodingContext};
+use super::{ascii, encodation_type::EncodationType, DataEncodingError, EncodingContext};
 
 const SHIFT1: u8 = 0;
 const SHIFT2: u8 = 1;
@@ -64,7 +64,7 @@ pub(super) fn handle_end<T>(
     ctx: &mut T,
     last_ch: u8,
     mut buf: ArrayVec<[u8; 6]>,
-) -> Result<(), EncodationError>
+) -> Result<(), DataEncodingError>
 where
     T: EncodingContext,
 {
@@ -76,7 +76,7 @@ where
     if !ctx.has_more_characters() {
         let size_left = ctx
             .symbol_size_left(buf.len())
-            .ok_or(EncodationError::NotEnoughSpace)?;
+            .ok_or(DataEncodingError::NotEnoughSpace)?;
         match (size_left + buf.len(), buf.len()) {
             // case a) handled by standard loop
             // case b)
@@ -122,7 +122,7 @@ where
             // we can encode them with one ASCII byte, maybe with UNLATCH before
             let space_left = ctx
                 .symbol_size_left(1)
-                .ok_or(EncodationError::NotEnoughSpace)?;
+                .ok_or(DataEncodingError::NotEnoughSpace)?;
             ctx.set_mode(EncodationType::Ascii);
             if space_left >= 1 {
                 ctx.push(super::UNLATCH);
@@ -132,7 +132,7 @@ where
         ctx.push(super::UNLATCH);
     } else if ctx
         .symbol_size_left(0)
-        .ok_or(EncodationError::NotEnoughSpace)?
+        .ok_or(DataEncodingError::NotEnoughSpace)?
         > 0
     {
         ctx.push(super::UNLATCH);
@@ -143,7 +143,7 @@ where
     Ok(())
 }
 
-pub(super) fn encode_generic<T, F>(ctx: &mut T, low_ascii_write: F) -> Result<(), EncodationError>
+pub(super) fn encode_generic<T, F>(ctx: &mut T, low_ascii_write: F) -> Result<(), DataEncodingError>
 where
     T: EncodingContext,
     F: Fn(&mut ArrayVec<[u8; 6]>, u8),
@@ -192,7 +192,7 @@ where
     buf.len() - len_before
 }
 
-pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationError> {
+pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncodingError> {
     encode_generic(ctx, low_ascii_to_c40_symbols)
 }
 

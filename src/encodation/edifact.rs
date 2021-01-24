@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 
 use super::encodation_type::EncodationType;
-use super::{ascii, EncodationError, EncodingContext};
+use super::{ascii, DataEncodingError, EncodingContext};
 
 pub(crate) const UNLATCH: u8 = 0b011111;
 
@@ -29,7 +29,7 @@ fn write4<T: EncodingContext>(ctx: &mut T, s: &ArrayVec<[u8; 4]>) {
 fn handle_end<T: EncodingContext>(
     ctx: &mut T,
     mut symbols: ArrayVec<[u8; 4]>,
-) -> Result<(), EncodationError> {
+) -> Result<(), DataEncodingError> {
     // check case "encoding with <= 2 ASCII, no UNLATCH"
     let rest_chars = symbols.len() + ctx.characters_left();
     if rest_chars <= 4 {
@@ -58,7 +58,7 @@ fn handle_end<T: EncodingContext>(
             // eod
             let space_left = ctx
                 .symbol_size_left(0)
-                .ok_or(EncodationError::NotEnoughSpace)?;
+                .ok_or(DataEncodingError::NotEnoughSpace)?;
             // padding case
             if space_left > 0 {
                 // the other case is caught in the "special end of data rule" above
@@ -76,7 +76,7 @@ fn handle_end<T: EncodingContext>(
             // eod, maybe add UNLATCH for padding if space allows
             let space_left = ctx
                 .symbol_size_left(symbols.len())
-                .ok_or(EncodationError::NotEnoughSpace)?
+                .ok_or(DataEncodingError::NotEnoughSpace)?
                 > 0;
             if space_left || symbols.len() == 3 {
                 symbols.push(UNLATCH);
@@ -90,7 +90,7 @@ fn handle_end<T: EncodingContext>(
     Ok(())
 }
 
-pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationError> {
+pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncodingError> {
     let mut symbols = ArrayVec::<[u8; 4]>::new();
     while let Some(ch) = ctx.eat() {
         symbols.push(ch);

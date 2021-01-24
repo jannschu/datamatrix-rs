@@ -1,4 +1,4 @@
-use super::{encodation_type::EncodationType, EncodationError, EncodingContext};
+use super::{encodation_type::EncodationType, DataEncodingError, EncodingContext};
 
 /// Perform the 255 state randomization as defined in the standard.
 ///
@@ -15,10 +15,10 @@ fn randomize_255_state(ch: u8, pos: usize) -> u8 {
 }
 
 /// Write the length "header" of this encodation.
-fn write_length<T: EncodingContext>(ctx: &mut T, start: usize) -> Result<(), EncodationError> {
+fn write_length<T: EncodingContext>(ctx: &mut T, start: usize) -> Result<(), DataEncodingError> {
     let space_left = ctx
         .symbol_size_left(0)
-        .ok_or(EncodationError::NotEnoughSpace)?;
+        .ok_or(DataEncodingError::NotEnoughSpace)?;
     let mut data_written = ctx.codewords().len() - start;
     if ctx.has_more_characters() || space_left > 0 {
         let data_count = data_written - 1;
@@ -40,7 +40,7 @@ fn write_length<T: EncodingContext>(ctx: &mut T, start: usize) -> Result<(), Enc
     Ok(())
 }
 
-pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationError> {
+pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncodingError> {
     let start = ctx.codewords().len();
     ctx.push(0);
 

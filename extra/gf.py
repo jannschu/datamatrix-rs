@@ -1,6 +1,7 @@
 """
 Implementation of some GF(256) arithmetic used in Data Matrix.
 """
+import random
 
 # This is the polynomical used by Data Matrix do define multiplication.
 # QR codes use a different polynomial for example.
@@ -208,3 +209,13 @@ assert GF(2) ** 3 == GF(2) * GF(2) * GF(2)
 # for g in gens:
 #     cs = reversed(gen(g).coeffs)
 #     print("[" + ", ".join(str(c.v) for c in cs) + "],")
+
+
+print("Vandermonde")
+x = [GF(random.randint(1, 255)) for _ in range(5)]
+print("x = " + ", ".join(f"GF({v.v})" for v in x))
+row = [GF(1)] * len(x)
+for _ in range(len(x)):
+    for i in range(len(row)):
+        row[i] *= x[i]
+    print(", ".join(f"GF({v.v})" for v in row) + ",")

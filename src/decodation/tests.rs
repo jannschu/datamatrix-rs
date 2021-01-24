@@ -1,14 +1,14 @@
 /// Module contains test cases found by fuzzing using libfuzzer and afl.
 ///
 /// I now believe in magic. Holy. Shit. 10/10.
-use crate::raw::{raw_decode, RawEncoder};
+use crate::data::{decode_data, DataEncoder};
 use crate::SymbolSize;
 
 fn forth_and_back(data: &[u8]) {
-    let enc = RawEncoder::with_size(data, SymbolSize::Min);
+    let enc = DataEncoder::with_size(data, SymbolSize::Min);
     let encoded = enc.codewords();
     if let Ok(encoded) = encoded {
-        let decoded = raw_decode(&encoded);
+        let decoded = decode_data(&encoded);
         assert!(
             decoded.is_ok(),
             "err: {:?}, encoded: {:?}",
@@ -56,7 +56,7 @@ fn regression1() {
     // Generates two big C40
     forth_and_back(&[50, 32, 32, 252]);
     assert_eq!(
-        raw_decode(&[51, 239, 19, 58, 187, 237, 254, 254]),
+        decode_data(&[51, 239, 19, 58, 187, 237, 254, 254]),
         Ok(vec![50, 32, 32, 252])
     );
 }
@@ -65,7 +65,7 @@ fn regression1() {
 fn regression2() {
     forth_and_back(&[10, 66, 56, 138]);
     assert_eq!(
-        raw_decode(&[11, 230, 95, 162, 187, 139, 254, 254]),
+        decode_data(&[11, 230, 95, 162, 187, 139, 254, 254]),
         Ok(vec![10, 66, 56, 138])
     );
 }
@@ -75,7 +75,7 @@ fn regression3() {
     // A upper shift shift 3 character for C40
     forth_and_back(&[32, 74, 224, 245]);
     assert_eq!(
-        raw_decode(&[230, 22, 90, 187, 209, 254, 235, 118]),
+        decode_data(&[230, 22, 90, 187, 209, 254, 235, 118]),
         Ok(vec![32, 74, 224, 245])
     );
 }
@@ -85,7 +85,7 @@ fn regression4() {
     // A single UNLATCH at the end of data
     forth_and_back(&[10, 39, 66, 66, 138]);
     assert_eq!(
-        raw_decode(&[11, 40, 230, 96, 26, 187, 139, 254]),
+        decode_data(&[11, 40, 230, 96, 26, 187, 139, 254]),
         Ok(vec![10, 39, 66, 66, 138])
     );
 }
@@ -94,7 +94,7 @@ fn regression4() {
 fn regression5() {
     forth_and_back(&[32, 32, 153, 205]);
     assert_eq!(
-        raw_decode(&[239, 19, 58, 187, 154, 10, 243, 254, 235, 78]),
+        decode_data(&[239, 19, 58, 187, 154, 10, 243, 254, 235, 78]),
         Ok(vec![32, 32, 153, 205])
     );
 }
@@ -104,7 +104,7 @@ fn regression6() {
     // A UNLATCH at the end of data (X12) mode
     forth_and_back(&[43, 4, 32, 32, 32, 74, 32, 32]);
     assert_eq!(
-        raw_decode(&[44, 5, 238, 19, 60, 144, 60, 254]),
+        decode_data(&[44, 5, 238, 19, 60, 144, 60, 254]),
         Ok(vec![43, 4, 32, 32, 32, 74, 32, 32])
     );
 }
@@ -113,7 +113,7 @@ fn regression6() {
 fn regression7() {
     forth_and_back(&[42, 32, 56, 40, 68, 68, 68, 68, 68, 74, 167]);
     assert_eq!(
-        raw_decode(&[43, 33, 57, 41, 238, 108, 250, 109, 0, 254, 235, 40]),
+        decode_data(&[43, 33, 57, 41, 238, 108, 250, 109, 0, 254, 235, 40]),
         Ok(vec![42, 32, 56, 40, 68, 68, 68, 68, 68, 74, 167])
     );
 }
@@ -122,7 +122,7 @@ fn regression7() {
 fn regression8() {
     forth_and_back(&[255, 74, 66, 57, 32, 50, 74, 255]);
     assert_eq!(
-        raw_decode(&[235, 128, 238, 146, 38, 19, 200, 254, 235, 128]),
+        decode_data(&[235, 128, 238, 146, 38, 19, 200, 254, 235, 128]),
         Ok(vec![255, 74, 66, 57, 32, 50, 74, 255])
     );
 }
@@ -152,7 +152,7 @@ fn regression11() {
     // A decoder bug in EDIFACT for end of data situation
     forth_and_back(&[64, 75, 75, 75, 75, 61, 75, 32, 126]);
     assert_eq!(
-        raw_decode(&[240, 0, 178, 203, 47, 210, 224, 127]),
+        decode_data(&[240, 0, 178, 203, 47, 210, 224, 127]),
         Ok(vec![64, 75, 75, 75, 75, 61, 75, 32, 126]),
     );
 }
@@ -163,7 +163,7 @@ fn regression12() {
     // <= 2 symbol space, so unlatch not required
     forth_and_back(&[48, 47, 47, 48, 47, 47, 64, 93]);
     assert_eq!(
-        raw_decode(&[240, 194, 251, 240, 190, 240, 29, 129]),
+        decode_data(&[240, 194, 251, 240, 190, 240, 29, 129]),
         Ok(vec![48, 47, 47, 48, 47, 47, 64, 93]),
     );
 }
@@ -189,7 +189,7 @@ fn regression13() {
     ];
     forth_and_back(&input);
     assert_eq!(
-        raw_decode(&[
+        decode_data(&[
             231, 38, 195, 36, 185, 0, 88, 132, 26, 175, 88, 238, 131, 25, 174, 68, 217, 111, 5,
             154, 29, 178, 72, 222, 115, 9, 158, 52, 201, 95, 245, 138, 32, 181, 75, 225, 118, 12,
             161, 55, 204, 98, 248, 141, 35, 184, 78, 228, 121, 15, 164, 58, 207, 101, 251, 144, 38,

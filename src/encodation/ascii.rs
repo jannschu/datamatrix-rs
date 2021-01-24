@@ -1,4 +1,4 @@
-use super::{EncodationError, EncodingContext};
+use super::{DataEncodingError, EncodingContext};
 
 pub(crate) const LATCH_C40: u8 = 230;
 pub(crate) const LATCH_BASE256: u8 = 231;
@@ -16,7 +16,7 @@ pub(super) fn two_digits_coming(rest: &[u8]) -> bool {
     }
 }
 
-pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationError> {
+pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncodingError> {
     loop {
         // If two digits are next, encode without asking for mode switch
         let two_digits = two_digits_coming(ctx.rest());

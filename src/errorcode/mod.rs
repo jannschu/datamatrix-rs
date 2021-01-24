@@ -1,8 +1,34 @@
-mod correction;
+//! Reed-Solomon error correction codes.
+//!
+//! The error correction in a Data Matrix is done using so called Reed-Solomon codes.
+//!
+//! Assuming you have never heard of coding theory: By putting some redundancy
+//! into the Data Matrix one can recover from, say, detection or printing errors
+//! when trying to read a Data Matrix. A clever way to add redundancy
+//! is the Reed-Solomon code. The details are relatively
+//! math heavy and involve for example "higher" algebra (Galois fields).
+//! Any book about coding theory should cover it, for example
+//! "Error Correction Coding: Mathematical Methods and Algorithms" by Moon.
+//!
+//! While there is only possibility (in this case) for creating such an error code,
+//! there are several algorithms for using a code to correct errors, a processs
+//! also called _decoding_ in coding theory.
+//!
+//! The _decoders_ implemented in this module are:
+//!
+//! - Classic Peterson-Gorenstein-Zierler (PGZ)
+//! - _Fast_ PGZ (*implementation in progress*)
+//! - Berlekamp-Massey (**TODO**)
+//!
+//! Each one them can be implemented in one way or another, more details
+//! can be found in the respective function documentation, see below.
+mod decoding;
 mod galois;
 
 use super::symbol_size::{Size, SymbolSize};
 use galois::GF;
+
+pub use decoding::decode_pgz;
 
 /// The coefficients of the generator polynomicals used
 /// by the Reed-Solomon code specified for Data Matrix.
@@ -94,7 +120,7 @@ fn generator(len: usize) -> &'static [u8] {
 /// Depending on the symbol size, the data is first split up into
 /// interleaved blocks. For each block an error code is computed.
 /// Those codes are returned consecutively, i.e., not interleaved.
-pub fn compute_error_code(data: &[u8], size: SymbolSize) -> Vec<u8> {
+pub fn encode(data: &[u8], size: SymbolSize) -> Vec<u8> {
     let setup = size.block_setup().unwrap();
     let num_codewords = size.num_data_codewords().unwrap();
     assert!(data.len() == num_codewords);

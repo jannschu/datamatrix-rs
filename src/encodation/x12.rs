@@ -1,4 +1,4 @@
-use super::{ascii, c40, encodation_type::EncodationType, EncodationError, EncodingContext};
+use super::{ascii, c40, encodation_type::EncodationType, DataEncodingError, EncodingContext};
 
 pub(crate) fn is_native_x12(ch: u8) -> bool {
     matches!(ch, 13 | 42 | 62 | 32 | b'0'..=b'9' | b'A'..=b'Z')
@@ -16,7 +16,7 @@ fn enc(ch: u8) -> u8 {
     }
 }
 
-pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationError> {
+pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncodingError> {
     let mut switch = false;
     while ctx.characters_left() >= 3 {
         let c1 = enc(ctx.eat().unwrap());
@@ -35,7 +35,7 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationEr
     if one_ascii_remain_maybe
         && ctx
             .symbol_size_left(1)
-            .ok_or(EncodationError::NotEnoughSpace)?
+            .ok_or(DataEncodingError::NotEnoughSpace)?
             == 0
     {
         ctx.set_mode(EncodationType::Ascii);
@@ -44,7 +44,7 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationEr
     if ctx.has_more_characters()
         || ctx
             .symbol_size_left(0)
-            .ok_or(EncodationError::NotEnoughSpace)?
+            .ok_or(DataEncodingError::NotEnoughSpace)?
             > 0
     {
         if !switch {

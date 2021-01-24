@@ -2,7 +2,8 @@ use std::iter::Cloned;
 use std::slice::Iter;
 
 use super::{
-    encodation_type::EncodationType, EncodationError, EncodingContext, GenericEncoder, RawEncoder,
+    encodation_type::EncodationType, DataEncoder, DataEncodingError, EncodingContext,
+    GenericDataEncoder,
 };
 use crate::symbol_size::{Capacity, Size, SymbolSize};
 
@@ -82,7 +83,7 @@ impl<T: TestEncoderLogic> EncodingContext for TestEncodingContext<T> {
         &mut self,
         _free_unlatch: bool,
         _base256_written: usize,
-    ) -> Result<bool, EncodationError> {
+    ) -> Result<bool, DataEncodingError> {
         Ok(T::maybe_switch_mode(self))
     }
 
@@ -206,11 +207,11 @@ impl Size for TestSymbol {
     }
 }
 
-type TestEncoder<'a> = GenericEncoder<'a, TestSymbol>;
+type TestEncoder<'a> = GenericDataEncoder<'a, TestSymbol>;
 
 #[cfg(test)]
 fn enc(data: &[u8]) -> Vec<u8> {
-    RawEncoder::with_size(data, SymbolSize::Min)
+    DataEncoder::with_size(data, SymbolSize::Min)
         .codewords()
         .unwrap()
 }
@@ -313,7 +314,7 @@ fn test_c40_special_cases2() {
 #[test]
 fn test_text_encoding_1() {
     // 239 shifts to Text encodation, 254 unlatches
-    let words = RawEncoder::with_size(b"aimaimaim", SymbolSize::Min)
+    let words = DataEncoder::with_size(b"aimaimaim", SymbolSize::Min)
         .codewords()
         .unwrap();
     assert_eq!(words, vec![239, 91, 11, 91, 11, 91, 11, 254]);

@@ -1,4 +1,4 @@
-use super::{ascii, base256, c40, edifact, text, x12, EncodationError, GenericEncoder};
+use super::{ascii, base256, c40, edifact, text, x12, DataEncodingError, GenericDataEncoder};
 use crate::symbol_size::Size;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -31,8 +31,8 @@ impl EncodationType {
 
     pub(super) fn encode<'a, 'b: 'a, S: Size>(
         &self,
-        encoder: &'a mut GenericEncoder<'b, S>,
-    ) -> Result<(), EncodationError> {
+        encoder: &'a mut GenericDataEncoder<'b, S>,
+    ) -> Result<(), DataEncodingError> {
         match self {
             Self::Ascii => ascii::encode(encoder),
             Self::C40 => c40::encode(encoder),

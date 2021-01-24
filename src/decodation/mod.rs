@@ -7,7 +7,7 @@ use super::encodation::{ascii, edifact, EncodationType, UNLATCH};
 mod tests;
 
 #[derive(Debug, PartialEq)]
-pub enum DecodingError {
+pub enum DataDecodingError {
     UnexpectedCharacter(&'static str, u8),
     NotImplemented(&'static str),
     UnexpectedEnd,
@@ -21,13 +21,13 @@ impl<'a> Reader<'a> {
         self.1 + 1
     }
 
-    fn eat(&mut self) -> Result<u8, DecodingError> {
+    fn eat(&mut self) -> Result<u8, DataDecodingError> {
         if let Some((ch, rest)) = self.0.split_first() {
             self.1 += 1;
             self.0 = rest;
             Ok(*ch)
         } else {
-            Err(DecodingError::UnexpectedEnd)
+            Err(DataDecodingError::UnexpectedEnd)
         }
     }
 
@@ -44,7 +44,8 @@ impl<'a> Reader<'a> {
     }
 }
 
-pub fn raw_decode(data: &[u8]) -> Result<Vec<u8>, DecodingError> {
+/// Decode the data part of a Data Matrix.
+pub fn decode_data(data: &[u8]) -> Result<Vec<u8>, DataDecodingError> {
     let mut data = Reader(data, 0);
     let mut mode = EncodationType::Ascii;
     let mut out = Vec::with_capacity(data.len());
@@ -77,7 +78,7 @@ fn derandomize_253_state(ch: u8, pos: usize) -> u8 {
 fn decode_ascii<'a>(
     mut data: Reader<'a>,
     out: &mut Vec<u8>,
-) -> Result<(Reader<'a>, EncodationType), DecodingError> {
+) -> Result<(Reader<'a>, EncodationType), DataDecodingError> {
     let mut upper_shift = false;
     while let Ok(ch) = data.eat() {
         match ch {
@@ -94,7 +95,7 @@ fn decode_ascii<'a>(
                 while let Ok(ch) = data.eat() {
                     let ch = derandomize_253_state(ch, data.pos() - 1);
                     if ch != ascii::PAD {
-                        return Err(DecodingError::UnexpectedCharacter(
+                        return Err(DataDecodingError::UnexpectedCharacter(
                             "non-padding char in padding area",
                             ch,
                         ));
@@ -109,19 +110,24 @@ fn decode_ascii<'a>(
             }
             ascii::LATCH_C40 => return Ok((data, EncodationType::C40)),
             ascii::LATCH_BASE256 => return Ok((data, EncodationType::Base256)),
-            232 => return Err(DecodingError::NotImplemented("FNC1")),
-            233 => return Err(DecodingError::NotImplemented("Structured Append")),
-            234 => return Err(DecodingError::NotImplemented("Reader Programming")),
+            232 => return Err(DataDecodingError::NotImplemented("FNC1")),
+            233 => return Err(DataDecodingError::NotImplemented("Structured Append")),
+            234 => return Err(DataDecodingError::NotImplemented("Reader Programming")),
             ascii::UPPER_SHIFT => {
                 upper_shift = true;
             }
-            236 => return Err(DecodingError::NotImplemented("05 Macro")),
-            237 => return Err(DecodingError::NotImplemented("06 Macro")),
+            236 => return Err(DataDecodingError::NotImplemented("05 Macro")),
+            237 => return Err(DataDecodingError::NotImplemented("06 Macro")),
             ascii::LATCH_X12 => return Ok((data, EncodationType::X12)),
             ascii::LATCH_TEXT => return Ok((data, EncodationType::Text)),
             ascii::LATCH_EDIFACT => return Ok((data, EncodationType::Edifact)),
-            241 => return Err(DecodingError::NotImplemented("ECI")),
-            ch @ _ => return Err(DecodingError::UnexpectedCharacter("illegal in ascii", ch)),
+            241 => return Err(DataDecodingError::NotImplemented("ECI")),
+            ch @ _ => {
+                return Err(DataDecodingError::UnexpectedCharacter(
+                    "illegal in ascii",
+                    ch,
+                ))
+            }
         }
     }
     Ok((data, EncodationType::Ascii))
@@ -140,7 +146,7 @@ fn derandomize_255_state(ch: u8, pos: usize) -> u8 {
 fn decode_base256<'a>(
     mut data: Reader<'a>,
     out: &mut Vec<u8>,
-) -> Result<(Reader<'a>, EncodationType), DecodingError> {
+) -> Result<(Reader<'a>, EncodationType), DataDecodingError> {
     let length = if let Ok(ch1) = data.eat() {
         let ch1 = derandomize_255_state(ch1, data.pos() - 1) as usize;
         if ch1 == 0 {
@@ -153,13 +159,13 @@ fn decode_base256<'a>(
             250 * (ch1 - 249) + ch2
         }
     } else {
-        return Err(DecodingError::UnexpectedEnd);
+        return Err(DataDecodingError::UnexpectedEnd);
     };
     for _ in 0..length {
         if let Ok(ch) = data.eat() {
             out.push(derandomize_255_state(ch, data.pos() - 1));
         } else {
-            return Err(DecodingError::UnexpectedEnd);
+            return Err(DataDecodingError::UnexpectedEnd);
         }
     }
     Ok((data, EncodationType::Ascii))
@@ -176,7 +182,7 @@ fn dec_edifcat_char(ch: u8) -> u8 {
 fn decode_edifact<'a>(
     mut data: Reader<'a>,
     out: &mut Vec<u8>,
-) -> Result<(Reader<'a>, EncodationType), DecodingError> {
+) -> Result<(Reader<'a>, EncodationType), DataDecodingError> {
     while !data.is_empty() {
         if data.len() <= 2 {
             // rest is encoded as ASCII
@@ -229,7 +235,7 @@ fn decode_c40_tuple(a: u8, b: u8) -> (u8, u8, u8) {
     (c1, tmp as u8, (full - tmp * 40) as u8)
 }
 
-fn dec_x12_val(ch: u8) -> Result<u8, DecodingError> {
+fn dec_x12_val(ch: u8) -> Result<u8, DataDecodingError> {
     match ch {
         0 => Ok(13),
         1 => Ok(42),
@@ -237,14 +243,14 @@ fn dec_x12_val(ch: u8) -> Result<u8, DecodingError> {
         3 => Ok(b' '),
         ch @ 4..=13 => Ok(b'0' + (ch - 4)),
         ch @ 14..=39 => Ok(b'A' + (ch - 14)),
-        ch => Err(DecodingError::UnexpectedCharacter("not x12", ch)),
+        ch => Err(DataDecodingError::UnexpectedCharacter("not x12", ch)),
     }
 }
 
 fn decode_x12<'a>(
     mut data: Reader<'a>,
     out: &mut Vec<u8>,
-) -> Result<(Reader<'a>, EncodationType), DecodingError> {
+) -> Result<(Reader<'a>, EncodationType), DataDecodingError> {
     while data.len() > 1 {
         let first = data.eat().unwrap();
         if first == UNLATCH {
@@ -277,7 +283,7 @@ fn decode_c40_like<'a>(
     out: &mut Vec<u8>,
     map_base: &[u8; 37],
     map_shift3: &[u8; 32],
-) -> Result<(Reader<'a>, EncodationType), DecodingError> {
+) -> Result<(Reader<'a>, EncodationType), DataDecodingError> {
     let mut shift = 0;
     let mut upper_shift = false;
     while data.len() > 1 {
@@ -300,7 +306,7 @@ fn decode_c40_like<'a>(
                         }
                     }
                     ch => {
-                        return Err(DecodingError::UnexpectedCharacter(
+                        return Err(DataDecodingError::UnexpectedCharacter(
                             "not in base c40/text",
                             ch,
                         ))
@@ -317,7 +323,7 @@ fn decode_c40_like<'a>(
                         }
                     }
                     ch => {
-                        return Err(DecodingError::UnexpectedCharacter(
+                        return Err(DataDecodingError::UnexpectedCharacter(
                             "not in shift1 c40/text",
                             ch,
                         ))
@@ -335,10 +341,10 @@ fn decode_c40_like<'a>(
                             out.push(text);
                         }
                     }
-                    27 => return Err(DecodingError::NotImplemented("FNC1 in C40/Text")),
+                    27 => return Err(DataDecodingError::NotImplemented("FNC1 in C40/Text")),
                     30 => upper_shift = true,
                     _ => {
-                        return Err(DecodingError::UnexpectedCharacter(
+                        return Err(DataDecodingError::UnexpectedCharacter(
                             "not in shift2 c40/text",
                             ch,
                         ))
@@ -357,7 +363,7 @@ fn decode_c40_like<'a>(
                         }
                     }
                     _ => {
-                        return Err(DecodingError::UnexpectedCharacter(
+                        return Err(DataDecodingError::UnexpectedCharacter(
                             "not in shift3 c40/text",
                             ch,
                         ))
@@ -386,13 +392,13 @@ fn test_ascii() {
 
 #[test]
 fn test_c40() {
-    assert_eq!(raw_decode(&[230, 91, 11]), Ok(vec![b'A', b'I', b'M']));
+    assert_eq!(decode_data(&[230, 91, 11]), Ok(vec![b'A', b'I', b'M']));
 }
 
 #[test]
 fn test_edifact() {
     assert_eq!(
-        raw_decode(&[240, 16, 21, 1]),
+        decode_data(&[240, 16, 21, 1]),
         Ok(vec![b'D', b'A', b'T', b'A'])
     );
 }
@@ -400,7 +406,7 @@ fn test_edifact() {
 #[test]
 fn test_base256() {
     assert_eq!(
-        raw_decode(&[231, 44, 108, 59, 226, 126, 1, 104]),
+        decode_data(&[231, 44, 108, 59, 226, 126, 1, 104]),
         Ok(vec![0xab, 0xe4, 0xf6, 0xfc, 0xe9, 0xbb])
     );
 }

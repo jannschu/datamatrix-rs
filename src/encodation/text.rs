@@ -1,4 +1,4 @@
-use super::{c40, EncodationError, EncodingContext};
+use super::{c40, DataEncodingError, EncodingContext};
 use arrayvec::ArrayVec;
 
 fn low_ascii_to_text_symbols(ctx: &mut ArrayVec<[u8; 6]>, ch: u8) {
@@ -23,6 +23,6 @@ pub fn val_size(ch: u8) -> u8 {
     }
 }
 
-pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationError> {
+pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncodingError> {
     c40::encode_generic(ctx, low_ascii_to_text_symbols)
 }

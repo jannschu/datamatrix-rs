@@ -28,7 +28,7 @@ pub(super) use encodation_type::EncodationType;
 pub(crate) const UNLATCH: u8 = 254;
 
 #[derive(Debug)]
-pub enum EncodationError {
+pub enum DataEncodingError {
     NotEnoughSpace,
 }
 
@@ -40,7 +40,7 @@ trait EncodingContext {
         &mut self,
         free_unlatch: bool,
         base256_written: usize,
-    ) -> Result<bool, EncodationError>;
+    ) -> Result<bool, DataEncodingError>;
 
     /// Compute how much space would be left in the symbol.
     ///
@@ -81,7 +81,7 @@ trait EncodingContext {
     }
 }
 
-pub struct GenericEncoder<'a, S: Size> {
+pub struct GenericDataEncoder<'a, S: Size> {
     data: &'a [u8],
     input: &'a [u8],
     encodation: EncodationType,
@@ -91,12 +91,12 @@ pub struct GenericEncoder<'a, S: Size> {
     codewords: Vec<u8>,
 }
 
-impl<'a, S: Size> EncodingContext for GenericEncoder<'a, S> {
+impl<'a, S: Size> EncodingContext for GenericDataEncoder<'a, S> {
     fn maybe_switch_mode(
         &mut self,
         free_unlatch: bool,
         base256_written: usize,
-    ) -> Result<bool, EncodationError> {
+    ) -> Result<bool, DataEncodingError> {
         if self.planned_switches.is_empty() {
             self.planned_switches = planner::optimize(
                 self.rest(),
@@ -106,7 +106,7 @@ impl<'a, S: Size> EncodingContext for GenericEncoder<'a, S> {
                 self.symbol_size,
                 base256_written,
             )
-            .ok_or(EncodationError::NotEnoughSpace)?;
+            .ok_or(DataEncodingError::NotEnoughSpace)?;
         }
         let chars_left = self.characters_left();
         assert!(
@@ -174,7 +174,7 @@ impl<'a, S: Size> EncodingContext for GenericEncoder<'a, S> {
     }
 }
 
-impl<'a, S: Size> GenericEncoder<'a, S> {
+impl<'a, S: Size> GenericDataEncoder<'a, S> {
     pub fn new(data: &'a [u8]) -> Self {
         Self::with_size(data, S::DEFAULT)
     }
@@ -191,10 +191,10 @@ impl<'a, S: Size> GenericEncoder<'a, S> {
         }
     }
 
-    pub fn codewords(mut self) -> Result<Vec<u8>, EncodationError> {
+    pub fn codewords(mut self) -> Result<Vec<u8>, DataEncodingError> {
         // bigger than theoretical limit? then fail early
         if self.data.len() > self.symbol_size.max_capacity().max {
-            return Err(EncodationError::NotEnoughSpace);
+            return Err(DataEncodingError::NotEnoughSpace);
         }
 
         self.codewords
@@ -221,7 +221,9 @@ impl<'a, S: Size> GenericEncoder<'a, S> {
             }
         }
 
-        self.symbol_size = self.symbol_for(0).ok_or(EncodationError::NotEnoughSpace)?;
+        self.symbol_size = self
+            .symbol_for(0)
+            .ok_or(DataEncodingError::NotEnoughSpace)?;
         self.add_padding();
 
         Ok(self.codewords)
@@ -279,4 +281,4 @@ impl<'a, S: Size> GenericEncoder<'a, S> {
     }
 }
 
-pub type RawEncoder<'a> = GenericEncoder<'a, SymbolSize>;
+pub type DataEncoder<'a> = GenericDataEncoder<'a, SymbolSize>;
