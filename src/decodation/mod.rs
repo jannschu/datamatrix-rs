@@ -70,6 +70,16 @@ pub fn raw_decode(data: &[u8]) -> Result<Vec<u8>, DecodingError> {
     Ok(out)
 }
 
+fn derandomize_253_state(ch: u8, pos: usize) -> u8 {
+    let pseudo_random = ((149 * pos) % 253) + 1;
+    let tmp = ch as i16 - pseudo_random as i16;
+    if tmp >= 1 {
+        tmp as u8
+    } else {
+        (tmp + 254) as u8
+    }
+}
+
 fn decode_ascii<'a>(
     mut data: Reader<'a>,
     out: &mut Vec<u8>,
@@ -86,8 +96,17 @@ fn decode_ascii<'a>(
                 }
             }
             ascii::PAD => {
-                // ignore rest
-                return Ok((data.drain(), EncodationType::Ascii));
+                // eat rest, check padding format
+                while let Ok(ch) = data.eat() {
+                    let ch = derandomize_253_state(ch, data.pos() - 1);
+                    if ch != ascii::PAD {
+                        return Err(DecodingError::UnexpectedCharacter(
+                            "non-padding char in padding area",
+                            ch,
+                        ));
+                    }
+                }
+                return Ok((data, EncodationType::Ascii));
             }
             ch @ 130..=229 => {
                 let digit = ch - 130;
