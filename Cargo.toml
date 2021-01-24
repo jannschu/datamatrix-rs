@@ -6,6 +6,7 @@ edition = "2018"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 description = "Data Matrix (ECC 200) decoding and encoding with an optimizing encoder"
+keywords = ["encoding"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

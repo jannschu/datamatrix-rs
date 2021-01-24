@@ -6,7 +6,7 @@
 //! degree 7 polynomial with the least significand bit being the coefficient
 //! for 1. For example:
 //!
-//!     242 = 0b11110010 = x^7 + x^6 + x^5 + x^4 + x.
+//! > 242 = 0b11110010 = x^7 + x^6 + x^5 + x^4 + x.
 //!
 //! Addition can be done coefficient by coefficient, as with real (the usual)
 //! polynomials.
