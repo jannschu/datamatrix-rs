@@ -27,13 +27,14 @@ pub(crate) fn optimize<S: Size>(
 
     let mut plans = Vec::with_capacity(36);
     let mut new_plan = Vec::with_capacity(36);
-    // println!("optimize plan for {:?}, written {}", data, written);
 
     plans.push(start_plan);
 
     for iteration in 0usize.. {
         let mut at_end = false;
         let use_as_start = iteration == 0;
+
+        let rest_chars = data.len() - iteration;
         for mut plan in plans.drain(0..) {
             let plan_copy_before_step = plan.clone();
             let result = if let Some(result) = plan.step() {
@@ -41,7 +42,7 @@ pub(crate) fn optimize<S: Size>(
             } else {
                 plan_copy_before_step.add_switches(
                     &mut new_plan,
-                    data.len() - iteration,
+                    rest_chars, // chars left
                     use_as_start,
                 );
                 // remove plan, it can not process input
@@ -53,11 +54,7 @@ pub(crate) fn optimize<S: Size>(
             // the step was optimal (unbeatable) or we are at the end.
             if !result.unbeatable && !result.end {
                 // this also calls step() one time.
-                plan_copy_before_step.add_switches(
-                    &mut new_plan,
-                    data.len() - iteration,
-                    use_as_start,
-                );
+                plan_copy_before_step.add_switches(&mut new_plan, rest_chars, use_as_start);
             }
             if result.end {
                 // since all modes step one character at a time,
@@ -67,18 +64,11 @@ pub(crate) fn optimize<S: Size>(
             assert_eq!(result.end, at_end);
         }
 
-        // dbg!(&new_plan);
         remove_hopeless_cases(&mut new_plan);
-        // dbg!(iteration);
-        // dbg!(&new_plan);
 
         if new_plan.is_empty() {
             return None;
         }
-
-        // if let Some(best_choice) = have_winner(&mut new_plan) {
-        //     return Some(best_choice);
-        // }
 
         if at_end {
             // all plans are at the end of data, pick the best one,
@@ -96,7 +86,7 @@ pub(crate) fn optimize<S: Size>(
 }
 
 // Only keep one minimizer for every start mode.
-fn remove_hopeless_cases<'a, S: Size>(list: &mut Vec<GenericPlan<'a, S>>) {
+fn remove_hopeless_cases<S: Size>(list: &mut Vec<GenericPlan<S>>) {
     list.sort_unstable_by_key(|a| a.cost());
 
     // only keep min among all plans with tuple (start mode, current mode)
@@ -139,17 +129,6 @@ fn remove_hopeless_cases<'a, S: Size>(list: &mut Vec<GenericPlan<'a, S>>) {
         } else {
             break;
         }
-    }
-}
-
-fn have_winner<'a, 'b, S: Size>(
-    list: &mut Vec<GenericPlan<'a, S>>,
-) -> Option<Vec<(usize, EncodationType)>> {
-    // the list now contains at most one plan for each encodation type
-    if list.len() == 1 {
-        Some(list.remove(0).switches)
-    } else {
-        None
     }
 }
 

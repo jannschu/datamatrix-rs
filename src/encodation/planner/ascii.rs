@@ -59,9 +59,10 @@ impl<T: ContextInformation> Plan for AsciiPlan<T> {
         if !end {
             let ch = self.ctx.eat().unwrap();
             if self.digits_ahead > 0 {
+                assert!(ch.is_ascii_digit());
                 self.digits_ahead -= 1;
+                // those were already written to ctx above
                 self.cost += Frac::new(1, 2);
-            // those were already written to ctx above
             } else if ch <= 127 {
                 self.cost += 1;
                 self.ctx.write(1);

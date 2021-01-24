@@ -56,14 +56,12 @@ pub(super) fn val_size(ch: u8) -> u8 {
 /// Encode three C40 values into two codewords.
 pub(super) fn write_three_values<T: EncodingContext>(ctx: &mut T, c1: u8, c2: u8, c3: u8) {
     let enc = 1600 * c1 as u16 + 40 * c2 as u16 + c3 as u16 + 1;
-    // println!("{} {} {} => {} {}", c1, c2, c3, (enc >> 8) as u8, (enc & 0xFF) as u8);
     ctx.push((enc >> 8) as u8);
     ctx.push((enc & 0xFF) as u8);
 }
 
 pub(super) fn handle_end<T>(
     ctx: &mut T,
-    n_vals_last_ch: usize,
     last_ch: u8,
     mut buf: ArrayVec<[u8; 6]>,
 ) -> Result<(), EncodationError>
@@ -151,7 +149,6 @@ where
     F: Fn(&mut ArrayVec<[u8; 6]>, u8),
 {
     let mut buf = ArrayVec::new();
-    let mut n_vals = 0;
     let mut last_ch = 0;
     while let Some(ch) = ctx.eat() {
         // buf empty and only two digits remain?
@@ -166,7 +163,7 @@ where
             break;
         }
         // encode the character into buf
-        n_vals = to_vals(&mut buf, ch, &low_ascii_write);
+        to_vals(&mut buf, ch, &low_ascii_write);
         last_ch = ch;
         while buf.len() >= 3 {
             write_three_values(ctx, buf[0], buf[1], buf[2]);
@@ -176,7 +173,7 @@ where
             break;
         }
     }
-    handle_end(ctx, n_vals, last_ch, buf)
+    handle_end(ctx, last_ch, buf)
 }
 
 fn to_vals<F>(buf: &mut ArrayVec<[u8; 6]>, ch: u8, low_ascii_write: F) -> usize

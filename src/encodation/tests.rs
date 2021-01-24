@@ -216,18 +216,6 @@ fn enc(data: &[u8]) -> Vec<u8> {
 }
 
 #[test]
-#[ignore]
-fn test_edifact_xzing_issue() {
-    // See https://github.com/zxing/zxing/issues/624
-    // See https://github.com/zxing/zxing/issues/1335 ("<03>TILSIT-MUNSTER<05>Paula")
-    // See https://github.com/zxing/zxing/issues/986
-    // See https://github.com/zxing/zxing/issues/960
-    // See https://github.com/zxing/zxing/issues/912
-    // See https://github.com/zxing/zxing/issues/908
-    todo!()
-}
-
-#[test]
 fn test_ascii_encodation_two_digits() {
     assert_eq!(enc(b"123456"), vec![142, 164, 186]);
 }
@@ -262,7 +250,9 @@ fn test_c40_basic2_3() {
 fn test_c40_spec_example() {
     assert_eq!(
         enc(b"A_2_D_5_G7H_9J_1L2"),
-        vec![66, 96, 51, 96, 69, 96, 54, 96, 230, 126, 206, 10, 94, 144, 3, 35, 47, 254],
+        vec![66, 96, 51, 96, 69, 96, 230, 56, 131, 126, 206, 10, 94, 144, 3, 35, 47, 254],
+        // Alternatives:
+        // vec![66, 96, 51, 96, 69, 96, 54, 96, 230, 126, 206, 10, 94, 144, 3, 35, 47, 254],
         // vec![230, 88, 88, 40, 8, 107, 147, 59, 67, 126, 206, 78, 126, 144, 121, 35, 47, 254]
     );
 }
@@ -280,44 +270,22 @@ fn test_c40_special_case_a() {
 #[test]
 fn test_c40_special_case_b() {
     // case "b": Add trailing shift 0 and Unlatch is not required
-    assert_eq!(
-        // enc(b"AI_MA_MA_MA"),
-        enc(b" 9 9t"),
-        vec![239, 20, 204, 86, 105],
-    );
+    assert_eq!(enc(b"lBBBBBBBB"), vec![109, 230, 96, 40, 96, 40, 96, 25],);
 }
 
 #[test]
 fn test_c40_special_case_c() {
     //case "c": Unlatch and write last character in ASCII
-    let words = TestEncoder::new(b"AI_AI_AI_IM_IM_IM_AI")
-        .codewords()
-        .unwrap();
     assert_eq!(
-        words,
-        vec![
-            230, 90, 242, 164, 199, 10, 95, 137, 195, 141, 146, 166, 11, 10, 103, 162, 195, 90, 241
-        ]
-    );
-}
-
-#[test]
-fn test_c40_partial_triple() {
-    // Encode A I M using paris of C40 values, until only 'A' and 'I' is left.
-    // In this case, UNLATCH and encode AI as ASCII to avoid partial triple.
-    assert_eq!(
-        enc(b"AIMAIMAIMAIMAIMAI"),
-        vec![230, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 254, 66, 74, 129, 237]
+        enc(b"K   \x1d     "),
+        vec![76, 239, 19, 60, 4, 140, 19, 60, 254, 33],
     );
 }
 
 #[test]
 fn test_c40_special_case_d() {
     // case "d": Skip Unlatch and write last character in ASCII
-    assert_eq!(
-        enc(b"AI_MA_MA_M"),
-        vec![230, 90, 242, 166, 159, 10, 107, 87, 195, 78]
-    );
+    assert_eq!(enc(b"    \x1d    "), vec![230, 19, 60, 18, 222, 19, 60, 33]);
 }
 
 #[test]
@@ -334,7 +302,7 @@ fn test_c40_special_cases2() {
     // available > 2, rest = 2 --> unlatch and encode as ASCII
     assert_eq!(
         enc(b"aimaimaimaimaimaimai"),
-        vec![230, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 254, 66, 74]
+        vec![239, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 90, 242, 254]
     );
 }
 
@@ -511,9 +479,8 @@ fn test_edifact_8() {
         enc(b".XXX.XXX.XXX.XXX.XXX.XXX.\xFCXX.XXX.XXX.XXX.XXX.XXX.XXX"),
         vec![
             240, 185, 134, 24, 185, 134, 24, 185, 134, 24, 185, 134, 24, 185, 134, 24, 185, 134,
-            24, // 124 == UNLATCH << 2 (so edifact encoding of single value UNLATCH)
-            124, 47, 235, 125, 240, 97, 139, 152, 97, 139, 152, 97, 139, 152, 97, 139, 152, 97,
-            139, 152, 97, 139, 152, 89, 89
+            24, 185, 240, 235, 125, 240, 97, 139, 152, 97, 139, 152, 97, 139, 152, 97, 139, 152,
+            97, 139, 152, 97, 139, 152, 89, 89
         ]
     );
 }
@@ -573,11 +540,14 @@ fn test_base256_5() {
 fn test_base256_6() {
     assert_eq!(
         enc(b"\xab\xe4\xf6\xfc\xe9\xbb 23\xa3 1234567890123456789"),
-        // Many alternatives are possible
         vec![
-            231, 51, 108, 59, 226, 126, 1, 104, 99, 153, 235, 36, 33, 142, 164, 186, 208, 220, 142,
-            164, 186, 208, 58, 129, 59, 209, 104, 254, 150, 45,
-        ]
+            231, 55, 108, 59, 226, 126, 1, 104, 99, 10, 161, 167, 185, 142, 164, 186, 208, 220,
+            142, 164, 186, 208, 58, 129, 59, 209, 104, 254, 150, 45
+        ] // Alternative:
+          // vec![
+          //     231, 51, 108, 59, 226, 126, 1, 104, 99, 153, 235, 36, 33, 142, 164,
+          //     186, 208, 220, 142, 164, 186, 208, 58, 129, 59, 209, 104, 254, 150, 45,
+          // ]
     );
 }
 
@@ -640,15 +610,11 @@ fn test_unlatching_from_text() {
 
 #[test]
 fn test_hello_world() {
-    let opts = [
-        // variants
-        vec![73, 239, 116, 130, 175, 123, 148, 64, 158, 234, 254, 34],
-        vec![73, 239, 116, 130, 175, 123, 148, 64, 158, 233, 254, 34],
-        vec![73, 102, 239, 160, 69, 19, 40, 179, 242, 106, 105, 254],
-        vec![239, 13, 211, 160, 69, 19, 40, 179, 242, 106, 105, 254],
-    ];
     let out = enc(b"Hello World!");
-    assert!(opts.iter().any(|v| v == &out), "no match for {:?}", out);
+    assert_eq!(
+        out,
+        vec![73, 239, 116, 130, 175, 123, 148, 64, 254, 109, 101, 34]
+    );
 }
 
 #[test]
@@ -669,9 +635,10 @@ fn test_ascii_short() {
 fn test_bug_1664266_1() {
     assert_eq!(
         enc(b"CREX-TAN:h"),
-        vec![230, 104, 235, 231, 117, 208, 140, 8, 155, 105],
-        // Alternative: EDIFACT
-        // vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105],
+        vec![68, 83, 70, 89, 46, 85, 66, 79, 59, 105] // Alternative: C40
+                                                      // vec![230, 104, 235, 231, 117, 208, 140, 8, 155, 105],
+                                                      // Alternative: EDIFACT
+                                                      // vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105]
     );
 }
 
@@ -679,9 +646,9 @@ fn test_bug_1664266_1() {
 fn test_bug_1664266_2() {
     assert_eq!(
         enc(b"CREX-TAN:hh"),
-        vec![230, 104, 235, 231, 117, 208, 140, 8, 155, 50, 89, 254],
-        // Alternative: EDIFACT
-        // vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105, 105, 129]
+        vec![68, 83, 70, 89, 46, 85, 66, 79, 59, 105, 105, 129] // Alternative: EDIFACT
+                                                                // vec![230, 104, 235, 231, 117, 208, 140, 8, 155, 50, 89, 254],
+                                                                // vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105, 105, 129]
     );
 }
 
@@ -689,9 +656,9 @@ fn test_bug_1664266_2() {
 fn test_bug_1664266_3() {
     assert_eq!(
         enc(b"CREX-TAN:hhh"),
-        // Alternative
-        // vec![68, 83, 70, 89, 46, 85, 66, 79, 59, 105, 105, 105],
-        vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105, 105, 105]
+        vec![68, 83, 70, 89, 46, 85, 66, 79, 59, 239, 134, 158] // Alternative
+                                                                // vec![68, 83, 70, 89, 46, 85, 66, 79, 59, 105, 105, 105],
+                                                                // vec![240, 13, 33, 88, 181, 64, 78, 124, 59, 105, 105, 105]
     );
 }
 

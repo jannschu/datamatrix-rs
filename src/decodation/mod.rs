@@ -173,7 +173,6 @@ fn decode_edifact<'a>(
             data.eat().unwrap();
             break;
         }
-        // dbg!(&data.0[..3]);
         let mut chunk: u32 = (data.eat().unwrap() as u32) << 16;
         let val = (chunk >> 18) as u8;
         if val == edifact::UNLATCH {
@@ -214,14 +213,6 @@ fn decode_c40_tuple(a: u8, b: u8) -> (u8, u8, u8) {
     let c1 = tmp as u8;
     full -= tmp * 1600;
     let tmp = full / 40;
-    // println!(
-    //     "{} {} => {} {} {}",
-    //     a,
-    //     b,
-    //     c1,
-    //     tmp as u8,
-    //     (full - tmp * 40) as u8
-    // );
     (c1, tmp as u8, (full - tmp * 40) as u8)
 }
 
@@ -248,13 +239,11 @@ fn decode_x12<'a>(
         }
         let second = data.eat().unwrap();
         let (c1, c2, c3) = decode_c40_tuple(first, second);
-        // dbg!((first, second), (dec_x12_val(c1), dec_x12_val(c2), dec_x12_val(c3)));
 
         out.push(dec_x12_val(c1)?);
         out.push(dec_x12_val(c2)?);
         out.push(dec_x12_val(c3)?);
     }
-    // dbg!(data.0);
     if data.peek(0) == Some(UNLATCH) {
         // single UNLATCH at end of data
         let _ = data.eat().unwrap();
@@ -283,12 +272,8 @@ fn decode_c40_like<'a>(
         if first == UNLATCH {
             break;
         }
-        // println!("{}, {:?}", first, &data);
         let (c1, c2, c3) = decode_c40_tuple(first, data.eat().unwrap());
         for ch in [c1, c2, c3].iter().cloned() {
-            // println!("ch {}, shift {}, upper {}", ch, shift, upper_shift);
-            // println!("out: {:?}", &out);
-
             if shift == 0 {
                 match ch {
                     ch @ 0..=2 => shift = ch + 1,
@@ -367,7 +352,6 @@ fn decode_c40_like<'a>(
                 }
                 shift = 0;
             }
-            // println!("{:?}", &out);
         }
     }
     if data.peek(0) == Some(UNLATCH) {

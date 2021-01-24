@@ -12,9 +12,14 @@ pub(crate) enum EncodationType {
 }
 
 impl EncodationType {
+    /// Get a fixed index between 0 and 5 for the encodation type.
+    ///
+    /// The index also encodes the preferences of encodation types,
+    /// where lower numbers are better.
     pub fn index(&self) -> usize {
         match self {
-            // This order is also used to decide a tie in the planner
+            // Order is chosen based on my personal
+            // estimate of which modes are more complicated.
             Self::Ascii => 0,
             Self::Base256 => 1,
             Self::Edifact => 2,

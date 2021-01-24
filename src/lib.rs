@@ -1,6 +1,6 @@
 mod decodation;
 mod encodation;
-// mod errorcode
+mod errorcode;
 // mod placement;
 mod symbol_size;
 

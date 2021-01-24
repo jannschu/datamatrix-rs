@@ -1,10 +1,13 @@
 [package]
 name = "datamatrix"
-version = "0.1.0"
+version = "0.1.0-alpha.0"
 authors = ["Jannik Schürg <jannik.schuerg+crates@posteo.de>"]
 edition = "2018"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+description = "Data Matrix (ECC 200) decoding and encoding with an optimizing encoder"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-arrayvec = "0.5.2"
+arrayvec = "0.5"

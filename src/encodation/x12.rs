@@ -47,7 +47,6 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationEr
             .ok_or(EncodationError::NotEnoughSpace)?
             > 0
     {
-        // println!("add UNLATCH");
         if !switch {
             ctx.set_mode(EncodationType::Ascii);
         }

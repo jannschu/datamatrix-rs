@@ -16,13 +16,11 @@ pub fn in_base_set(ch: u8) -> bool {
 }
 
 pub fn val_size(ch: u8) -> u8 {
-    let new_ch = match ch {
-        // switch case
-        ch @ b'A'..=b'Z' => ch - b'A' + b'a',
-        ch @ b'a'..=b'z' => ch - b'a' + b'A',
-        ch => ch,
-    };
-    c40::val_size(new_ch)
+    match ch {
+        b' ' | b'0'..=b'9' | b'a'..=b'z' => 1,
+        0..=31 | 33..=47 | 58..=96 | 123..=127 => 2,
+        ch @ 128..=255 => 2 + val_size(ch - 128),
+    }
 }
 
 pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationError> {

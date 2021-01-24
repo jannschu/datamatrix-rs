@@ -15,3 +15,8 @@ impl CharsetInfo for TextCharset {
 }
 
 pub(super) type TextPlan<T> = C40LikePlan<T, TextCharset>;
+
+#[test]
+fn text_val_size_205() {
+    assert_eq!(TextCharset::val_size(205), 4);
+}

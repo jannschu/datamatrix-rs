@@ -12,8 +12,6 @@ pub(crate) fn is_encodable(ch: u8) -> bool {
 
 /// Encode 1 to 4 characters using EDIFACT and write it to the context.
 fn write4<T: EncodingContext>(ctx: &mut T, s: &ArrayVec<[u8; 4]>) {
-    // println!("EDFIACT, encode {:?}", s);
-
     let s1 = s.get(1).cloned().unwrap_or(0) & 0b11_1111;
     ctx.push((s[0] << 2) | (s1 >> 4));
 
@@ -104,7 +102,6 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), EncodationEr
                 break;
             }
         } else if ctx.maybe_switch_mode(symbols.len() == 3, 0)? {
-            // dbg!(&symbols, ctx.codewords(), ctx.rest().len());
             break;
         }
     }

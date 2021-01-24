@@ -27,6 +27,31 @@ fn forth_and_back(data: &[u8]) {
 }
 
 #[test]
+fn regression_zxing() {
+    // We collect some inputs which were reported to cause
+    // problems with zxing.
+    //
+    // Our planner works different to zxing's, we do not
+    // pick the same encodation types, so we might not run
+    // into those reported issues. In some cases that is part of the
+    // solution though.
+
+    // See https://github.com/zxing/zxing/issues/624
+    forth_and_back(b"test TE>240 2 I.E ST>300");
+    // See https://github.com/zxing/zxing/issues/1335
+    forth_and_back(b"<03>TILSIT-MUNSTER<05>Paula");
+    // See https://github.com/zxing/zxing/issues/986
+    forth_and_back(b"**10074938*Q6000*P85005-FLT003*RA*0*K110775*VKAR99AL*1T100749381**");
+    // See https://github.com/zxing/zxing/issues/960 and
+    // https://github.com/zxing/zxing/issues/912 and
+    // https://github.com/zxing/zxing/issues/908
+    forth_and_back(b"https://test~[******]_");
+    forth_and_back(b"abc<->ABCDE");
+    forth_and_back(b"<ABCDEFG><ABCDEFGK>");
+    forth_and_back(b"*CH/GN1/022/00");
+}
+
+#[test]
 fn regression1() {
     // Generates two big C40
     forth_and_back(&[50, 32, 32, 252]);
@@ -277,7 +302,21 @@ fn regression19() {
 #[test]
 fn regression20() {
     forth_and_back(&[
-        137, 65, 43, 41, 49, 214, 48, 42, 48, 32, 42, 48, 0, 0, 7, 0, 30, 30, 30,
-        30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30,
-        30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 6 */ 75, 32, 32, 32, 29, 0]);
+        137, 65, 43, 41, 49, 214, 48, 42, 48, 32, 42, 48, 0, 0, 7, 0, 30, 30, 30, 30, 30, 30, 30,
+        30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        /* 6 */ 75, 32, 32, 32, 29, 0,
+    ]);
+}
+
+#[test]
+fn regression21() {
+    // This one uncovered a bug in text::val_size
+    forth_and_back(&[
+        72, 72, 1, 250, 12, 69, 0, 0, 0, // => 10 bytes ASCII
+        98, 114, 98, 98, 98, 98, 205, 105, 66, 98, 98, 114, 98, 98, 66, 98, 32, // => 17 Text
+        // 15,  31, 15, 15, 15, 15, 1 30 2 13,  22,  2 2, 15, 15,  31, 15, 15, 2 2, 15,  3,
+        // 1            2           3      4           5            6          7         8      8*2+1 = 17
+        66, 57, 57, // => 1 + 2 ASCII
+        74, 74, 40, 74, 66, 64, 64, 32, 0, // 1 + 6 Edifact + '0'
+    ]);
 }

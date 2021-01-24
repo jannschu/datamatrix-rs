@@ -32,6 +32,12 @@ impl Capacity {
     }
 }
 
+pub(crate) struct BlockSetup {
+    pub(crate) num_blocks: usize,
+    // Number of error correction codewords per block
+    pub(crate) num_ecc_per_block: usize,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SymbolSize {
     Square10,
@@ -114,19 +120,13 @@ impl Size for SymbolSize {
         match self {
             Self::Square10 => Some(3),
             Self::Square12 => Some(5),
-            Self::Rect8x18 => Some(5),
             Self::Square14 => Some(8),
-            Self::Rect8x32 => Some(10),
             Self::Square16 => Some(12),
-            Self::Rect12x26 => Some(16),
             Self::Square18 => Some(18),
             Self::Square20 => Some(22),
-            Self::Rect12x36 => Some(22),
             Self::Square22 => Some(30),
-            Self::Rect16x36 => Some(32),
             Self::Square24 => Some(36),
             Self::Square26 => Some(44),
-            Self::Rect16x48 => Some(49),
             Self::Square32 => Some(62),
             Self::Square36 => Some(86),
             Self::Square40 => Some(114),
@@ -142,6 +142,12 @@ impl Size for SymbolSize {
             Self::Square120 => Some(1050),
             Self::Square132 => Some(1304),
             Self::Square144 => Some(1558),
+            Self::Rect8x18 => Some(5),
+            Self::Rect8x32 => Some(10),
+            Self::Rect12x26 => Some(16),
+            Self::Rect12x36 => Some(22),
+            Self::Rect16x36 => Some(32),
+            Self::Rect16x48 => Some(49),
             SymbolSize::Min | SymbolSize::MinRect | SymbolSize::MinSquare => None,
         }
     }
@@ -211,6 +217,134 @@ impl Size for SymbolSize {
         }
         .iter()
         .cloned()
+    }
+}
+
+impl SymbolSize {
+    pub(crate) fn block_setup(&self) -> Option<BlockSetup> {
+        match self {
+            Self::Square10 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 5,
+            }),
+            Self::Square12 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 7,
+            }),
+            Self::Square14 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 10,
+            }),
+            Self::Square16 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 12,
+            }),
+            Self::Square18 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 14,
+            }),
+            Self::Square20 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 18,
+            }),
+            Self::Square22 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 20,
+            }),
+            Self::Square24 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 24,
+            }),
+            Self::Square26 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 28,
+            }),
+            Self::Square32 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 36,
+            }),
+            Self::Square36 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 42,
+            }),
+            Self::Square40 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 48,
+            }),
+            Self::Square44 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 56,
+            }),
+            Self::Square48 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 68,
+            }),
+            Self::Square52 => Some(BlockSetup {
+                num_blocks: 2,
+                num_ecc_per_block: 42,
+            }),
+            Self::Square64 => Some(BlockSetup {
+                num_blocks: 2,
+                num_ecc_per_block: 56,
+            }),
+            Self::Square72 => Some(BlockSetup {
+                num_blocks: 4,
+                num_ecc_per_block: 36,
+            }),
+            Self::Square80 => Some(BlockSetup {
+                num_blocks: 4,
+                num_ecc_per_block: 48,
+            }),
+            Self::Square88 => Some(BlockSetup {
+                num_blocks: 4,
+                num_ecc_per_block: 56,
+            }),
+            Self::Square96 => Some(BlockSetup {
+                num_blocks: 4,
+                num_ecc_per_block: 68,
+            }),
+            Self::Square104 => Some(BlockSetup {
+                num_blocks: 6,
+                num_ecc_per_block: 56,
+            }),
+            Self::Square120 => Some(BlockSetup {
+                num_blocks: 6,
+                num_ecc_per_block: 68,
+            }),
+            Self::Square132 => Some(BlockSetup {
+                num_blocks: 8,
+                num_ecc_per_block: 62,
+            }),
+            Self::Square144 => Some(BlockSetup {
+                num_blocks: 10,
+                num_ecc_per_block: 62,
+            }),
+            Self::Rect8x18 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 7,
+            }),
+            Self::Rect8x32 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 11,
+            }),
+            Self::Rect12x26 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 14,
+            }),
+            Self::Rect12x36 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 18,
+            }),
+            Self::Rect16x36 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 24,
+            }),
+            Self::Rect16x48 => Some(BlockSetup {
+                num_blocks: 1,
+                num_ecc_per_block: 28,
+            }),
+            SymbolSize::Min | SymbolSize::MinRect | SymbolSize::MinSquare => None,
+        }
     }
 }
 

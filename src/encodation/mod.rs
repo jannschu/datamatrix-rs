@@ -107,7 +107,6 @@ impl<'a, S: Size> EncodingContext for GenericEncoder<'a, S> {
                 base256_written,
             )
             .ok_or(EncodationError::NotEnoughSpace)?;
-            // dbg!(&self.planned_switches);
         }
         let chars_left = self.characters_left();
         assert!(
@@ -168,7 +167,6 @@ impl<'a, S: Size> EncodingContext for GenericEncoder<'a, S> {
     }
 
     fn set_mode(&mut self, mode: EncodationType) {
-        // println!("=> MODE SWITCH: {:?} => {:?} (cw: {}, rem: {})\n", self.encodation, mode, self.codewords.len(), self.data.len());
         self.encodation = mode;
         if !mode.is_ascii() {
             self.new_mode = Some(mode.latch_from_ascii());
@@ -209,9 +207,7 @@ impl<'a, S: Size> GenericEncoder<'a, S> {
             }
             let len = self.codewords.len();
 
-            // println!("encode: {:?}, rest: {:?}", self.encodation, self.rest());
             self.encodation.clone().encode(&mut self)?;
-            // println!("codewords: {:?}", &self.codewords);
 
             let words_written = self.codewords.len() - len;
             if words_written <= 1 {

@@ -89,13 +89,14 @@ impl<T: ContextInformation, U: CharsetInfo> Plan for C40LikePlan<T, U> {
             Some(self.cost + 1)
         } else {
             // Fill up, then UNLATCH
-            Some(self.cost + 3)
+            Some(self.cost + 2 + 1)
         }
     }
 
     fn write_unlatch(&self) -> Self::Context {
         let mut ctx = self.ctx.clone();
         if self.values > 0 {
+            assert!(self.values <= 2);
             // finish C40 pair
             ctx.write(2);
         }

@@ -18,46 +18,52 @@ impl<'a, S: Size> Debug for GenericPlan<'a, S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match &self.plan {
             PlanImpl::Ascii(pl) => f.write_fmt(format_args!(
-                "Ascii(start {:?}, {:?}, cw {:?}, rest {:?})",
+                "Ascii(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
                 self.start_mode(),
                 pl.cost() + self.extra,
                 pl.context().written,
                 pl.context().rest().len(),
+                self.switches,
             )),
             PlanImpl::C40(pl) => f.write_fmt(format_args!(
-                "C40(start {:?}, {:?}, cw {:?}, rest {:?})",
+                "C40(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
                 self.start_mode(),
                 pl.cost() + self.extra,
                 pl.context().written,
                 pl.context().rest().len(),
+                self.switches,
             )),
             PlanImpl::Text(pl) => f.write_fmt(format_args!(
-                "Text(start {:?}, {:?}, cw {:?}, rest {:?})",
+                "Text(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
                 self.start_mode(),
                 pl.cost() + self.extra,
                 pl.context().written,
                 pl.context().rest().len(),
+                self.switches,
             )),
             PlanImpl::Base256(pl) => f.write_fmt(format_args!(
-                "B256(start {:?}, {:?}, cw {:?}, rest {:?})",
+                "B256(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
                 self.start_mode(),
                 pl.cost() + self.extra,
                 pl.context().written,
                 pl.context().rest().len(),
+                self.switches,
             )),
             PlanImpl::Edifact(pl) => f.write_fmt(format_args!(
-                "EDF(start {:?}, {:?}, cw {:?}, rest {:?})",
+                "EDF(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
                 self.start_mode(),
                 pl.cost() + self.extra,
                 pl.context().written,
                 pl.context().rest().len(),
+                self.switches,
             )),
             PlanImpl::X12(pl) => f.write_fmt(format_args!(
-                "X12(start {:?}, {:?}, cw {:?}, rest {:?})",
+                "X12(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
                 self.start_mode(),
                 pl.cost() + self.extra,
                 pl.context().written,
                 pl.context().rest().len(),
+                self.switches,
             )),
         }
     }
