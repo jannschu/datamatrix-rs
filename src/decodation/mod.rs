@@ -44,7 +44,7 @@ impl<'a> Reader<'a> {
     }
 }
 
-/// Decode the data part of a Data Matrix.
+/// Decode the data part of a DataMatrix.
 pub fn decode_data(data: &[u8]) -> Result<Vec<u8>, DataDecodingError> {
     let mut data = Reader(data, 0);
     let mut mode = EncodationType::Ascii;

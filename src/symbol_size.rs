@@ -38,7 +38,7 @@ pub(crate) struct BlockSetup {
     pub(crate) num_ecc_per_block: usize,
 }
 
-/// The symbol sizes supported by Data Matrix.
+/// The symbol sizes supported by DataMatrix.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SymbolSize {
     Square10,

@@ -2,6 +2,7 @@ mod pgz;
 
 use super::GF;
 
+#[derive(Debug)]
 pub enum DecodingError {
     TooManyErrors,
     /// Error locations were found outside of the codeword.
@@ -15,6 +16,9 @@ pub use pgz::decode as decode_pgz;
 /// Evaluate the polynomical given by coefficients `c` at
 /// x, x^2, x^3, ... and write the result to `out` in that order.
 fn primitive_element_evaluation<T: Into<GF> + Copy>(c: &[T], out: &mut [GF]) -> bool {
+    if out.is_empty() {
+        return false;
+    }
     let mut gamma: Vec<GF> = c.iter().rev().map(|x| (*x).into()).collect();
     let mut errors = false;
     for o in out.iter_mut() {
@@ -37,13 +41,13 @@ fn chien_search<T: Into<GF> + Copy>(c: &[T]) -> Vec<GF> {
         out.push(GF(0));
     }
     let mut gamma: Vec<GF> = c.iter().rev().map(|x| (*x).into()).collect();
-    for i in 0..=255 {
-        for (g, alpha) in gamma.iter_mut().zip(GF::primitive_powers()) {
-            *g *= alpha;
-        }
+    for i in 0..=254 {
         let val: GF = gamma.iter().cloned().sum();
         if val == GF(0) {
             out.push(GF::primitive_power(i));
+        }
+        for (g, alpha) in gamma.iter_mut().zip(GF::primitive_powers()) {
+            *g *= alpha;
         }
     }
     out
@@ -157,4 +161,43 @@ fn test_solve_2x2_singular() {
     let mut b = [GF(56), GF(23)];
     let solved = solve(&mut mat, &mut b[..], 2);
     assert!(!solved);
+}
+
+#[test]
+fn test_primitive_element_evaluation() {
+    let x = [GF(128), GF(52), GF(33), GF(83), GF(33)];
+    let mut syndromes = vec![GF(0); 5];
+    primitive_element_evaluation(&x, &mut syndromes);
+    assert_eq!(&syndromes, &[GF(203), GF(50), GF(3), GF(247), GF(100),]);
+}
+
+#[test]
+fn test_error_code() {
+    let mut data = vec![1, 2, 3];
+    let ecc = super::encode(&data, crate::SymbolSize::Square10);
+    data.extend_from_slice(&ecc);
+    let mut syndromes = vec![GF(0); 5];
+    primitive_element_evaluation(&data, &mut syndromes);
+    assert_eq!(&syndromes, &[GF(0), GF(0), GF(0), GF(0), GF(0)]);
+}
+
+#[test]
+fn test_chien() {
+    let c = [GF(135), GF(239), GF(132), GF(21), GF(58), GF(77)];
+    let zeros = chien_search(&c);
+    assert_eq!(&zeros, &[GF(228), GF(78), GF(43)]);
+}
+
+#[test]
+fn test_chien2() {
+    let c = [GF(1), GF(211)];
+    let zeros = chien_search(&c);
+    assert_eq!(&zeros, &[GF(211)]);
+}
+
+#[test]
+fn test_chien3() {
+    let c = [GF(1), GF(0)];
+    let zeros = chien_search(&c);
+    assert_eq!(&zeros, &[GF(0)]);   
 }

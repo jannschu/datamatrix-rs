@@ -31,7 +31,7 @@ class GF:
         if self == 0:
             return GF(0)
         if int(p) == 1:
-            return GF(1)
+            return self
         i = LOG[self.v]
         i = (i * int(p)) % 255
         return GF(ANTI_LOG[i])
@@ -219,3 +219,25 @@ for _ in range(len(x)):
     for i in range(len(row)):
         row[i] *= x[i]
     print(", ".join(f"GF({v.v})" for v in row) + ",")
+
+print("Syndromes")
+# x = [GF(random.randint(1, 255)) for _ in range(5)]
+x = [GF(128), GF(52), GF(33), GF(83), GF(33)]
+# print("p(1)", sum(x, GF(0)))
+print("x = " + ", ".join(f"GF({v.v})" for v in x))
+r = Poly(x[::-1])
+assert GF(2) ** 1 == GF(2)
+assert GF(2) ** 2 == GF(2) * GF(2)
+for i in range(1, 6):
+    print(f"S_{i} = ", r(GF(2) ** i))
+
+
+print("Find zeros")
+# x = [GF(random.randint(1, 255)) for _ in range(6)]
+x = [GF(135), GF(239), GF(132), GF(21), GF(58), GF(77)]
+print("x = " + ", ".join(f"GF({v.v})" for v in x))
+p = Poly(x[::-1])
+for i in range(0, 256):
+    if p(GF(i)) == 0:
+        print(i)
+

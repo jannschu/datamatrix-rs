@@ -1,5 +1,5 @@
 //! This module contains the implementation of the GF(256) arithmetic used by
-//! the Reed-Solomon codes in Data Matrix.
+//! the Reed-Solomon codes in DataMatrix.
 //!
 //! The default representation of an element in GF(256) we use is given by a
 //! an u8 (8bit integer) value. Its bits correspond to the coefficients of a
@@ -13,7 +13,7 @@
 //!
 //! Multiplying two polynomials can lead to powers of x higher than 7. So
 //! multiplication is defined modulo a fixed polynomial. This polynomial has to be
-//! chosen. Data Matrix uses the polynomial 301.
+//! chosen. DataMatrix uses the polynomial 301.
 //!
 //! With this choice the powers of x up to x^255, so 1, x^1, x^2, ..., x^255
 //! will give us all numbers in GF(256) except for 0 (so the multiplicative sub
@@ -86,7 +86,7 @@ impl GF {
 
 impl std::fmt::Debug for GF {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        f.write_fmt(format_args!("{}_256", self.0))
+        f.write_fmt(format_args!("{}₂₅₆", self.0))
     }
 }
 
@@ -221,8 +221,9 @@ fn test_gf256_power_iterator() {
     let powers: Vec<GF> = GF::primitive_powers().take(500).collect();
     let mut power_direct = Vec::with_capacity(500);
     let mut a = GF(1);
-    for _ in 0..500 {
+    for i in 0..500 {
         power_direct.push(a);
+        assert_eq!(GF::primitive_power((i % 255) as u8), a);
         a *= GF(2);
     }
     assert_eq!(powers, power_direct);

@@ -1,6 +1,6 @@
 //! Data part de- and encoding (exposure of some internal functionality).
 //!
-//! The bytes encoded into a Data Matrix consist of the actual data,
+//! The bytes encoded into a DataMatrix consist of the actual data,
 //! and error correction bytes.
 //!
 //! The functions in this module can be used to run

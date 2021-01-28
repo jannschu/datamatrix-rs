@@ -22,8 +22,8 @@ where
     F: Fn(&[GF]) -> Result<Vec<GF>, DecodingError>,
 {
     let n = data.len();
-    // generator polynomial has degree d = (err_len + 1)
-    assert!(err_len > 1, "degree of generator polynomial must be >= 1");
+    // generator polynomial has degree d = err_len
+    assert!(err_len >= 1, "degree of generator polynomial must be >= 1");
     assert!(n > err_len, "data length shorter than error code suffix");
 
     // Actually, Wikipedia has a nice description of the algorithm at
@@ -50,7 +50,8 @@ where
         if i >= data.len() {
             return Err(DecodingError::ErrorsOutsideRange);
         }
-        data[i] = (GF(data[i]) - *err).into();
+        let idx = data.len() - i - 1;
+        data[idx] = (GF(data[idx]) - *err).into();
     }
     Ok(())
 }
@@ -168,4 +169,18 @@ fn solve_vandermonde_diag() {
     super::solve(&mut mat, &mut rhs, x.len());
 
     assert_eq!(&rhs[..], &y1);
+}
+
+#[test]
+fn test_recovery() {
+    let mut data = vec![1, 2, 3];
+    let ecc = crate::errorcode::encode(&data, crate::SymbolSize::Square10);
+    data.extend_from_slice(&ecc);
+    assert_eq!(data.len(), 3 + 5);
+    let mut received = data.clone();
+    // make two wrong
+    received[0] = 230;
+    received[1] = 32;
+    decode(&mut received, 5).unwrap();
+    assert_eq!(&data, &received);
 }
