@@ -23,16 +23,16 @@
 //! 4. Compute the error values.
 //!   
 //! We use a Levinson-Durbin algorithm in the second step. See 
-//! [the article "Levinson-Durbin Algorithm Used For Fast BCH Decoding"](https://doi.org/10.1007/978-1-4615-6119-4_1)
+//! the article ["Levinson-Durbin Algorithm Used For Fast BCH Decoding"](https://doi.org/10.1007/978-1-4615-6119-4_1)
 //! by Michael Schmidt and Gerhard P. Fettweis. This approach was empiricially
 //! verified to be better than a LU decomposition and it did also beat
-//! the Berlekamp-Massey algorithm.
+//! the Berlekamp-Massey algorithm (about 10% faster).
 //!
 //! Furthermore, in step four the [Björck-Pereyra algorithm](https://doi.org/10.1090/S0025-5718-1970-0290541-1)
-//! is used to determine the error values. It was much faster than Forney's algorithm
+//! is used to determine the error values. It was faster than Forney's algorithm
 //! and also faster than a naive LU decomposition in our tests.
 //!
-//! The other possibilites mentioend for step 2 and 4
+//! The other possibilites mentionend for step 2 and 4
 //! are still in the source code in case someone is interested in them.
 mod decoding;
 mod galois;

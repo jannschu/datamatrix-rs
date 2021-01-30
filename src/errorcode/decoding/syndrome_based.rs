@@ -4,9 +4,7 @@
 use super::DecodingError;
 use crate::errorcode::GF;
 
-/// Decode the Reed-Solomon code using a PGZ type algorithm.
-///
-/// PGZ stands for Peterson-Gorenstein-Zierler (PGZ) algorithm.
+/// Decode the Reed-Solomon code using a syndrome based decoder.
 ///
 /// # Params
 ///
@@ -19,8 +17,7 @@ pub fn decode(data: &mut [u8], err_len: usize) -> Result<(), DecodingError> {
     decode_gen(
         data,
         err_len,
-        // find_inv_error_locations_levinson_durbin,
-        find_inv_error_locations_bm,
+        find_inv_error_locations_levinson_durbin,
         find_error_values_bp,
     )
 }
