@@ -39,6 +39,10 @@ pub(crate) struct BlockSetup {
 }
 
 /// The symbol sizes supported by DataMatrix.
+///
+/// The number behind a variant, e.g., [Square10](Self::Square10),
+/// describes the number of modules (the tiny black squares) the symbol is
+/// wide/tall.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SymbolSize {
     Square10,
@@ -71,8 +75,8 @@ pub enum SymbolSize {
     Rect12x36,
     Rect16x36,
     Rect16x48,
-    /// If chose, the library automatically choses the smallest symbol to
-    /// fit the data.
+    /// If chosen, the library automatically picks the smallest symbol which
+    /// can fit the data.
     Min,
     /// Similar to [Min](Self::Min) but limits to considered symbols only to non-square ones.
     MinRect,

@@ -1,6 +1,6 @@
 # datamatrix-rs
 
-Data Matrix (ECC 200) decoding and encoding library with an optimizing encoder.
+DataMatrix (ECC 200) decoding and encoding library with an optimizing encoder.
 
 This library is still work in progress but a complex, important part is already
 done: a new optimzing encoder for the data part. This optimizer goes beyond what
@@ -28,7 +28,7 @@ See the list of related projects below for credits.
 - [ ] Tile (aka. module) placement encoding.
 - [ ] Tile (aka. module) placement decoding.
 
-After the above steps the library will be useable for full Data Matrix
+After the above steps the library will be useable for full DataMatrix
 encoding and decoding (from an end user perspective). No rendering or virtual
 detection will be there yet, but at least rendering is straightforward.
 
@@ -49,12 +49,12 @@ The following projects were invaluable for learning from their implementation
 and stealing some of their test cases and bug reports.
 
 - [zxing](https://github.com/zxing/zxing) is a Google library to encode
-  and decode multiple 1D and 2D codes including Data Matrix. The core part
+  and decode multiple 1D and 2D codes including DataMatrix. The core part
   is written in Java.
 - [barcode4j](http://barcode4j.sourceforge.net/) is a predecessor of zxing,
-  the Data Matrix code was forked into zxing and improved.
+  the DataMatrix code was forked into zxing and improved.
 - [libdmtx](https://github.com/dmtx/libdmtx) is the most promiment open source
-  C library for encoding and decoding Data Matrix. It has a limited but
+  C library for encoding and decoding DataMatrix. It has a limited but
   very useable optimizer for the encoding.
 - [zxing-cpp](https://github.com/nu-book/zxing-cpp) is a C++ port of zxing, it
   also contains some improvements.

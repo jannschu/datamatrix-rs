@@ -25,12 +25,12 @@
 //! a * b = x^i * x^j = x^(i + j). Doing the inverse lookup of x^(i + j)
 //! gives us the result. These two lookup tables are called LOG and ANTI_LOG
 //! in this module.
-use std::iter::Sum;
 use std::ops::{Add, Div, Mul, Sub};
 use std::{
     convert::{From, Into},
     ops::{DivAssign, MulAssign, Neg, SubAssign},
 };
+use std::{iter::Sum, ops::AddAssign};
 
 /// Compute two lookup tables for GF(256).
 const fn compute_alog_log() -> ([u8; 255], [u8; 256]) {
@@ -98,6 +98,12 @@ impl Add<GF> for GF {
     }
 }
 
+impl AddAssign<GF> for GF {
+    fn add_assign(&mut self, rhs: GF) {
+        *self = *self + rhs;
+    }
+}
+
 impl Sub<GF> for GF {
     type Output = Self;
 
@@ -123,6 +129,20 @@ impl Mul<GF> for GF {
         let ib = LOG[rhs.0 as usize];
         let i = (ia as u16 + ib as u16) % 255;
         GF(ANTI_LOG[i as usize])
+    }
+}
+
+impl Mul<usize> for GF {
+    type Output = Self;
+
+    fn mul(self, rhs: usize) -> Self {
+        // Alternative with cmov, but no mul:
+        // if rhs % 2 == 0 {
+        //     Self(0)
+        // } else {
+        //     self
+        // }
+        GF(self.0 * (rhs % 2) as u8)
     }
 }
 
@@ -236,4 +256,10 @@ fn test_neg() {
         let ma = -a;
         assert_eq!(a + ma, GF(0), "{:?}, {:?}", a, ma);
     }
+}
+
+#[test]
+fn test_mul_usize() {
+    assert_eq!(GF(5) * 1, GF(5));
+    assert_eq!(GF(5) * 2, GF(5) + GF(5));
 }

@@ -51,6 +51,11 @@ class GF:
         return GF(p)
 
     def __mul__(self, b):
+        if isinstance(b, int):
+            if abs(b) % 2 == 0:
+                return GF(0)
+            else:
+                return self
         if self == 0 or b == 0:
             return GF(0)
         ia = LOG[self.v]
@@ -118,6 +123,9 @@ class Poly:
     @property
     def deg(self):
         return len(self.coeffs) - 1
+
+    def der(self):
+        return Poly([c * i for c, i in zip(self.coeffs[1:], range(1, len(self.coeffs) + 1))])
     
     def euclid_div(self, b):
         q = Poly([GF(0)])
@@ -130,6 +138,9 @@ class Poly:
             q += s
             r -= s * b
         return q, r
+
+    def __mod__(self, o):
+        return self.euclid_div(o)[1]
 
     def __eq__(self, o):
         return self.coeffs == Poly(o).coeffs
@@ -241,3 +252,22 @@ for i in range(0, 256):
     if p(GF(i)) == 0:
         print(i)
 
+
+print("Test")
+lam = Poly([GF(128), GF(129), GF(1)][::-1])
+# syn = Poly([GF(93), GF(211), GF(98), GF(95), GF(254)])
+# print(lam * syn)
+om = Poly([GF(93), GF(156)])
+print("om(1) = ", om(GF(1)))
+print("om(119) = ", om(GF(119)))
+
+print(lam.der())
+print("lambda'(1) = ", lam.der()(GF(1)))
+print("lambda'(119) = ", lam.der()(GF(119)))
+
+print("\nSyndromes")
+d = Poly([GF(x) for x in [49, 95, 49, 44, 49, 49, 0, 0, 0, 32, 255, 247, 255, 254, 189, 189,
+    189, 189, 189, 189, 189, 189, 14, 224, 29, 202, 172, 183, 132, 132, 192,
+    213, 159, 98, 115, 178, 76, 72, 57, 127][::-1]])
+for i in range(1, 18 + 1):
+    print(i, d(GF(2) ** i))

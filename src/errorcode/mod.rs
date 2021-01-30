@@ -10,25 +10,33 @@
 //! Any book about coding theory should cover it, for example
 //! "Error Correction Coding: Mathematical Methods and Algorithms" by Moon.
 //!
-//! While there is only possibility (in this case) for creating such an error code,
+//! While there is only possibility (in this case) for _creating_ such an error code,
 //! there are several algorithms for using a code to correct errors, a processs
 //! also called _decoding_ in coding theory.
 //!
 //! The _decoders_ implemented in this module are:
 //!
-//! - Classic Peterson-Gorenstein-Zierler (PGZ)
-//! - _Fast_ PGZ (*implementation in progress*)
+//! - A Peterson-Gorenstein-Zierler (PGZ) type algorithm.
+//!   
+//!   The implementation uses a Levinson-Durbin algorithm to determine the
+//!   error locator polynomial. See the [article "Levinson-Durbin Algorithm Used For Fasy BCH Decoding"](https://doi.org/10.1007/978-1-4615-6119-4_1)
+//!   by Michael Schmidt and Gerhard P. Fettweis. This approach was empiricially
+//!   verified to be far superior over a classic LU decomposition.
+//!
+//!   Furthermore, to determine the error values the [Björck-Pereyra algorithm](https://doi.org/10.1090/S0025-5718-1970-0290541-1)
+//!   is used, which was much faster than Forney's algorithm
+//!   or a naive LU decomposition in our tests.
 //! - Berlekamp-Massey (**TODO**)
 //!
-//! Each one them can be implemented in one way or another, more details
-//! can be found in the respective function documentation, see below.
+//! While only one decoder is exported in the API (see [decode_block]), the other implementations
+//! are still in the source code in case someone is interested in them.
 mod decoding;
 mod galois;
 
 use super::symbol_size::{Size, SymbolSize};
 use galois::GF;
 
-pub use decoding::decode_pgz;
+pub use decoding::decode_pgz as decode_block;
 
 /// The coefficients of the generator polynomicals used
 /// by the Reed-Solomon code specified for DataMatrix.

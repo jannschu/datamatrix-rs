@@ -1,6 +1,6 @@
 mod pgz;
 
-use super::GF;
+use super::galois::GF;
 
 #[derive(Debug)]
 pub enum DecodingError {
@@ -53,11 +53,12 @@ fn chien_search<T: Into<GF> + Copy>(c: &[T]) -> Vec<GF> {
     out
 }
 
-/// Solve the linear system `matrix` * x = `b` for x.
+/// Solve the linear system `matrix` * x = `b` for x using a "pivoted" LU decomposition.
 ///
 /// The matrix must be square.
 ///
 /// Returns true if a solution was found.
+#[allow(unused)]
 fn solve(mat: &mut [GF], b: &mut [GF], row_stride: usize) -> bool {
     let n = b.len();
     let c = |i: usize, j: usize| i * row_stride + j;
@@ -199,5 +200,5 @@ fn test_chien2() {
 fn test_chien3() {
     let c = [GF(1), GF(0)];
     let zeros = chien_search(&c);
-    assert_eq!(&zeros, &[GF(0)]);   
+    assert_eq!(&zeros, &[GF(0)]);
 }
