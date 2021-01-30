@@ -19,7 +19,8 @@ pub fn decode(data: &mut [u8], err_len: usize) -> Result<(), DecodingError> {
     decode_gen(
         data,
         err_len,
-        find_inv_error_locations_levinson_durbin,
+        // find_inv_error_locations_levinson_durbin,
+        find_inv_error_locations_bm,
         find_error_values_bp,
     )
 }
@@ -287,6 +288,48 @@ fn find_error_values_bp(x_loc: &mut [GF], _lambda: &[GF], syn: &mut [GF]) {
     }
 }
 
+/// The Berlekamp-Massey (BM) algorithm for finding error locations.
+fn find_inv_error_locations_bm(syn: &[GF]) -> Result<Vec<GF>, DecodingError> {
+    let mut len_lfsr = 0;  // current length of the LFSR
+    let mut cur = vec![GF(1)];  // current connection polynomial
+    let mut prev = vec![GF(1)];  // connection polynomial before last length change
+    let mut l = 1;  // l is k - m, the amount of shift in update
+    let mut discrepancy_m = GF(1);  // previous discrepancy
+    for k in 0..syn.len() {
+        // compute discrepancy
+        let discrepancy = syn[k] + cur[1..].iter().zip(syn[..k].iter().rev()).map(|(a,b)| *a * *b).sum();
+        if discrepancy == GF(0) {
+            l += 1;
+        } else if 2 * len_lfsr > k {
+            // update without length change
+            let tmp = discrepancy / discrepancy_m;
+            for (ci, pj) in cur[l..].iter_mut().zip(prev.iter()) {
+                *ci -= tmp * *pj;
+            }
+            l += 1;
+        } else {
+            // update cur with length change
+            let cur_clone_before = cur.clone();
+            let tmp = discrepancy / discrepancy_m;
+            cur.resize(l + prev.len(), GF(0));
+            for (ci, pj) in cur[l..].iter_mut().zip(prev.iter()) {
+                *ci -= tmp * *pj;
+            }
+            len_lfsr = k + 1 - len_lfsr;
+            prev = cur_clone_before;
+            discrepancy_m = discrepancy;
+            l = 1;
+        }
+    }
+
+    if cur.len() - 1 > syn.len() / 2 {
+        Err(DecodingError::TooManyErrors)
+    } else {
+        cur.reverse();
+        Ok(cur)
+    }
+}
+
 /// Solve the syndrome matrix equation for v,v-1,...1 using a
 /// LU decomposition.
 #[allow(unused)]
@@ -316,9 +359,8 @@ fn find_inv_error_locations_lu(syndomes: &[GF]) -> Result<Vec<GF>, DecodingError
         }
     }
     if coeff.is_empty() {
-        // background: the syndrome matrix is regular iff. vi is equal to
-        // the number of errors, since vi = 1,...,v were checked we know
-        // there are too many (> v).
+        // This method is not called if all syndromes are zero,
+        // better safe than sorry => return error.
         return Err(DecodingError::TooManyErrors);
     }
     coeff.push(GF(1));

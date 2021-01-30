@@ -1,4 +1,4 @@
-mod pgz;
+mod syndrome_based;
 
 use super::galois::GF;
 
@@ -11,7 +11,7 @@ pub enum DecodingError {
     ErrorsOutsideRange,
 }
 
-pub use pgz::decode as decode_pgz;
+pub use syndrome_based::decode as decode_pgz;
 
 /// Evaluate the polynomical given by coefficients `c` at
 /// x, x^2, x^3, ... and write the result to `out` in that order.

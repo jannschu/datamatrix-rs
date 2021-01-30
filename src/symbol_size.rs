@@ -40,7 +40,7 @@ pub(crate) struct BlockSetup {
 
 /// The symbol sizes supported by DataMatrix.
 ///
-/// The number behind a variant, e.g., [Square10](Self::Square10),
+/// The number behind a variant, e.g., [Square10](SymbolSize::Square10),
 /// describes the number of modules (the tiny black squares) the symbol is
 /// wide/tall.
 #[derive(Debug, Copy, Clone, PartialEq)]

@@ -24,7 +24,7 @@ See the list of related projects below for credits.
 - [x] Fuzz decoding and encoding (*never complete, but no issues after 48h*)
 - [x] Check the open bug reports in other implementations.
 - [x] Reed Solomon encoder.
-- [ ] Reed Solomon decoder.
+- [x] Reed Solomon decoder.
 - [ ] Tile (aka. module) placement encoding.
 - [ ] Tile (aka. module) placement decoding.
 

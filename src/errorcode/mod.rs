@@ -10,25 +10,29 @@
 //! Any book about coding theory should cover it, for example
 //! "Error Correction Coding: Mathematical Methods and Algorithms" by Moon.
 //!
-//! While there is only possibility (in this case) for _creating_ such an error code,
+//! While there is only possibility in this case for _creating_ such an error code,
 //! there are several algorithms for using a code to correct errors, a processs
-//! also called _decoding_ in coding theory.
+//! called _decoding_ in coding theory.
 //!
-//! The _decoders_ implemented in this module are:
+//! The decoder implemented in this module is syndrome based. Such a decoder
+//! is classically made of four main steps:
 //!
-//! - A Peterson-Gorenstein-Zierler (PGZ) type algorithm.
+//! 1. Compute the syndrome values.
+//! 2. Compute the error locator polynomial
+//! 3. Compute the error locations.
+//! 4. Compute the error values.
 //!   
-//!   The implementation uses a Levinson-Durbin algorithm to determine the
-//!   error locator polynomial. See the [article "Levinson-Durbin Algorithm Used For Fasy BCH Decoding"](https://doi.org/10.1007/978-1-4615-6119-4_1)
-//!   by Michael Schmidt and Gerhard P. Fettweis. This approach was empiricially
-//!   verified to be far superior over a classic LU decomposition.
+//! We use a Levinson-Durbin algorithm in the second step. See 
+//! [the article "Levinson-Durbin Algorithm Used For Fast BCH Decoding"](https://doi.org/10.1007/978-1-4615-6119-4_1)
+//! by Michael Schmidt and Gerhard P. Fettweis. This approach was empiricially
+//! verified to be better than a LU decomposition and it did also beat
+//! the Berlekamp-Massey algorithm.
 //!
-//!   Furthermore, to determine the error values the [Björck-Pereyra algorithm](https://doi.org/10.1090/S0025-5718-1970-0290541-1)
-//!   is used, which was much faster than Forney's algorithm
-//!   or a naive LU decomposition in our tests.
-//! - Berlekamp-Massey (**TODO**)
+//! Furthermore, in step four the [Björck-Pereyra algorithm](https://doi.org/10.1090/S0025-5718-1970-0290541-1)
+//! is used to determine the error values. It was much faster than Forney's algorithm
+//! and also faster than a naive LU decomposition in our tests.
 //!
-//! While only one decoder is exported in the API (see [decode_block]), the other implementations
+//! The other possibilites mentioend for step 2 and 4
 //! are still in the source code in case someone is interested in them.
 mod decoding;
 mod galois;
