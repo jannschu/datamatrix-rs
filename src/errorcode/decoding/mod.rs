@@ -9,6 +9,7 @@ pub enum DecodingError {
     ///
     /// This usually means there were a lot of transmission errors, uncorrectable.
     ErrorsOutsideRange,
+    Malfunction,
 }
 
 pub use syndrome_based::decode as decode_pgz;

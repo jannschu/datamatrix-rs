@@ -49,9 +49,29 @@ where
         return Ok(());
     }
 
-    // 2. Find error locations
+    // 2a. Find error locations
     let lambda_coeff = inv_error_locs(&syndromes)?;
     let mut inv_error_locations = super::chien_search(&lambda_coeff);
+    if inv_error_locations.is_empty() || inv_error_locations[0] == GF(0) {
+        return Err(DecodingError::Malfunction);
+    }
+
+    // 2b. Check for malfunction, cf.
+    // M. Srinivasan and D. V. Sarwate, Malfunction in the Peterson-Gorenstein-Zierler Decoder,
+    // IEEE Trans. Inf. Theory.
+    let t = err_len / 2;
+    let v = lambda_coeff.len() - 1;
+    for j in t..=2 * t - v - 1 {
+        debug_assert!(syndromes[j..].len() >= lambda_coeff.len());
+        let t_j: GF = syndromes[j..]
+            .iter()
+            .zip(lambda_coeff.iter())
+            .map(|(a, b)| *a * *b)
+            .sum();
+        if t_j != GF(0) {
+            return Err(DecodingError::Malfunction);
+        }
+    }
 
     // 3. Find error values, result is computed in place in `syndromes`
     find_err_vals(&mut inv_error_locations, &lambda_coeff, &mut syndromes);
@@ -287,14 +307,19 @@ fn find_error_values_bp(x_loc: &mut [GF], _lambda: &[GF], syn: &mut [GF]) {
 
 /// The Berlekamp-Massey (BM) algorithm for finding error locations.
 fn find_inv_error_locations_bm(syn: &[GF]) -> Result<Vec<GF>, DecodingError> {
-    let mut len_lfsr = 0;  // current length of the LFSR
-    let mut cur = vec![GF(1)];  // current connection polynomial
-    let mut prev = vec![GF(1)];  // connection polynomial before last length change
-    let mut l = 1;  // l is k - m, the amount of shift in update
-    let mut discrepancy_m = GF(1);  // previous discrepancy
+    let mut len_lfsr = 0; // current length of the LFSR
+    let mut cur = vec![GF(1)]; // current connection polynomial
+    let mut prev = vec![GF(1)]; // connection polynomial before last length change
+    let mut l = 1; // l is k - m, the amount of shift in update
+    let mut discrepancy_m = GF(1); // previous discrepancy
     for k in 0..syn.len() {
         // compute discrepancy
-        let discrepancy = syn[k] + cur[1..].iter().zip(syn[..k].iter().rev()).map(|(a,b)| *a * *b).sum();
+        let discrepancy = syn[k]
+            + cur[1..]
+                .iter()
+                .zip(syn[..k].iter().rev())
+                .map(|(a, b)| *a * *b)
+                .sum();
         if discrepancy == GF(0) {
             l += 1;
         } else if 2 * len_lfsr > k {

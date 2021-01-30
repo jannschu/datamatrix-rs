@@ -22,7 +22,7 @@
 //! 3. Compute the error locations.
 //! 4. Compute the error values.
 //!   
-//! We use a Levinson-Durbin algorithm in the second step. See 
+//! We use a Levinson-Durbin algorithm in the second step. See
 //! the article ["Levinson-Durbin Algorithm Used For Fast BCH Decoding"](https://doi.org/10.1007/978-1-4615-6119-4_1)
 //! by Michael Schmidt and Gerhard P. Fettweis. This approach was empiricially
 //! verified to be better than a LU decomposition and it did also beat
