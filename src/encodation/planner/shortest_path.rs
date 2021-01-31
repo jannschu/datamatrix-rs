@@ -79,7 +79,8 @@ pub(crate) fn optimize<S: Size>(
                 .unwrap();
             plan.switches.push((0, plan.current()));
 
-            if plan.switches[0] == (data.len(), EncodationType::Ascii) {
+            // Remove a "switch" to ASCII if we are at the very beginning
+            if written == 0 && plan.switches[0] == (data.len(), EncodationType::Ascii) {
                 plan.switches.remove(0);
             }
 
