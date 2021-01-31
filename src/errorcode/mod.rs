@@ -10,11 +10,10 @@
 //! Any book about coding theory should cover it, for example
 //! "Error Correction Coding: Mathematical Methods and Algorithms" by Moon.
 //!
-//! While there is only possibility in this case for _creating_ such an error code,
-//! there are several algorithms for using a code to correct errors, a processs
-//! called _decoding_ in coding theory.
+//! While there is only way to compute the error code (called _encoding_),
+//! there are several algorithms for error correction (called _decoding_).
 //!
-//! The decoder implemented in this module is syndrome based. Such a decoder
+//! The decoder implemented in this module is _syndrome_ based. Such a decoder
 //! is classically made of four main steps:
 //!
 //! 1. Compute the syndrome values.
@@ -40,7 +39,7 @@ mod galois;
 use super::symbol_size::{Size, SymbolSize};
 use galois::GF;
 
-pub use decoding::decode_block;
+pub use decoding::decode;
 
 /// The coefficients of the generator polynomicals used
 /// by the Reed-Solomon code specified for DataMatrix.

@@ -3,27 +3,45 @@
 
 use super::DecodingError;
 use crate::errorcode::GF;
+use crate::{symbol_size::Size, SymbolSize};
 
 /// Decode the Reed-Solomon code using a syndrome based decoder.
 ///
 /// # Params
 ///
-/// The data block `data` consists of the data codewords and `err_len` error
-/// correction codewords.
+/// The symbol codewords (`codewords`) and the `size` of the symbol.
 ///
-/// No deinterleaving is done here (see error code creation), the input is
-/// expected to be one block.
-pub fn decode(data: &mut [u8], err_len: usize) -> Result<(), DecodingError> {
-    decode_gen(
-        data,
-        err_len,
-        find_inv_error_locations_levinson_durbin,
-        find_error_values_bp,
-    )
+/// For larger symbols the error code are interleaving, this is considered here.
+pub fn decode(codewords: &mut [u8], size: SymbolSize) -> Result<(), DecodingError> {
+    let setup = size
+        .block_setup()
+        .expect("must be symbol with explicit size");
+    let err_len = setup.num_ecc_per_block;
+    let stride = setup.num_blocks;
+    let num_data = size.num_data_codewords().unwrap();
+
+    // For Square144 the first 8 blocks are 218 codewords (156 data codewords)
+    // and the last two are 217 (155 data codewords). The stride will
+    // be 10 in this case. Using just step_by(10) would give us the wrong error
+    // codewords, so need to step the data and error parts separately...
+    let (data, error) = codewords.split_at_mut(num_data);
+    for block in 0..setup.num_blocks {
+        decode_gen(
+            &mut data[block..],
+            &mut error[block..],
+            stride,
+            err_len,
+            find_inv_error_locations_levinson_durbin,
+            find_error_values_bp,
+        )?;
+    }
+    Ok(())
 }
 
 fn decode_gen<F, G>(
     data: &mut [u8],
+    error: &mut [u8],
+    stride: usize,
     err_len: usize,
     inv_error_locs: F,
     find_err_vals: G,
@@ -32,19 +50,26 @@ where
     F: Fn(&[GF]) -> Result<Vec<GF>, DecodingError>,
     G: Fn(&mut [GF], &[GF], &mut [GF]),
 {
-    let n = data.len();
+    let n_data = (data.len() + stride - 1) / stride;
+    let n_error = (error.len() + stride - 1) / stride;
+    let n = n_data + n_error;
     // generator polynomial has degree d = err_len
     assert!(err_len >= 1, "degree of generator polynomial must be >= 1");
     assert!(n > err_len, "data length shorter than error code suffix");
 
-    // Actually, Wikipedia has a nice description of the algorithm at
+    // Actually, Wikipedia has a nice description of the (classic) algorithm at
     // the time of writing this, see
     //
     //    https://en.wikipedia.org/wiki/Reed%E2%80%93Solomon_error_correction#Peterson%E2%80%93Gorenstein%E2%80%93Zierler_decoder
 
     // 1. Calculate syndromes
     let mut syndromes = vec![GF(0); err_len];
-    let have_non_zero = super::primitive_element_evaluation(data.iter(), &mut syndromes);
+    let received = data
+        .iter()
+        .cloned()
+        .step_by(stride)
+        .chain(error.iter().cloned().step_by(stride));
+    let have_non_zero = super::primitive_element_evaluation(received, &mut syndromes);
     if !have_non_zero {
         return Ok(());
     }
@@ -83,9 +108,15 @@ where
         if i >= n {
             return Err(DecodingError::ErrorsOutsideRange);
         }
-        let idx = n - i - 1;
-        data[idx] = (GF(data[idx]) - *err).into();
+        let mut idx = (n - i - 1) * stride;
+        if idx < data.len() {
+            data[idx] = (GF(data[idx]) - *err).into();
+        } else {
+            idx -= data.len();
+            error[idx] = (GF(error[idx]) - *err).into();
+        }
     }
+
     Ok(())
 }
 
@@ -306,6 +337,7 @@ fn find_error_values_bp(x_loc: &mut [GF], _lambda: &[GF], syn: &mut [GF]) {
 }
 
 /// The Berlekamp-Massey (BM) algorithm for finding error locations.
+#[allow(unused)]
 fn find_inv_error_locations_bm(syn: &[GF]) -> Result<Vec<GF>, DecodingError> {
     let mut len_lfsr = 0; // current length of the LFSR
     let mut cur = vec![GF(1)]; // current connection polynomial
@@ -477,14 +509,14 @@ fn solve_vandermonde_diag() {
 #[test]
 fn test_recovery() {
     let mut data = vec![1, 2, 3];
-    let ecc = crate::errorcode::encode(&data, crate::SymbolSize::Square10);
+    let ecc = crate::errorcode::encode(&data, SymbolSize::Square10);
     data.extend_from_slice(&ecc);
     assert_eq!(data.len(), 3 + 5);
     let mut received = data.clone();
     // make two wrong
     received[0] = 230;
     received[3 + 5 - 1] = 32;
-    decode(&mut received, 5).unwrap();
+    decode(&mut received, SymbolSize::Square10).unwrap();
     assert_eq!(&data, &received);
 }
 
@@ -493,12 +525,12 @@ fn test_recovery1() {
     let mut data = vec![
         255, 255, 255, 72, 52, 38, 52, 52, 52, 52, 52, 52, 52, 52, 52, 72, 0, 0, 72, 0, 0, 10,
     ];
-    let ecc = crate::errorcode::encode(&data, crate::SymbolSize::Square20);
+    let ecc = crate::errorcode::encode(&data, SymbolSize::Square20);
     data.extend_from_slice(&ecc);
     let mut received = data.clone();
     received[0] = 52;
     received[8] = 144;
-    decode(&mut received, 18).unwrap();
+    decode(&mut received, SymbolSize::Square20).unwrap();
     assert_eq!(&data, &received);
 }
 
@@ -508,14 +540,14 @@ fn test_recovery2() {
         144, 144, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
         255, 255, 255, 255,
     ];
-    let ecc = crate::errorcode::encode(&data, crate::SymbolSize::Square20);
+    let ecc = crate::errorcode::encode(&data, SymbolSize::Square20);
     data.extend_from_slice(&ecc);
     let mut received = data.clone();
     received[1] = 32;
     received[0] = 0;
     received[12] = 0;
     received[16] = 144;
-    decode(&mut received, 18).unwrap();
+    decode(&mut received, SymbolSize::Square20).unwrap();
     assert_eq!(&data, &received);
 }
 
@@ -525,7 +557,7 @@ fn test_recovery3() {
         255, 23, 189, 54, 189, 189, 189, 189, 255, 255, 255, 255, 255, 255, 255, 67, 4, 0, 255,
         189, 48, 37,
     ];
-    let ecc = crate::errorcode::encode(&data, crate::SymbolSize::Square20);
+    let ecc = crate::errorcode::encode(&data, SymbolSize::Square20);
     data.extend_from_slice(&ecc);
     let mut received = data.clone();
     received[0] = 247;
@@ -537,7 +569,7 @@ fn test_recovery3() {
     received[12] = 65;
     received[15] = 177;
     received[16] = 32;
-    decode(&mut received, 18).unwrap();
+    decode(&mut received, SymbolSize::Square20).unwrap();
     assert_eq!(&data, &received);
 }
 
@@ -547,7 +579,7 @@ fn test_recovery4() {
         49, 95, 49, 44, 49, 49, 0, 0, 0, 32, 255, 247, 255, 254, 189, 189, 189, 189, 189, 189, 189,
         189,
     ];
-    let ecc = crate::errorcode::encode(&data, crate::SymbolSize::Square20);
+    let ecc = crate::errorcode::encode(&data, SymbolSize::Square20);
     data.extend_from_slice(&ecc);
     let mut received = data.clone();
     received[1] = 49;
@@ -559,6 +591,6 @@ fn test_recovery4() {
     received[6] = 206;
     received[21] = 191;
     received[5] = 50;
-    decode(&mut received, 18).unwrap();
+    decode(&mut received, SymbolSize::Square20).unwrap();
     assert_eq!(&data, &received);
 }

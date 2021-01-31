@@ -12,19 +12,19 @@ pub enum DecodingError {
     Malfunction,
 }
 
-pub use syndrome_based::decode as decode_block;
+pub use syndrome_based::decode;
 
 /// Evaluate the polynomical given by coefficients `c` at
 /// x, x^2, x^3, ... and write the result to `out` in that order.
-fn primitive_element_evaluation<'a, T, I>(c: I, out: &mut [GF]) -> bool
+fn primitive_element_evaluation<T, I>(c: I, out: &mut [GF]) -> bool
 where
-    T: Into<GF> + Copy + 'a,
-    I: Iterator<Item = &'a T> + DoubleEndedIterator,
+    T: Into<GF> + Copy,
+    I: Iterator<Item = T> + DoubleEndedIterator,
 {
     if out.is_empty() {
         return false;
     }
-    let mut gamma: Vec<GF> = c.rev().map(|x| (*x).into()).collect();
+    let mut gamma: Vec<GF> = c.rev().map(|x| x.into()).collect();
     let mut errors = false;
     for o in out.iter_mut() {
         for (g, alpha) in gamma.iter_mut().zip(GF::primitive_powers()) {
@@ -123,7 +123,7 @@ fn solve(mat: &mut [GF], b: &mut [GF], row_stride: usize) -> bool {
 fn test_evaluate_primitive() {
     let c = &[GF(90), GF(0), GF(23), GF(0), GF(1)];
     let mut out = vec![GF(0); 3];
-    primitive_element_evaluation(c.iter(), &mut out);
+    primitive_element_evaluation(c.iter().cloned(), &mut out);
     assert_eq!(out, vec![GF(100), GF(187), GF(131)]);
 }
 
@@ -179,7 +179,7 @@ fn test_solve_2x2_singular() {
 fn test_primitive_element_evaluation() {
     let x = [GF(128), GF(52), GF(33), GF(83), GF(33)];
     let mut syndromes = vec![GF(0); 5];
-    primitive_element_evaluation(x.iter(), &mut syndromes);
+    primitive_element_evaluation(x.iter().cloned(), &mut syndromes);
     assert_eq!(&syndromes, &[GF(203), GF(50), GF(3), GF(247), GF(100),]);
 }
 
@@ -189,7 +189,7 @@ fn test_error_code() {
     let ecc = super::encode(&data, crate::SymbolSize::Square10);
     data.extend_from_slice(&ecc);
     let mut syndromes = vec![GF(0); 5];
-    primitive_element_evaluation(data.iter(), &mut syndromes);
+    primitive_element_evaluation(data.iter().cloned(), &mut syndromes);
     assert_eq!(&syndromes, &[GF(0), GF(0), GF(0), GF(0), GF(0)]);
 }
 
