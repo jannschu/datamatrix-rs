@@ -52,7 +52,7 @@ where
     // 2a. Find error locations
     let lambda_coeff = inv_error_locs(&syndromes)?;
     let mut inv_error_locations = super::chien_search(&lambda_coeff);
-    if inv_error_locations.is_empty() || inv_error_locations[0] == GF(0) {
+    if inv_error_locations.len() != lambda_coeff.len() - 1 || inv_error_locations[0] == GF(0) {
         return Err(DecodingError::Malfunction);
     }
 
@@ -416,6 +416,8 @@ fn find_error_values_forney(inv_x_locs: &mut [GF], lambda: &[GF], syn: &mut [GF]
 
         let mut lambda_der_x = GF(0);
         for (k, lk) in lambda[..lambda.len() - 1].iter().cloned().enumerate() {
+            // notice that lk is multiplied with usize, this is NOT multiplication
+            // in GF, see Mul<usize> implementation for GF.
             lambda_der_x = lambda_der_x * x_inv + lk * (lambda.len() - k - 1);
         }
 

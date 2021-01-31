@@ -41,6 +41,12 @@ fn chien_search<T: Into<GF> + Copy>(c: &[T]) -> Vec<GF> {
     if c.last().cloned().unwrap().into() == GF(0) {
         out.push(GF(0));
     }
+    if c.len() == 2 {
+        if c[1].into() != GF(0) {
+            out.push(-c[1].into() / c[0].into());
+        }
+        return out;
+    }
     let mut gamma: Vec<GF> = c.iter().rev().map(|x| (*x).into()).collect();
     for i in 0..=254 {
         let val: GF = gamma.iter().cloned().sum();
@@ -202,4 +208,11 @@ fn test_chien3() {
     let c = [GF(1), GF(0)];
     let zeros = chien_search(&c);
     assert_eq!(&zeros, &[GF(0)]);
+}
+
+#[test]
+fn test_chien4() {
+    let c = [GF(2), GF(1)];
+    let zeros = chien_search(&c);
+    assert_eq!(&zeros, &[-GF(1) / GF(2)]);
 }

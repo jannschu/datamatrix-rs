@@ -136,13 +136,16 @@ impl Mul<usize> for GF {
     type Output = Self;
 
     fn mul(self, rhs: usize) -> Self {
+        // Multiplication with usize is interpretated as
+        // n-times addition. Because elements are their own additive inverse
+        // we only check if the numer of addition is even or odd.
+        GF(self.0 * (rhs % 2) as u8)
         // Alternative with cmov, but no mul:
         // if rhs % 2 == 0 {
         //     Self(0)
         // } else {
         //     self
         // }
-        GF(self.0 * (rhs % 2) as u8)
     }
 }
 
