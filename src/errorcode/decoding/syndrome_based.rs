@@ -44,7 +44,7 @@ where
 
     // 1. Calculate syndromes
     let mut syndromes = vec![GF(0); err_len];
-    let have_non_zero = super::primitive_element_evaluation(data, &mut syndromes);
+    let have_non_zero = super::primitive_element_evaluation(data.iter(), &mut syndromes);
     if !have_non_zero {
         return Ok(());
     }
@@ -80,10 +80,10 @@ where
     // 4. Correct errors
     for (loc, err) in error_locations.iter().zip(syndromes.iter()) {
         let i = loc.log();
-        if i >= data.len() {
+        if i >= n {
             return Err(DecodingError::ErrorsOutsideRange);
         }
-        let idx = data.len() - i - 1;
+        let idx = n - i - 1;
         data[idx] = (GF(data[idx]) - *err).into();
     }
     Ok(())

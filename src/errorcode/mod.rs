@@ -40,7 +40,7 @@ mod galois;
 use super::symbol_size::{Size, SymbolSize};
 use galois::GF;
 
-pub use decoding::decode_pgz as decode_block;
+pub use decoding::decode_block;
 
 /// The coefficients of the generator polynomicals used
 /// by the Reed-Solomon code specified for DataMatrix.
@@ -131,7 +131,7 @@ fn generator(len: usize) -> &'static [u8] {
 ///
 /// Depending on the symbol size, the data is first split up into
 /// interleaved blocks. For each block an error code is computed.
-/// Those codes are returned consecutively, i.e., not interleaved.
+/// Those codes are returned interleaved.
 pub fn encode(data: &[u8], size: SymbolSize) -> Vec<u8> {
     let setup = size.block_setup().unwrap();
     let num_codewords = size.num_data_codewords().unwrap();
@@ -139,17 +139,30 @@ pub fn encode(data: &[u8], size: SymbolSize) -> Vec<u8> {
     let gen = generator(setup.num_ecc_per_block);
     // For bigger symbol sizes the data is split up into interleaved blocks
     // for which an error code is computed individually. we store
-    // the error blocks consecutively in the returned result.
+    // the error blocks interleaved in the returned result.
     let stride = setup.num_blocks;
-    let mut ecc = vec![0; setup.num_blocks * setup.num_ecc_per_block + 1];
+    let mut ecc = vec![0; setup.num_ecc_per_block + 1];
+    let mut full_ecc = vec![0; setup.num_ecc_per_block * setup.num_blocks];
     for block in 0..setup.num_blocks {
-        let stride_data = (block..data.len()).step_by(stride).map(|i| data[i]);
-        let offset = block * setup.num_ecc_per_block;
-        let ecc_out_block = &mut ecc[offset..setup.num_ecc_per_block + 1];
-        ecc_block(stride_data, gen, ecc_out_block);
+        for item in &mut ecc {
+            // reset ecc for new block
+            *item = 0;
+        }
+        let strided_data_input = (block..data.len()).step_by(stride).map(|i| data[i]);
+        ecc_block(strided_data_input, gen, &mut ecc);
+
+        // copy block interleaved to result vector
+        for (result, ecc_i) in full_ecc
+            .iter_mut()
+            .skip(block)
+            .step_by(stride)
+            .zip(&ecc[..setup.num_ecc_per_block])
+        {
+            debug_assert_eq!(*result, 0);
+            *result = *ecc_i;
+        }
     }
-    ecc.pop();
-    ecc
+    full_ecc
 }
 
 fn ecc_block<T: Iterator<Item = u8>>(data: T, g: &[u8], ecc: &mut [u8]) {
