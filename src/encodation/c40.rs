@@ -76,7 +76,7 @@ where
     if !ctx.has_more_characters() {
         let size_left = ctx
             .symbol_size_left(buf.len())
-            .ok_or(DataEncodingError::NotEnoughSpace)?;
+            .ok_or(DataEncodingError::TooMuchData)?;
         match (size_left + buf.len(), buf.len()) {
             // case a) handled by standard loop
             // case b)
@@ -122,7 +122,7 @@ where
             // we can encode them with one ASCII byte, maybe with UNLATCH before
             let space_left = ctx
                 .symbol_size_left(1)
-                .ok_or(DataEncodingError::NotEnoughSpace)?;
+                .ok_or(DataEncodingError::TooMuchData)?;
             ctx.set_mode(EncodationType::Ascii);
             if space_left >= 1 {
                 ctx.push(super::UNLATCH);
@@ -132,7 +132,7 @@ where
         ctx.push(super::UNLATCH);
     } else if ctx
         .symbol_size_left(0)
-        .ok_or(DataEncodingError::NotEnoughSpace)?
+        .ok_or(DataEncodingError::TooMuchData)?
         > 0
     {
         ctx.push(super::UNLATCH);
@@ -169,7 +169,7 @@ where
             write_three_values(ctx, buf[0], buf[1], buf[2]);
             buf.drain(0..3).for_each(std::mem::drop);
         }
-        if ctx.maybe_switch_mode(false, 0)? {
+        if ctx.maybe_switch_mode()? {
             break;
         }
     }

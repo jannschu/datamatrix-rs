@@ -23,7 +23,7 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncoding
         let c2 = enc(ctx.eat().unwrap());
         let c3 = enc(ctx.eat().unwrap());
         c40::write_three_values(ctx, c1, c2, c3);
-        if ctx.maybe_switch_mode(false, 0)? {
+        if ctx.maybe_switch_mode()? {
             switch = true;
             break;
         }
@@ -35,7 +35,7 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncoding
     if one_ascii_remain_maybe
         && ctx
             .symbol_size_left(1)
-            .ok_or(DataEncodingError::NotEnoughSpace)?
+            .ok_or(DataEncodingError::TooMuchData)?
             == 0
     {
         ctx.set_mode(EncodationType::Ascii);
@@ -44,7 +44,7 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncoding
     if ctx.has_more_characters()
         || ctx
             .symbol_size_left(0)
-            .ok_or(DataEncodingError::NotEnoughSpace)?
+            .ok_or(DataEncodingError::TooMuchData)?
             > 0
     {
         if !switch {

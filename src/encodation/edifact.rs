@@ -58,7 +58,7 @@ fn handle_end<T: EncodingContext>(
             // eod
             let space_left = ctx
                 .symbol_size_left(0)
-                .ok_or(DataEncodingError::NotEnoughSpace)?;
+                .ok_or(DataEncodingError::TooMuchData)?;
             // padding case
             if space_left > 0 {
                 // the other case is caught in the "special end of data rule" above
@@ -76,7 +76,7 @@ fn handle_end<T: EncodingContext>(
             // eod, maybe add UNLATCH for padding if space allows
             let space_left = ctx
                 .symbol_size_left(symbols.len())
-                .ok_or(DataEncodingError::NotEnoughSpace)?
+                .ok_or(DataEncodingError::TooMuchData)?
                 > 0;
             if space_left || symbols.len() == 3 {
                 symbols.push(UNLATCH);
@@ -98,10 +98,10 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncoding
         if symbols.len() == 4 {
             write4(ctx, &symbols);
             symbols.clear();
-            if ctx.maybe_switch_mode(false, 0)? {
+            if ctx.maybe_switch_mode()? {
                 break;
             }
-        } else if ctx.maybe_switch_mode(symbols.len() == 3, 0)? {
+        } else if ctx.maybe_switch_mode()? {
             break;
         }
     }

@@ -2,9 +2,9 @@ use std::iter::Cloned;
 use std::slice::Iter;
 
 use super::{
-    encodation_type::EncodationType, DataEncoder, DataEncodingError, EncodingContext,
-    GenericDataEncoder,
+    encodation_type::EncodationType, DataEncodingError, EncodingContext, GenericDataEncoder,
 };
+use crate::data::encode_data;
 use crate::symbol_size::{Capacity, Size, SymbolSize};
 
 pub(super) trait TestEncoderLogic: Sized {
@@ -79,11 +79,7 @@ impl<T: TestEncoderLogic> TestEncodingContext<T> {
 }
 
 impl<T: TestEncoderLogic> EncodingContext for TestEncodingContext<T> {
-    fn maybe_switch_mode(
-        &mut self,
-        _free_unlatch: bool,
-        _base256_written: usize,
-    ) -> Result<bool, DataEncodingError> {
+    fn maybe_switch_mode(&mut self) -> Result<bool, DataEncodingError> {
         Ok(T::maybe_switch_mode(self))
     }
 
@@ -211,9 +207,7 @@ type TestEncoder<'a> = GenericDataEncoder<'a, TestSymbol>;
 
 #[cfg(test)]
 fn enc(data: &[u8]) -> Vec<u8> {
-    DataEncoder::with_size(data, SymbolSize::Min)
-        .codewords()
-        .unwrap()
+    encode_data(data, SymbolSize::Min).unwrap()
 }
 
 #[test]
@@ -262,7 +256,9 @@ fn test_c40_spec_example() {
 #[test]
 fn test_c40_special_case_a() {
     // case "a": Unlatch is not required
-    let words = TestEncoder::new(b"AI_IM_MA_AI_IM").codewords().unwrap();
+    let words = TestEncoder::with_size(b"AI_IM_MA_AI_IM", TestSymbol::DEFAULT)
+        .codewords()
+        .unwrap();
     assert_eq!(
         words,
         vec![230, 90, 242, 166, 11, 10, 107, 87, 195, 90, 242, 166, 11]
@@ -314,9 +310,7 @@ fn test_c40_special_cases2() {
 #[test]
 fn test_text_encoding_1() {
     // 239 shifts to Text encodation, 254 unlatches
-    let words = DataEncoder::with_size(b"aimaimaim", SymbolSize::Min)
-        .codewords()
-        .unwrap();
+    let words = encode_data(b"aimaimaim", SymbolSize::Min).unwrap();
     assert_eq!(words, vec![239, 91, 11, 91, 11, 91, 11, 254]);
 }
 

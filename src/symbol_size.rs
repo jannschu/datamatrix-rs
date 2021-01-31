@@ -3,7 +3,7 @@ use std::iter::Cloned;
 use std::slice::Iter;
 
 #[doc(hidden)]
-pub trait Size: Copy + Debug {
+pub(crate) trait Size: Copy + Debug {
     const DEFAULT: Self;
 
     fn candidates(&self) -> Cloned<Iter<Self>>;
@@ -21,7 +21,7 @@ pub trait Size: Copy + Debug {
 }
 
 #[doc(hidden)]
-pub struct Capacity {
+pub(crate) struct Capacity {
     pub(crate) max: usize,
     pub(crate) min: usize,
 }

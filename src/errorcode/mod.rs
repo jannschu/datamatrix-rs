@@ -39,7 +39,8 @@ mod galois;
 use super::symbol_size::{Size, SymbolSize};
 use galois::GF;
 
-pub use decoding::decode;
+pub use decoding::decode as decode_error;
+pub use decoding::ErrorDecodingError;
 
 /// The coefficients of the generator polynomicals used
 /// by the Reed-Solomon code specified for DataMatrix.
@@ -130,8 +131,8 @@ fn generator(len: usize) -> &'static [u8] {
 ///
 /// Depending on the symbol size, the data is first split up into
 /// interleaved blocks. For each block an error code is computed.
-/// Those codes are returned interleaved.
-pub fn encode(data: &[u8], size: SymbolSize) -> Vec<u8> {
+/// The resulting blocks of error codes are returned interleaved.
+pub fn encode_error(data: &[u8], size: SymbolSize) -> Vec<u8> {
     let setup = size.block_setup().unwrap();
     let num_codewords = size.num_data_codewords().unwrap();
     assert!(data.len() == num_codewords);

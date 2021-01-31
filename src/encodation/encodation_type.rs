@@ -2,7 +2,11 @@ use super::{ascii, base256, c40, edifact, text, x12, DataEncodingError, GenericD
 use crate::symbol_size::Size;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub(crate) enum EncodationType {
+/// List of data encodation types
+///
+/// DataMatrix can switch between different "codecs" in a symbol. Each one
+/// has its strenghts and weaknesses.
+pub enum EncodationType {
     Ascii,
     C40,
     Text,

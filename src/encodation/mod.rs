@@ -1,5 +1,5 @@
 //! Implementation of the data encodation using all specified modes.
-use crate::symbol_size::{Size, SymbolSize};
+use crate::symbol_size::Size;
 
 pub(crate) mod ascii;
 mod base256;
@@ -10,12 +10,12 @@ mod x12;
 
 mod encodation_type;
 // mod look_ahead;
-mod planner;
+pub(crate) mod planner;
 
 #[cfg(test)]
 mod tests;
 
-pub(super) use encodation_type::EncodationType;
+pub use encodation_type::EncodationType;
 
 // The following is not implemented
 // const MACRO05: u8 = 236;
@@ -29,18 +29,14 @@ pub(crate) const UNLATCH: u8 = 254;
 
 #[derive(Debug)]
 pub enum DataEncodingError {
-    NotEnoughSpace,
+    TooMuchData,
 }
 
 trait EncodingContext {
     /// Look ahead and switch the mode if necessary.
     ///
     /// Return `true` if the mode was switched.
-    fn maybe_switch_mode(
-        &mut self,
-        free_unlatch: bool,
-        base256_written: usize,
-    ) -> Result<bool, DataEncodingError>;
+    fn maybe_switch_mode(&mut self) -> Result<bool, DataEncodingError>;
 
     /// Compute how much space would be left in the symbol.
     ///
@@ -81,7 +77,7 @@ trait EncodingContext {
     }
 }
 
-pub struct GenericDataEncoder<'a, S: Size> {
+pub(crate) struct GenericDataEncoder<'a, S: Size> {
     data: &'a [u8],
     input: &'a [u8],
     encodation: EncodationType,
@@ -92,22 +88,7 @@ pub struct GenericDataEncoder<'a, S: Size> {
 }
 
 impl<'a, S: Size> EncodingContext for GenericDataEncoder<'a, S> {
-    fn maybe_switch_mode(
-        &mut self,
-        free_unlatch: bool,
-        base256_written: usize,
-    ) -> Result<bool, DataEncodingError> {
-        if self.planned_switches.is_empty() {
-            self.planned_switches = planner::optimize(
-                self.rest(),
-                self.codewords.len(),
-                self.encodation,
-                free_unlatch,
-                self.symbol_size,
-                base256_written,
-            )
-            .ok_or(DataEncodingError::NotEnoughSpace)?;
-        }
+    fn maybe_switch_mode(&mut self) -> Result<bool, DataEncodingError> {
         let chars_left = self.characters_left();
         assert!(
             chars_left >= self.planned_switches[0].0,
@@ -175,10 +156,6 @@ impl<'a, S: Size> EncodingContext for GenericDataEncoder<'a, S> {
 }
 
 impl<'a, S: Size> GenericDataEncoder<'a, S> {
-    pub fn new(data: &'a [u8]) -> Self {
-        Self::with_size(data, S::DEFAULT)
-    }
-
     pub fn with_size(data: &'a [u8], symbol_size: S) -> Self {
         Self {
             data,
@@ -194,8 +171,12 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
     pub fn codewords(mut self) -> Result<Vec<u8>, DataEncodingError> {
         // bigger than theoretical limit? then fail early
         if self.data.len() > self.symbol_size.max_capacity().max {
-            return Err(DataEncodingError::NotEnoughSpace);
+            return Err(DataEncodingError::TooMuchData);
         }
+
+        self.planned_switches =
+            planner::optimize(self.data, 0, EncodationType::Ascii, self.symbol_size)
+                .ok_or(DataEncodingError::TooMuchData)?;
 
         self.codewords
             .reserve(self.upper_limit_for_number_of_codewords());
@@ -221,9 +202,7 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
             }
         }
 
-        self.symbol_size = self
-            .symbol_for(0)
-            .ok_or(DataEncodingError::NotEnoughSpace)?;
+        self.symbol_size = self.symbol_for(0).ok_or(DataEncodingError::TooMuchData)?;
         self.add_padding();
 
         Ok(self.codewords)
@@ -280,5 +259,3 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
         }
     }
 }
-
-pub type DataEncoder<'a> = GenericDataEncoder<'a, SymbolSize>;

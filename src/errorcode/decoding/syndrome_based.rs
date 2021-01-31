@@ -1,18 +1,22 @@
 //! Implementation of the Peterson-Gorenstein-Zierler algorithm
 //! for decoding Reed-Solomon codes.
 
-use super::DecodingError;
+use super::ErrorDecodingError;
 use crate::errorcode::GF;
 use crate::{symbol_size::Size, SymbolSize};
 
 /// Decode the Reed-Solomon code using a syndrome based decoder.
 ///
+/// See the [module documentation](crate::errorcode) for some implementation details.
+///
 /// # Params
 ///
-/// The symbol codewords (`codewords`) and the `size` of the symbol.
+/// The symbol `codewords` and the `size` of the symbol. The errors are corrected
+/// in-place.
 ///
-/// For larger symbols the error code are interleaving, this is considered here.
-pub fn decode(codewords: &mut [u8], size: SymbolSize) -> Result<(), DecodingError> {
+/// For larger symbols the error codes are interleaved in a certain way
+/// (see specification), this is considered in this decoder.
+pub fn decode(codewords: &mut [u8], size: SymbolSize) -> Result<(), ErrorDecodingError> {
     let setup = size
         .block_setup()
         .expect("must be symbol with explicit size");
@@ -45,9 +49,9 @@ fn decode_gen<F, G>(
     err_len: usize,
     inv_error_locs: F,
     find_err_vals: G,
-) -> Result<(), DecodingError>
+) -> Result<(), ErrorDecodingError>
 where
-    F: Fn(&[GF]) -> Result<Vec<GF>, DecodingError>,
+    F: Fn(&[GF]) -> Result<Vec<GF>, ErrorDecodingError>,
     G: Fn(&mut [GF], &[GF], &mut [GF]),
 {
     let n_data = (data.len() + stride - 1) / stride;
@@ -78,7 +82,7 @@ where
     let lambda_coeff = inv_error_locs(&syndromes)?;
     let mut inv_error_locations = super::chien_search(&lambda_coeff);
     if inv_error_locations.len() != lambda_coeff.len() - 1 || inv_error_locations[0] == GF(0) {
-        return Err(DecodingError::Malfunction);
+        return Err(ErrorDecodingError::Malfunction);
     }
 
     // 2b. Check for malfunction, cf.
@@ -94,7 +98,7 @@ where
             .map(|(a, b)| *a * *b)
             .sum();
         if t_j != GF(0) {
-            return Err(DecodingError::Malfunction);
+            return Err(ErrorDecodingError::Malfunction);
         }
     }
 
@@ -106,7 +110,7 @@ where
     for (loc, err) in error_locations.iter().zip(syndromes.iter()) {
         let i = loc.log();
         if i >= n {
-            return Err(DecodingError::ErrorsOutsideRange);
+            return Err(ErrorDecodingError::ErrorsOutsideRange);
         }
         let mut idx = (n - i - 1) * stride;
         if idx < data.len() {
@@ -123,7 +127,7 @@ where
 /// Find the error locations by exploiting that the syndrome matrix is a Hankel matrix.
 ///
 /// See the paper "Levinson-Durbin Algorithm Used For Fast BCH Decoding" by Schmidt and Fettweis.
-fn find_inv_error_locations_levinson_durbin(syn: &[GF]) -> Result<Vec<GF>, DecodingError> {
+fn find_inv_error_locations_levinson_durbin(syn: &[GF]) -> Result<Vec<GF>, ErrorDecodingError> {
     let t = syn.len() / 2;
 
     // find smallest v such that H_v is nonsingular
@@ -338,7 +342,7 @@ fn find_error_values_bp(x_loc: &mut [GF], _lambda: &[GF], syn: &mut [GF]) {
 
 /// The Berlekamp-Massey (BM) algorithm for finding error locations.
 #[allow(unused)]
-fn find_inv_error_locations_bm(syn: &[GF]) -> Result<Vec<GF>, DecodingError> {
+fn find_inv_error_locations_bm(syn: &[GF]) -> Result<Vec<GF>, ErrorDecodingError> {
     let mut len_lfsr = 0; // current length of the LFSR
     let mut cur = vec![GF(1)]; // current connection polynomial
     let mut prev = vec![GF(1)]; // connection polynomial before last length change
@@ -377,7 +381,7 @@ fn find_inv_error_locations_bm(syn: &[GF]) -> Result<Vec<GF>, DecodingError> {
     }
 
     if cur.len() - 1 > syn.len() / 2 {
-        Err(DecodingError::TooManyErrors)
+        Err(ErrorDecodingError::TooManyErrors)
     } else {
         cur.reverse();
         Ok(cur)
@@ -387,7 +391,7 @@ fn find_inv_error_locations_bm(syn: &[GF]) -> Result<Vec<GF>, DecodingError> {
 /// Solve the syndrome matrix equation for v,v-1,...1 using a
 /// LU decomposition.
 #[allow(unused)]
-fn find_inv_error_locations_lu(syndomes: &[GF]) -> Result<Vec<GF>, DecodingError> {
+fn find_inv_error_locations_lu(syndomes: &[GF]) -> Result<Vec<GF>, ErrorDecodingError> {
     let v = syndomes.len() / 2;
 
     // step 1: find the error locator polynomial
@@ -415,7 +419,7 @@ fn find_inv_error_locations_lu(syndomes: &[GF]) -> Result<Vec<GF>, DecodingError
     if coeff.is_empty() {
         // This method is not called if all syndromes are zero,
         // better safe than sorry => return error.
-        return Err(DecodingError::TooManyErrors);
+        return Err(ErrorDecodingError::TooManyErrors);
     }
     coeff.push(GF(1));
     Ok(coeff)
@@ -509,7 +513,7 @@ fn solve_vandermonde_diag() {
 #[test]
 fn test_recovery() {
     let mut data = vec![1, 2, 3];
-    let ecc = crate::errorcode::encode(&data, SymbolSize::Square10);
+    let ecc = crate::errorcode::encode_error(&data, SymbolSize::Square10);
     data.extend_from_slice(&ecc);
     assert_eq!(data.len(), 3 + 5);
     let mut received = data.clone();
@@ -525,7 +529,7 @@ fn test_recovery1() {
     let mut data = vec![
         255, 255, 255, 72, 52, 38, 52, 52, 52, 52, 52, 52, 52, 52, 52, 72, 0, 0, 72, 0, 0, 10,
     ];
-    let ecc = crate::errorcode::encode(&data, SymbolSize::Square20);
+    let ecc = crate::errorcode::encode_error(&data, SymbolSize::Square20);
     data.extend_from_slice(&ecc);
     let mut received = data.clone();
     received[0] = 52;
@@ -540,7 +544,7 @@ fn test_recovery2() {
         144, 144, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
         255, 255, 255, 255,
     ];
-    let ecc = crate::errorcode::encode(&data, SymbolSize::Square20);
+    let ecc = crate::errorcode::encode_error(&data, SymbolSize::Square20);
     data.extend_from_slice(&ecc);
     let mut received = data.clone();
     received[1] = 32;
@@ -557,7 +561,7 @@ fn test_recovery3() {
         255, 23, 189, 54, 189, 189, 189, 189, 255, 255, 255, 255, 255, 255, 255, 67, 4, 0, 255,
         189, 48, 37,
     ];
-    let ecc = crate::errorcode::encode(&data, SymbolSize::Square20);
+    let ecc = crate::errorcode::encode_error(&data, SymbolSize::Square20);
     data.extend_from_slice(&ecc);
     let mut received = data.clone();
     received[0] = 247;
@@ -579,7 +583,7 @@ fn test_recovery4() {
         49, 95, 49, 44, 49, 49, 0, 0, 0, 32, 255, 247, 255, 254, 189, 189, 189, 189, 189, 189, 189,
         189,
     ];
-    let ecc = crate::errorcode::encode(&data, SymbolSize::Square20);
+    let ecc = crate::errorcode::encode_error(&data, SymbolSize::Square20);
     data.extend_from_slice(&ecc);
     let mut received = data.clone();
     received[1] = 49;

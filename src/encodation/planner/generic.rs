@@ -85,27 +85,16 @@ impl<'a, S: Size> GenericPlan<'a, S> {
     /// The `free_unlatch` is currently only used by EDIFACT, it marks
     /// that 3 out of 4 values are read, a UNLATCH would now not
     /// result in additional cost.
-    pub(super) fn for_mode(
-        mode: EncodationType,
-        data: &'a [u8],
-        written: usize,
-        size: S,
-        free_unlatch: bool,
-        base256_written: usize,
-    ) -> Self {
+    pub(super) fn for_mode(mode: EncodationType, data: &'a [u8], written: usize, size: S) -> Self {
         let mut ctx = Context::new(data, size);
         ctx.write(written);
         let plan = match mode {
             EncodationType::Ascii => PlanImpl::Ascii(AsciiPlan::new(ctx)),
             EncodationType::C40 => PlanImpl::C40(C40Plan::new(ctx)),
             EncodationType::Text => PlanImpl::Text(TextPlan::new(ctx)),
-            EncodationType::Edifact => {
-                PlanImpl::Edifact(EdifactPlan::with_free_unlatch(ctx, free_unlatch))
-            }
+            EncodationType::Edifact => PlanImpl::Edifact(EdifactPlan::new(ctx)),
             EncodationType::X12 => PlanImpl::X12(X12Plan::new(ctx)),
-            EncodationType::Base256 => {
-                PlanImpl::Base256(Base256Plan::with_written(ctx, base256_written))
-            }
+            EncodationType::Base256 => PlanImpl::Base256(Base256Plan::new(ctx)),
         };
         Self {
             extra: 0.into(),
@@ -319,14 +308,7 @@ impl<'a, S: Size> ContextInformation for Context<'a, S> {
 #[test]
 fn test_add_switch_ascii() {
     use crate::SymbolSize;
-    let mut plan = GenericPlan::for_mode(
-        EncodationType::Ascii,
-        b"[]ABC01",
-        0,
-        SymbolSize::Min,
-        false,
-        0,
-    );
+    let mut plan = GenericPlan::for_mode(EncodationType::Ascii, b"[]ABC01", 0, SymbolSize::Min);
     plan.step();
     plan.step();
     plan.step();

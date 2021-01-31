@@ -1,12 +1,11 @@
 /// Module contains test cases found by fuzzing using libfuzzer and afl.
 ///
 /// I now believe in magic. Holy. Shit. 10/10.
-use crate::data::{decode_data, DataEncoder};
+use crate::data::{decode_data, encode_data};
 use crate::SymbolSize;
 
 fn forth_and_back(data: &[u8]) {
-    let enc = DataEncoder::with_size(data, SymbolSize::Min);
-    let encoded = enc.codewords();
+    let encoded = encode_data(data, SymbolSize::Min);
     if let Ok(encoded) = encoded {
         let decoded = decode_data(&encoded);
         assert!(

@@ -6,5 +6,4 @@ mod symbol_size;
 
 pub mod data;
 
-pub use encodation::DataEncodingError;
 pub use symbol_size::SymbolSize;

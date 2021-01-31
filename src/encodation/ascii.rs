@@ -26,7 +26,7 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncoding
             ctx.push((a - b'0') * 10 + (b - b'0') + 130);
             continue;
         }
-        if ctx.maybe_switch_mode(false, 0)? {
+        if ctx.maybe_switch_mode()? {
             return Ok(());
         }
         match ctx.eat() {

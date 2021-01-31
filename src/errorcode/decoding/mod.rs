@@ -2,8 +2,11 @@ mod syndrome_based;
 
 use super::galois::GF;
 
+/// Signals a failure when correcting errors.
+///
+/// The specific variant is not relevant for practice.
 #[derive(Debug)]
-pub enum DecodingError {
+pub enum ErrorDecodingError {
     TooManyErrors,
     /// Error locations were found outside of the codeword.
     ///
@@ -186,7 +189,7 @@ fn test_primitive_element_evaluation() {
 #[test]
 fn test_error_code() {
     let mut data = vec![1, 2, 3];
-    let ecc = super::encode(&data, crate::SymbolSize::Square10);
+    let ecc = super::encode_error(&data, crate::SymbolSize::Square10);
     data.extend_from_slice(&ecc);
     let mut syndromes = vec![GF(0); 5];
     primitive_element_evaluation(data.iter().cloned(), &mut syndromes);
