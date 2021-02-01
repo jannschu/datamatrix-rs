@@ -48,7 +48,7 @@ impl BlockSetup {
     }
 }
 
-/// The symbol sizes supported by DataMatrix.
+/// The symbol sizes supported by Data Matrix.
 ///
 /// The number behind a variant, e.g., [Square10](SymbolSize::Square10),
 /// describes the number of modules (the tiny black squares) the symbol is

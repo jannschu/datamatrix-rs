@@ -1,6 +1,6 @@
 //! Data part de- and encoding
 //!
-//! The bytes encoded into a DataMatrix symbol consist of two parts,
+//! The bytes encoded into a Data Matrix symbol consist of two parts,
 //! the first part are actual information one wants to encode,
 //! the second part error correction bytes.
 //!
@@ -15,7 +15,7 @@ pub use crate::encodation::{DataEncodingError, EncodationType};
 
 use super::SymbolSize;
 
-/// Encode input to data codewords for DataMatrix.
+/// Encode input to data codewords for Data Matrix.
 pub fn encode_data(
     data: &[u8],
     symbol_size: SymbolSize,

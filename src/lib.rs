@@ -24,7 +24,7 @@ impl Visitor<bool> for CodewordPlacer {
     }
 }
 
-/// Encode the data as a DataMatrix ECC200.
+/// Encode the data as a Data Matrix ECC200.
 pub fn encode(data: &[u8], symbol_size: SymbolSize) -> Result<Bitmap<bool>, DataEncodingError> {
     let (mut codewords, symbol_size) = data::encode_data(data, symbol_size)?;
     let ecc = errorcode::encode_error(&codewords, symbol_size);

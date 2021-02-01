@@ -1,4 +1,4 @@
-//! Module for the placement of bits in a DataMatrix symbol.
+//! Module for the placement of bits in a Data Matrix symbol.
 //!
 //! The struct [MatrixMap] can be used to iterate over the bit
 //! positions of each codeword in the final symbol.
@@ -22,7 +22,7 @@ pub trait Bit: Clone + PartialEq + std::fmt::Debug {
     const HIGH: Self;
 }
 
-/// Representation of the bits in a DataMatrix symbol without alignment patterns.
+/// Representation of the bits in a Data Matrix symbol without alignment patterns.
 pub struct MatrixMap<B: Bit> {
     entries: Vec<B>,
     visited: Vec<bool>,
@@ -347,8 +347,9 @@ impl<B: Bit> Bitmap<B> {
     }
 
     /// Compute a unicode representation ("ASCII art").
-    pub fn unicode(&self, invert: bool) -> String {
+    pub fn unicode(&self) -> String {
         const BORDER: usize = 1;
+        const INVERT: bool = false;
         const CHAR: [char; 4] = [' ', '▄', '▀', '█'];
         let height = self.bits.len() / self.width;
         let get = |i: usize, j: usize| -> usize {
@@ -371,7 +372,7 @@ impl<B: Bit> Bitmap<B> {
         for i in (0..height + 2 * BORDER).step_by(2) {
             for j in 0..(self.width + 2 * BORDER) {
                 let idx = (get(i, j) << 1) | get(i + 1, j);
-                out.push(CHAR[if invert { (!idx) & 0b11 } else { idx }]);
+                out.push(CHAR[if INVERT { (!idx) & 0b11 } else { idx }]);
             }
             out.push('\n');
         }

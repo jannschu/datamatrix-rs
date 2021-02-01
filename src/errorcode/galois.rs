@@ -1,5 +1,5 @@
 //! This module contains the implementation of the GF(256) arithmetic used by
-//! the Reed-Solomon codes in DataMatrix.
+//! the Reed-Solomon codes in Data Matrix.
 //!
 //! The default representation of an element in GF(256) we use is given by a
 //! an u8 (8bit integer) value. Its bits correspond to the coefficients of a
@@ -13,7 +13,7 @@
 //!
 //! Multiplying two polynomials can lead to powers of x higher than 7. So
 //! multiplication is defined modulo a fixed polynomial. This polynomial has to be
-//! chosen. DataMatrix uses the polynomial 301.
+//! chosen. Data Matrix uses the polynomial 301.
 //!
 //! With this choice the powers of x up to x^255, so 1, x^1, x^2, ..., x^255
 //! will give us all numbers in GF(256) except for 0 (so the multiplicative sub

@@ -4,7 +4,7 @@ use crate::symbol_size::Size;
 #[derive(Debug, Copy, Clone, PartialEq)]
 /// List of data encodation types
 ///
-/// DataMatrix can switch between different "codecs" in a symbol. Each one
+/// Data Matrix can switch between different "codecs" in a symbol. Each one
 /// has its strenghts and weaknesses.
 pub enum EncodationType {
     Ascii,

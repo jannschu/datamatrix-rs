@@ -1,10 +1,10 @@
 //! Reed-Solomon error correction codes.
 //!
-//! The error correction in a DataMatrix is done using so called Reed-Solomon codes.
+//! The error correction in a Data Matrix is done using so called Reed-Solomon codes.
 //!
 //! Assuming you have never heard of coding theory: By putting some redundancy
-//! into the DataMatrix one can recover from, say, detection or printing errors
-//! when trying to read a DataMatrix. A clever way to add redundancy
+//! into the Data Matrix one can recover from, say, detection or printing errors
+//! when trying to read a Data Matrix. A clever way to add redundancy
 //! is the Reed-Solomon code. The details are relatively
 //! math heavy and involve for example "higher" algebra (Galois fields).
 //! Any book about coding theory should cover it, for example
@@ -43,7 +43,7 @@ pub use decoding::decode as decode_error;
 pub use decoding::ErrorDecodingError;
 
 /// The coefficients of the generator polynomicals used
-/// by the Reed-Solomon code specified for DataMatrix.
+/// by the Reed-Solomon code specified for Data Matrix.
 ///
 /// The coefficients are given in the standard, but can also
 /// be computed with the Python script "gf.py" in this repository.
@@ -127,7 +127,7 @@ fn generator(len: usize) -> &'static [u8] {
         .expect("no generator polynomical defined for this symbol size, this is a bug")
 }
 
-/// Compute the Reed-Solomon code used by DataMatrix for error correction.
+/// Compute the Reed-Solomon code used by Data Matrix for error correction.
 ///
 /// Depending on the symbol size, the data is first split up into
 /// interleaved blocks. For each block an error code is computed.
