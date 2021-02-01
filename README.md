@@ -25,7 +25,7 @@ See the list of related projects below for credits.
 - [x] Check the open bug reports in other implementations.
 - [x] Reed Solomon encoder.
 - [x] Reed Solomon decoder.
-- [ ] Tile (aka. module) placement encoding.
+- [x] Tile (aka. module) placement encoding.
 - [ ] Tile (aka. module) placement decoding.
 
 After the above steps the library will be useable for full DataMatrix

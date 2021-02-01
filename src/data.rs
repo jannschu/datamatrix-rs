@@ -16,8 +16,13 @@ pub use crate::encodation::{DataEncodingError, EncodationType};
 use super::SymbolSize;
 
 /// Encode input to data codewords for DataMatrix.
-pub fn encode_data(data: &[u8], symbol_size: SymbolSize) -> Result<Vec<u8>, DataEncodingError> {
-    GenericDataEncoder::with_size(data, symbol_size).codewords()
+pub fn encode_data(
+    data: &[u8],
+    symbol_size: SymbolSize,
+) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
+    let mut encoder = GenericDataEncoder::with_size(data, symbol_size);
+    let cw = encoder.codewords()?;
+    Ok((cw, encoder.symbol_size))
 }
 
 /// Compute a plan for when to switch encodation types during data encoding.

@@ -207,7 +207,7 @@ type TestEncoder<'a> = GenericDataEncoder<'a, TestSymbol>;
 
 #[cfg(test)]
 fn enc(data: &[u8]) -> Vec<u8> {
-    encode_data(data, SymbolSize::Min).unwrap()
+    encode_data(data, SymbolSize::Min).unwrap().0
 }
 
 #[test]
@@ -256,9 +256,9 @@ fn test_c40_spec_example() {
 #[test]
 fn test_c40_special_case_a() {
     // case "a": Unlatch is not required
-    let words = TestEncoder::with_size(b"AI_IM_MA_AI_IM", TestSymbol::DEFAULT)
-        .codewords()
-        .unwrap();
+    let mut encoder: GenericDataEncoder<_> =
+        TestEncoder::with_size(b"AI_IM_MA_AI_IM", TestSymbol::DEFAULT);
+    let words = GenericDataEncoder::<_>::codewords(&mut encoder).unwrap();
     assert_eq!(
         words,
         vec![230, 90, 242, 166, 11, 10, 107, 87, 195, 90, 242, 166, 11]
@@ -310,7 +310,7 @@ fn test_c40_special_cases2() {
 #[test]
 fn test_text_encoding_1() {
     // 239 shifts to Text encodation, 254 unlatches
-    let words = encode_data(b"aimaimaim", SymbolSize::Min).unwrap();
+    let words = encode_data(b"aimaimaim", SymbolSize::Min).unwrap().0;
     assert_eq!(words, vec![239, 91, 11, 91, 11, 91, 11, 254]);
 }
 

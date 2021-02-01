@@ -7,7 +7,7 @@ use crate::SymbolSize;
 fn forth_and_back(data: &[u8]) {
     let encoded = encode_data(data, SymbolSize::Min);
     if let Ok(encoded) = encoded {
-        let decoded = decode_data(&encoded);
+        let decoded = decode_data(&encoded.0);
         assert!(
             decoded.is_ok(),
             "err: {:?}, encoded: {:?}",

@@ -81,7 +81,7 @@ pub(crate) struct GenericDataEncoder<'a, S: Size> {
     data: &'a [u8],
     input: &'a [u8],
     encodation: EncodationType,
-    symbol_size: S,
+    pub(crate) symbol_size: S,
     planned_switches: Vec<(usize, EncodationType)>,
     new_mode: Option<u8>,
     codewords: Vec<u8>,
@@ -168,7 +168,7 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
         }
     }
 
-    pub fn codewords(mut self) -> Result<Vec<u8>, DataEncodingError> {
+    pub fn codewords(&mut self) -> Result<Vec<u8>, DataEncodingError> {
         // bigger than theoretical limit? then fail early
         if self.data.len() > self.symbol_size.max_capacity().max {
             return Err(DataEncodingError::TooMuchData);
@@ -188,7 +188,7 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
             }
             let len = self.codewords.len();
 
-            self.encodation.clone().encode(&mut self)?;
+            self.encodation.clone().encode(self)?;
 
             let words_written = self.codewords.len() - len;
             if words_written <= 1 {
@@ -205,7 +205,10 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
         self.symbol_size = self.symbol_for(0).ok_or(DataEncodingError::TooMuchData)?;
         self.add_padding();
 
-        Ok(self.codewords)
+        let mut codewords = vec![];
+        std::mem::swap(&mut codewords, &mut self.codewords);
+
+        Ok(codewords)
     }
 
     fn symbol_for(&self, extra_codewords: usize) -> Option<S> {
