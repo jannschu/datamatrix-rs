@@ -1,4 +1,4 @@
-//! Module for the placement of bits in a Data Matrix symbol.
+//! Arrangement of bits in a Data Matrix symbol.
 //!
 //! The struct [MatrixMap] can be used to iterate over the bit
 //! positions of each codeword in the final symbol.
@@ -381,7 +381,17 @@ impl<B: Bit> Bitmap<B> {
 
     /// Get an iterator over the "black" pixels coordinates `(x, y)`.
     ///
-    /// The order is first rows, then columns, starting in the top left corner.
+    /// The coordinate system is centered in the top left corner starting
+    /// in `(0, 0)` with a horizontal x-axis and vertical y-axis.
+    /// The pixels are returned in order, incrementing x before y.
+    ///
+    /// No dead space is included in the coordinates but some must
+    /// be added when rendering. The minimum space required around the Data Matrix
+    /// has the width and height of one "black" pixel. The dead space should have the backhround's color.
+    ///
+    /// A Data Matrix can be either rendered using dark color on a light backhround,
+    /// or the other way around. More details on contrast, size, etc. can be found in the referenced
+    /// standards mentioned in the specification.
     pub fn pixels<'a>(&'a self) -> impl Iterator<Item = (usize, usize)> + 'a {
         let w = self.width();
         self.bits

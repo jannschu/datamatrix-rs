@@ -1,13 +1,13 @@
-//! Data part de- and encoding
+//! Data part de- and encoding.
 //!
 //! The bytes encoded into a Data Matrix symbol consist of two parts,
-//! the first part are actual information one wants to encode,
-//! the second part error correction bytes.
+//! the first part is the actual information one wants to encode,
+//! the second part error consist of correction bytes.
 //!
 //! The functions in this module can be used to de- and encode
 //! the first part, the data part.
 //!
-//! There is no reason I can think for an end user of the library to ever call them directly
+//! There is no reason I can think of for an end user of the library to ever call them directly
 //! but they can be useful if one needs to work on a lower level.
 pub use crate::decodation::{decode_data, DataDecodingError};
 use crate::encodation::{planner::optimize, GenericDataEncoder};

@@ -1,12 +1,12 @@
 //! Reed-Solomon error correction codes.
 //!
-//! The error correction in a Data Matrix is done using so called Reed-Solomon codes.
+//! The error correction in a Data Matrix is done using Reed-Solomon codes.
 //!
 //! Assuming you have never heard of coding theory: By putting some redundancy
 //! into the Data Matrix one can recover from, say, detection or printing errors
 //! when trying to read a Data Matrix. A clever way to add redundancy
 //! is the Reed-Solomon code. The details are relatively
-//! math heavy and involve for example "higher" algebra (Galois fields).
+//! math heavy and involve, for example, "higher" algebra (Galois fields).
 //! Any book about coding theory should cover it, for example
 //! "Error Correction Coding: Mathematical Methods and Algorithms" by Moon.
 //!
