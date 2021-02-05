@@ -22,7 +22,9 @@ libraries.
 
 ```rust
 let bitmap = datamatrix::encode(b"Hello, World!", SymbolSize::Min).unwrap();
-print!("{}", bitmap.unicode());  // print "ASCII art" version
+
+// print an "ASCII art" version
+print!("{}", bitmap.unicode());
 ```
 
 The library contains _no_ noteworthy rendering. You have to write you own

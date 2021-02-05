@@ -1,8 +1,18 @@
 //! Arrangement of bits in a Data Matrix symbol.
 //!
-//! The struct [MatrixMap] can be used to iterate over the bit
-//! positions of each codeword in the final symbol.
+//! The module contains the struct [MatrixMap] which can be used to
+//! to iterate over the bit
+//! positions of each codeword in the final symbol, i.e., how the black squares are
+//! mapped to the encoded data as bytes. This is used to write
+//! the encoded into a bitmap, and also to read it from a bitmap.
+//!
+//! An abstract bitmap struct [Bitmap] is the final output of encoding and the input
+//! for decoding. It also contains helpers for rendering.
 use crate::symbol_size::{Size, SymbolSize};
+
+mod path;
+
+pub use path::PathSegment;
 
 /// Trait for a visitor to the symbol's bits.
 ///
@@ -325,6 +335,10 @@ impl<M: Bit> MatrixMap<M> {
 }
 
 /// An abstract bitmap.
+///
+/// Contains helpers for rendering the content. For rendering targets which
+/// use something similar to pixels try [pixels()](Self::pixels), while
+/// vector formats might profit from [path()][Self::path].
 pub struct Bitmap<M> {
     width: usize,
     bits: Vec<M>,
@@ -347,6 +361,9 @@ impl<B: Bit> Bitmap<B> {
     }
 
     /// Compute a unicode representation ("ASCII art").
+    ///
+    /// This is intended as a demo functionality. It might look weird
+    /// if the line height is wrong or if you are not using a monospaced font.
     pub fn unicode(&self) -> String {
         const BORDER: usize = 1;
         const INVERT: bool = false;
@@ -379,7 +396,12 @@ impl<B: Bit> Bitmap<B> {
         out
     }
 
-    /// Get an iterator over the "black" pixels coordinates `(x, y)`.
+    /// Get an iterator over the "black" pixel's coordinates `(x, y)`.
+    ///
+    /// A black pixel refers to one of the tiny black squares a Data Matrix
+    /// is usually made of. Depending on your target, such a pixel
+    /// may be rendered using multiple image pixels, or whatever you use
+    /// to visualize the Data Matrix.
     ///
     /// The coordinate system is centered in the top left corner starting
     /// in `(0, 0)` with a horizontal x-axis and vertical y-axis.
@@ -387,11 +409,21 @@ impl<B: Bit> Bitmap<B> {
     ///
     /// No dead space is included in the coordinates but some must
     /// be added when rendering. The minimum space required around the Data Matrix
-    /// has the width and height of one "black" pixel. The dead space should have the backhround's color.
+    /// has the width and height of one "black" pixel. The dead space should have the background's color.
     ///
-    /// A Data Matrix can be either rendered using dark color on a light backhround,
+    /// A Data Matrix can be either rendered using dark color on a light background,
     /// or the other way around. More details on contrast, size, etc. can be found in the referenced
     /// standards mentioned in the specification.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use datamatrix::SymbolSize;
+    /// let bitmap = datamatrix::encode(b"Foo", SymbolSize::Square10).unwrap();
+    /// for (x, y) in bitmap.pixels() {
+    ///     // place square/circle at (x, y) to render this Data Matrix
+    /// }
+    /// ```
     pub fn pixels<'a>(&'a self) -> impl Iterator<Item = (usize, usize)> + 'a {
         let w = self.width();
         self.bits

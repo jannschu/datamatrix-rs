@@ -4,16 +4,23 @@
 //!
 //! ```rust
 //! # use datamatrix::SymbolSize;
-//! let bitmap = datamatrix::encode(b"Hello, World!", SymbolSize::Min).unwrap();
+//! let bitmap = datamatrix::encode(
+//!     b"Hello, World!",
+//!     SymbolSize::Min,
+//! ).unwrap();
 //! print!("{}", bitmap.unicode());
 //! ```
 //!
-//! To see examples how you might generate other output formats see
-//! [Bitmap::pixels] or the `examples/` directory of this project.
+//! This toy example will print a Data Matrix using Unicode block characters.
+//! For guidance on how to generate other output formats see the helper functions
+//! defined for the [Bitmap struct](Bitmap), or the `examples/` directory of
+//! this project.
+//!
+//! You can also specify other symbol sizes, see [SymbolSize] for more details.
 //!
 //! # Notes
 //!
-//! Be careful when encoding strings which contain non-ASCII characters (Unicode value bigger than 127).
+//! Be careful when encoding strings which contain non-ASCII characters (Unicode values bigger than 127).
 //! While support for, say, UTF-8 is possible (not implemented), be aware that
 //! the implementation coverage of decoders around the world regarding this is not
 //! known. Also notice that some decoders are used as a keyboard source (e.g., handheld scanners)
@@ -22,10 +29,15 @@
 //! the printable ASCII characters unless you have control over the full encoding
 //! and decoding process.
 //!
-//! No visual detection is implemented currently, but the decoding _backend_
-//! is done and exposed in the API. All that is missing is a decoder from an
-//! image to a matrix of pixels. A general purpose detector is planned for the
-//! future.
+//! # Current limitations
+//!
+//! No visual detection is currently implemented, but the decoding backend
+//! is done and exposed in the API. All that is missing is a detector to convert
+//! image to a matrix of true and false values. A general purpose detector is planned for the
+//! future, though.
+//!
+//! Other limitations: Currently there is no support for GS1, macro characters, ECI, structured append,
+//! and reader programming.
 mod decodation;
 mod encodation;
 pub mod errorcode;
@@ -54,7 +66,7 @@ impl Visitor<bool> for CodewordPlacer {
 
 /// Encode data as a Data Matrix (ECC200).
 ///
-/// If the data does not fit into the given size encoding will fail. The encoder 
+/// If the data does not fit into the given size encoding will fail. The encoder
 /// can automatically pick the smallest size which fits the data (see [SymbolSize])
 /// but there is an upper limit.
 pub fn encode(data: &[u8], symbol_size: SymbolSize) -> Result<Bitmap<bool>, DataEncodingError> {
