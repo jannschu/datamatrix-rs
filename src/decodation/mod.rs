@@ -87,7 +87,7 @@ fn read_eci(mut data: Reader) -> Result<(Reader, u32), DataDecodingError> {
             ch2 -= 1;
             ch1 -= 128;
             (ch1 as u32) * 254 + ch2 as u32 + 127
-        },
+        }
         192..=207 => {
             let mut ch2 = data.eat()?;
             if !matches!(ch2, 1..=254) {
@@ -101,7 +101,7 @@ fn read_eci(mut data: Reader) -> Result<(Reader, u32), DataDecodingError> {
             ch2 -= 1;
             ch3 -= 1;
             (ch1 as u32) * 64516 + (ch2 as u32) * 254 + ch3 as u32 + 16383
-        },
+        }
         _ => return Err(DataDecodingError::UnexpectedCharacter("1st after ECI", ch1)),
     };
     Ok((data, eci))

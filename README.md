@@ -52,6 +52,8 @@ this approach allows high flexibility.
 Things in consideration for after that:
 
 - Refine API for better symbol size control ("at least 14x14" for example)
+- Implement [Extended Rectangular Data Matrix (DMRE)](https://e-d-c.info/projekte/dmre.html)
+  defined in ISO 21471 which adds more rectangular symbol sizes
 - ECI support (UTF-8 for example)
 - "Structured Append"
 - "Reader Programming"
@@ -90,3 +92,6 @@ and stealing some of their test cases and bug reports.
   Ports to Pascal and C# are referenced on their website. Off topic: There
   are encoders for some vintage codes and discontinued commerical codes, see "Extras"
   on the website.
+- [postscriptbarcode](https://github.com/bwipp/postscriptbarcode), encoding of
+  several 1D and 2D codes using only PostScript. Also available as a LaTeX
+  package.

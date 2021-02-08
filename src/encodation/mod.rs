@@ -176,13 +176,13 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
                 c -= 127;
                 self.codewords.push((c / 254 + 128) as u8);
                 self.codewords.push((c % 254 + 1) as u8);
-            },
+            }
             16383..=999999 => {
                 c -= 16383;
                 self.codewords.push((c / 64516 + 192) as u8);
                 self.codewords.push(((c / 254) % 254 + 1) as u8);
                 self.codewords.push((c % 254 + 1) as u8);
-            },
+            }
             _ => panic!("illegal ECI code, bigger than 999999"),
         }
     }
@@ -196,9 +196,13 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
         self.codewords
             .reserve(self.upper_limit_for_number_of_codewords());
 
-        self.planned_switches =
-            planner::optimize(self.data, self.codewords.len(), EncodationType::Ascii, self.symbol_size)
-                .ok_or(DataEncodingError::TooMuchData)?;
+        self.planned_switches = planner::optimize(
+            self.data,
+            self.codewords.len(),
+            EncodationType::Ascii,
+            self.symbol_size,
+        )
+        .ok_or(DataEncodingError::TooMuchData)?;
 
         let mut no_write_run = 0;
         while self.has_more_characters() {
@@ -281,7 +285,6 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
         }
     }
 }
-
 
 #[test]
 fn test_empty() {

@@ -22,7 +22,8 @@ fn bitmap_to_svg(bitmap: Bitmap<bool>) -> String {
             PathSegment::Vertical(n) => write!(svg, "v{}", n),
             PathSegment::Move(dx, dy) => write!(svg, "m{},{}", dx, dy),
             PathSegment::Close => write!(svg, "z"),
-        }.unwrap();
+        }
+        .unwrap();
     }
     svg.push_str("\"/></svg>");
     svg

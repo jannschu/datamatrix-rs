@@ -409,7 +409,7 @@ impl<B: Bit> Bitmap<B> {
     ///
     /// A quiet zone is not included in the coordinates but one must
     /// be added when rendering: The minimum free space required around the Data Matrix
-    /// has to have the width/height of one "black" pixel. 
+    /// has to have the width/height of one "black" pixel.
     /// The quiet zone should have the background's color.
     ///
     /// A Data Matrix can be either rendered using dark color on a light background,

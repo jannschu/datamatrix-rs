@@ -20,7 +20,6 @@
 //!
 //! # Character encoding notes for Data Matrix
 //!
-//!
 //! > **TL;DR** Data should be printable ASCII because many decoders lack a proper charset
 //! > handling. Latin 1 is the next best choice, otherwise you rely on auto detection hacks of
 //! > decoders. This does not apply if you have control over decoding or if you are not overly paranoidal.
@@ -53,7 +52,7 @@
 //! is done and exposed in the API. All that is missing is a detector to extract a matrix of true and false values
 //! from an image. A general purpose detector is planned for the future, though.
 //!
-//! Other limitations: Currently there is no support for GS1, FCN1 characters, 
+//! Other limitations: Currently there is no support for GS1, FCN1 characters,
 //! macro characters, ECI, structured append, and
 //! reader programming. The decoding output format specified in ISO/IEC 15424 is
 //! also not implemented (metadata, ECI, etc.), if you have a use case for this
@@ -105,7 +104,11 @@ pub fn encode(data: &[u8], symbol_size: SymbolSize) -> Result<Bitmap<bool>, Data
 
 /// Encode a string as a Data Matrix (ECC200).
 #[doc(hidden)]
-pub fn encode_eci(data: &[u8], symbol_size: SymbolSize, eci: u32) -> Result<Bitmap<bool>, DataEncodingError> {
+pub fn encode_eci(
+    data: &[u8],
+    symbol_size: SymbolSize,
+    eci: u32,
+) -> Result<Bitmap<bool>, DataEncodingError> {
     let (mut codewords, symbol_size) = data::encode_data(data, symbol_size, Some(eci))?;
     let ecc = errorcode::encode_error(&codewords, symbol_size);
     codewords.extend_from_slice(&ecc);
