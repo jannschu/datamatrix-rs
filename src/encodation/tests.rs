@@ -207,7 +207,7 @@ type TestEncoder<'a> = GenericDataEncoder<'a, TestSymbol>;
 
 #[cfg(test)]
 fn enc(data: &[u8]) -> Vec<u8> {
-    encode_data(data, SymbolSize::Min).unwrap().0
+    encode_data(data, SymbolSize::Min, None).unwrap().0
 }
 
 #[test]
@@ -310,7 +310,7 @@ fn test_c40_special_cases2() {
 #[test]
 fn test_text_encoding_1() {
     // 239 shifts to Text encodation, 254 unlatches
-    let words = encode_data(b"aimaimaim", SymbolSize::Min).unwrap().0;
+    let words = encode_data(b"aimaimaim", SymbolSize::Min, None).unwrap().0;
     assert_eq!(words, vec![239, 91, 11, 91, 11, 91, 11, 254]);
 }
 

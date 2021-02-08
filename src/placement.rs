@@ -350,12 +350,12 @@ impl Bit for bool {
 }
 
 impl<B: Bit> Bitmap<B> {
-    /// Return the width of the bitmap (no dead space included).
+    /// Return the width of the bitmap (no quiet zone included).
     pub fn width(&self) -> usize {
         self.width
     }
 
-    /// Return the height of the bitmap (no dead space included).
+    /// Return the height of the bitmap (no quiet zone included).
     pub fn height(&self) -> usize {
         self.bits.len() / self.width
     }
@@ -396,7 +396,7 @@ impl<B: Bit> Bitmap<B> {
         out
     }
 
-    /// Get an iterator over the "black" pixel's coordinates `(x, y)`.
+    /// Get an iterator over the "black" pixels' coordinates `(x, y)`.
     ///
     /// A black pixel refers to one of the tiny black squares a Data Matrix
     /// is usually made of. Depending on your target, such a pixel
@@ -407,9 +407,10 @@ impl<B: Bit> Bitmap<B> {
     /// in `(0, 0)` with a horizontal x-axis and vertical y-axis.
     /// The pixels are returned in order, incrementing x before y.
     ///
-    /// No dead space is included in the coordinates but some must
-    /// be added when rendering. The minimum space required around the Data Matrix
-    /// has the width and height of one "black" pixel. The dead space should have the background's color.
+    /// A quiet zone is not included in the coordinates but one must
+    /// be added when rendering: The minimum free space required around the Data Matrix
+    /// has to have the width/height of one "black" pixel. 
+    /// The quiet zone should have the background's color.
     ///
     /// A Data Matrix can be either rendered using dark color on a light background,
     /// or the other way around. More details on contrast, size, etc. can be found in the referenced

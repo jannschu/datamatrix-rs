@@ -5,6 +5,7 @@ pub(crate) const LATCH_BASE256: u8 = 231;
 pub(crate) const LATCH_X12: u8 = 238;
 pub(crate) const LATCH_TEXT: u8 = 239;
 pub(crate) const LATCH_EDIFACT: u8 = 240;
+pub(crate) const ECI: u8 = 241;
 pub(crate) const PAD: u8 = 129;
 
 pub(crate) const UPPER_SHIFT: u8 = 235;

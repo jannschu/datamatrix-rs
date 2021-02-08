@@ -46,16 +46,25 @@ impl Bitmap<bool> {
     /// The resulting path shows the bitmap if filled properly (see below).
     ///
     /// The coordinate system is identical to the one of the function [pixels()](Self::pixels).
-    /// Because only relative instructions are returned the starting position is not
-    /// needed in this function.
+    /// The starting position is not needed in this function because only
+    /// relative coordinates are returned.
     ///
     /// # Filling rule
+    ///
     /// The even-odd filling rule (as known in vector graphics) must be used. It is supported
     /// by many vector graphic formats, including SVG and PDF.
     ///
     /// # Example
+    ///
     /// The `examples/` directory contains a SVG and PDF code example using this
     /// helper.
+    ///
+    /// # Implementation
+    ///
+    /// The outline is modeled as a graph which is then decomposed into
+    /// Eulerian circuits. The worst case runtime is quadratic in the number of
+    /// "pixels". This could be improved by using a hash set data structure or
+    /// something similar.
     pub fn path(&self) -> Vec<PathSegment> {
         let mut graph = bits_to_edge_graph(&self.bits, self.width() as N, self.height() as N);
         let mut elements = Vec::new();
@@ -500,7 +509,7 @@ fn mini_3x2_two_euler() {
             PathSegment::Vertical(1),
             PathSegment::Horizontal(-2),
             PathSegment::Close,
-            PathSegment::Move(2, 1),
+            PathSegment::Move(1, 2),
             PathSegment::Horizontal(1),
             PathSegment::Vertical(1),
             PathSegment::Horizontal(-1),

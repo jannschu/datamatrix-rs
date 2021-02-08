@@ -20,7 +20,7 @@ fn bitmap_to_svg(bitmap: Bitmap<bool>) -> String {
         match part {
             PathSegment::Horizontal(n) => write!(svg, "h{}", n),
             PathSegment::Vertical(n) => write!(svg, "v{}", n),
-            PathSegment::Move(dx, dy) => write!(svg, "m{},{}", dy, dx),
+            PathSegment::Move(dx, dy) => write!(svg, "m{},{}", dx, dy),
             PathSegment::Close => write!(svg, "z"),
         }.unwrap();
     }

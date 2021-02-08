@@ -75,6 +75,38 @@ fn derandomize_253_state(ch: u8, pos: usize) -> u8 {
     }
 }
 
+fn read_eci(mut data: Reader) -> Result<(Reader, u32), DataDecodingError> {
+    let mut ch1 = data.eat()?;
+    let eci = match ch1 {
+        1..=127 => ch1 as u32 - 1,
+        128..=191 => {
+            let mut ch2 = data.eat()?;
+            if !matches!(ch2, 1..=254) {
+                return Err(DataDecodingError::UnexpectedCharacter("2nd after ECI", ch2));
+            }
+            ch2 -= 1;
+            ch1 -= 128;
+            (ch1 as u32) * 254 + ch2 as u32 + 127
+        },
+        192..=207 => {
+            let mut ch2 = data.eat()?;
+            if !matches!(ch2, 1..=254) {
+                return Err(DataDecodingError::UnexpectedCharacter("2nd after ECI", ch2));
+            }
+            let mut ch3 = data.eat()?;
+            if !matches!(ch2, 1..=254) {
+                return Err(DataDecodingError::UnexpectedCharacter("3rd after ECI", ch3));
+            }
+            ch1 -= 192;
+            ch2 -= 1;
+            ch3 -= 1;
+            (ch1 as u32) * 64516 + (ch2 as u32) * 254 + ch3 as u32 + 16383
+        },
+        _ => return Err(DataDecodingError::UnexpectedCharacter("1st after ECI", ch1)),
+    };
+    Ok((data, eci))
+}
+
 fn decode_ascii<'a>(
     mut data: Reader<'a>,
     out: &mut Vec<u8>,
@@ -409,4 +441,25 @@ fn test_base256() {
         decode_data(&[231, 44, 108, 59, 226, 126, 1, 104]),
         Ok(vec![0xab, 0xe4, 0xf6, 0xfc, 0xe9, 0xbb])
     );
+}
+
+#[test]
+fn test_read_eci() {
+    use crate::encodation::GenericDataEncoder;
+    use crate::SymbolSize;
+    fn enc_dec(eci: u32) -> u32 {
+        let mut encoder = GenericDataEncoder::with_size(&[], SymbolSize::Min);
+        encoder.write_eci(eci);
+        let cw = encoder.codewords().unwrap();
+        read_eci(Reader(&cw[1..], 0)).unwrap().1
+    }
+    for eci in (0..=999999).step_by(31) {
+        assert_eq!(enc_dec(eci), eci);
+    }
+    assert_eq!(enc_dec(0), 0);
+    assert_eq!(enc_dec(126), 126);
+    assert_eq!(enc_dec(127), 127);
+    assert_eq!(enc_dec(16382), 16382);
+    assert_eq!(enc_dec(16383), 16383);
+    assert_eq!(enc_dec(999999), 999999);
 }

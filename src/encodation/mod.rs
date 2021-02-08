@@ -168,18 +168,37 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
         }
     }
 
+    pub fn write_eci(&mut self, mut c: u32) {
+        self.codewords.push(ascii::ECI);
+        match c {
+            0..=126 => self.codewords.push(c as u8 + 1),
+            127..=16382 => {
+                c -= 127;
+                self.codewords.push((c / 254 + 128) as u8);
+                self.codewords.push((c % 254 + 1) as u8);
+            },
+            16383..=999999 => {
+                c -= 16383;
+                self.codewords.push((c / 64516 + 192) as u8);
+                self.codewords.push(((c / 254) % 254 + 1) as u8);
+                self.codewords.push((c % 254 + 1) as u8);
+            },
+            _ => panic!("illegal ECI code, bigger than 999999"),
+        }
+    }
+
     pub fn codewords(&mut self) -> Result<Vec<u8>, DataEncodingError> {
         // bigger than theoretical limit? then fail early
         if self.data.len() > self.symbol_size.max_capacity().max {
             return Err(DataEncodingError::TooMuchData);
         }
 
-        self.planned_switches =
-            planner::optimize(self.data, 0, EncodationType::Ascii, self.symbol_size)
-                .ok_or(DataEncodingError::TooMuchData)?;
-
         self.codewords
             .reserve(self.upper_limit_for_number_of_codewords());
+
+        self.planned_switches =
+            planner::optimize(self.data, self.codewords.len(), EncodationType::Ascii, self.symbol_size)
+                .ok_or(DataEncodingError::TooMuchData)?;
 
         let mut no_write_run = 0;
         while self.has_more_characters() {
@@ -261,4 +280,12 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
             upper_limit
         }
     }
+}
+
+
+#[test]
+fn test_empty() {
+    let mut enc = GenericDataEncoder::with_size(&[], crate::SymbolSize::Min);
+    let cw = GenericDataEncoder::codewords(&mut enc).unwrap();
+    assert_eq!(cw, vec![ascii::PAD, 175, 70]);
 }

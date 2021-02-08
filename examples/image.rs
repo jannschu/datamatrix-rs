@@ -12,7 +12,7 @@ fn main() {
     // Encode "Hello, World!" using the smallest square it can fit into
     let bitmap = datamatrix::encode(b"Hello, World!", SymbolSize::MinSquare).unwrap();
 
-    // Create an image with "dead space" which only contains the Data Matrix
+    // Create an image which only contains the Data Matrix including a quiet zone
     let width = ((bitmap.width() + 2) * N) as u32;
     let height = ((bitmap.height() + 2) * N) as u32;
     let mut image = GrayImage::from_pixel(width, height, Luma([255]));

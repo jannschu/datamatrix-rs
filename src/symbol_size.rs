@@ -52,7 +52,7 @@ impl BlockSetup {
 ///
 /// The number behind a variant, e.g., [Square10](SymbolSize::Square10),
 /// describes the number of modules (the tiny black squares) the symbol is
-/// wide/tall.
+/// tall/wide.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SymbolSize {
     Square10,

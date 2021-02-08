@@ -4,8 +4,8 @@
 use crate::data::{decode_data, encode_data};
 use crate::SymbolSize;
 
-fn forth_and_back(data: &[u8]) {
-    let encoded = encode_data(data, SymbolSize::Min);
+fn forth_and_back(data: &[u8]) -> Option<SymbolSize> {
+    let encoded = encode_data(data, SymbolSize::Min, None);
     if let Ok(encoded) = encoded {
         let decoded = decode_data(&encoded.0);
         assert!(
@@ -16,12 +16,14 @@ fn forth_and_back(data: &[u8]) {
         );
         assert_eq!(data, &decoded.unwrap(), "encoded: {:?}", &encoded);
         println!("encoded: {:?}", &encoded);
+        Some(encoded.1)
     } else {
         assert!(
             data.len() > 1_555,
             "should have fit, error is: {:?}",
             encoded
         );
+        None
     }
 }
 
@@ -48,6 +50,11 @@ fn regression_zxing() {
     forth_and_back(b"abc<->ABCDE");
     forth_and_back(b"<ABCDEFG><ABCDEFGK>");
     forth_and_back(b"*CH/GN1/022/00");
+
+    // See https://github.com/woo-j/OkapiBarcode/issues/80
+    forth_and_back(b"02900002608229JDZ*9P0AD8AWFRB");
+    // See https://github.com/woo-j/OkapiBarcode/issues/21
+    assert_eq!(forth_and_back(b"9HR3Z6"), Some(SymbolSize::Square12));
 }
 
 #[test]
