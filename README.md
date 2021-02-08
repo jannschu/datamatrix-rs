@@ -1,5 +1,10 @@
 # datamatrix-rs
 
+[![crates.io](https://img.shields.io/crates/d/datamatrix.svg)](https://crates.io/crates/datamatrix)
+[![Documentation](https://docs.rs/datamatrix/badge.svg)](https://docs.rs/datamatrix)
+![License](https://img.shields.io/crates/l/datamatrix)
+![Lines of Code](https://tokei.rs/b1/github/jannschu/datamatrix-rs?category=code)
+
 Data Matrix (ECC 200) decoding and encoding library with an optimizing encoder.
 
 <p align="center">

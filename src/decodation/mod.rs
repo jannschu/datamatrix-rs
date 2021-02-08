@@ -6,11 +6,14 @@ use super::encodation::{ascii, edifact, EncodationType, UNLATCH};
 #[cfg(test)]
 mod tests;
 
+mod eci;
+
 #[derive(Debug, PartialEq)]
 pub enum DataDecodingError {
     UnexpectedCharacter(&'static str, u8),
     NotImplemented(&'static str),
     UnexpectedEnd,
+    CharsetError,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -49,10 +52,11 @@ pub fn decode_data(data: &[u8]) -> Result<Vec<u8>, DataDecodingError> {
     let mut data = Reader(data, 0);
     let mut mode = EncodationType::Ascii;
     let mut out = Vec::with_capacity(data.len());
+    let mut ecis = Vec::new();
 
     while !data.is_empty() {
         let (rest, new_mode) = match mode {
-            EncodationType::Ascii => decode_ascii(data, &mut out)?,
+            EncodationType::Ascii => decode_ascii(data, &mut out, &mut ecis)?,
             EncodationType::Base256 => decode_base256(data, &mut out)?,
             EncodationType::X12 => decode_x12(data, &mut out)?,
             EncodationType::Edifact => decode_edifact(data, &mut out)?,
@@ -110,6 +114,7 @@ fn read_eci(mut data: Reader) -> Result<(Reader, u32), DataDecodingError> {
 fn decode_ascii<'a>(
     mut data: Reader<'a>,
     out: &mut Vec<u8>,
+    ecis: &mut Vec<(usize, u32)>,
 ) -> Result<(Reader<'a>, EncodationType), DataDecodingError> {
     let mut upper_shift = false;
     while let Ok(ch) = data.eat() {
@@ -153,7 +158,11 @@ fn decode_ascii<'a>(
             ascii::LATCH_X12 => return Ok((data, EncodationType::X12)),
             ascii::LATCH_TEXT => return Ok((data, EncodationType::Text)),
             ascii::LATCH_EDIFACT => return Ok((data, EncodationType::Edifact)),
-            241 => return Err(DataDecodingError::NotImplemented("ECI")),
+            ascii::ECI => {
+                let (rest, eci) = read_eci(data)?;
+                data = rest;
+                ecis.push((out.len(), eci));
+            }
             ch @ _ => {
                 return Err(DataDecodingError::UnexpectedCharacter(
                     "illegal in ascii",
@@ -415,8 +424,9 @@ fn decode_c40_like<'a>(
 #[test]
 fn test_ascii() {
     let mut out = vec![];
+    let mut eci = vec![];
     assert_eq!(
-        decode_ascii(Reader(b"BCD\x82\xeb\x26", 0), &mut out),
+        decode_ascii(Reader(b"BCD\x82\xeb\x26", 0), &mut out, &mut eci),
         Ok((Reader(&[], 6), EncodationType::Ascii))
     );
     assert_eq!(&out, b"ABC00\xa5");

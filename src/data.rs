@@ -163,6 +163,11 @@ pub fn utf8_to_latin1(s: &str) -> Option<Vec<u8>> {
 /// Fails if the input is contains invalid latin 1 characters.
 pub fn latin1_to_utf8(latin1: &[u8]) -> Option<String> {
     let mut out = String::with_capacity(latin1.len());
+    latin1_to_utf8_mut(latin1, &mut out)?;
+    Some(out)
+}
+
+pub(crate) fn latin1_to_utf8_mut(latin1: &[u8], out: &mut String) -> Option<()> {
     for ch in latin1.iter().cloned() {
         let utf_ch = match ch {
             ch @ b' '..=b'~' => ch as char,
@@ -266,5 +271,5 @@ pub fn latin1_to_utf8(latin1: &[u8]) -> Option<String> {
         };
         out.push(utf_ch);
     }
-    Some(out)
+    Some(())
 }
