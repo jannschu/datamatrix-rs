@@ -1,6 +1,6 @@
 [package]
 name = "datamatrix"
-version = "0.1.0-beta.1"
+version = "0.1.0-beta.2"
 authors = ["Jannik Schürg <jannik.schuerg+crates@posteo.de>"]
 edition = "2018"
 readme = "README.md"
@@ -21,3 +21,4 @@ encoding_rs = { version = "0.8", optional = true }
 
 [dev-dependencies]
 image = "0.23"
+printpdf = { path = "../printpdf" }
