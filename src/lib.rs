@@ -57,6 +57,9 @@
 //! reader programming. The decoding output format specified in ISO/IEC 15424 is
 //! also not implemented (metadata, ECI, etc.), if you have a use case for this
 //! let us know.
+#![no_std]
+extern crate alloc;
+
 mod decodation;
 mod encodation;
 pub mod errorcode;
@@ -67,18 +70,20 @@ pub mod data;
 
 pub use symbol_size::SymbolSize;
 
+use alloc::vec::Vec;
+
 use encodation::DataEncodingError;
 use placement::{Bitmap, MatrixMap, Visitor};
 
 struct CodewordPlacer(Vec<u8>);
 
 impl Visitor<bool> for CodewordPlacer {
-    fn visit(&mut self, idx: usize, bits: [&mut bool; 8]) {
+    fn visit(&mut self, idx: usize, mut bits: [&mut bool; 8]) {
         let codeword = self.0[idx];
-        for i in 0..8 {
+        for (i, bit) in bits.iter_mut().enumerate() {
             // 0 = MSB
             // 7 = LSB
-            *bits[i] = ((codeword >> (7 - i)) & 1) == 1;
+            **bit = ((codeword >> (7 - i)) & 1) == 1;
         }
     }
 }

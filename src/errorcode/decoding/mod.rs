@@ -2,6 +2,8 @@ mod syndrome_based;
 
 use super::galois::GF;
 
+use alloc::{vec, vec::Vec};
+
 /// Signals a failure when correcting errors.
 ///
 /// The specific variant is not relevant for practice.

@@ -2,6 +2,10 @@
 //!
 //! It performs the inverse of the `encodation` module.
 use super::encodation::{ascii, edifact, EncodationType, UNLATCH};
+use alloc::vec::Vec;
+
+#[cfg(test)]
+use alloc::vec;
 
 #[cfg(test)]
 mod tests;
@@ -163,7 +167,7 @@ fn decode_ascii<'a>(
                 data = rest;
                 ecis.push((out.len(), eci));
             }
-            ch @ _ => {
+            ch => {
                 return Err(DataDecodingError::UnexpectedCharacter(
                     "illegal in ascii",
                     ch,

@@ -4,11 +4,11 @@ version = "0.1.0-beta.2"
 authors = ["Jannik Schürg <jannik.schuerg+crates@posteo.de>"]
 edition = "2018"
 readme = "README.md"
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0 OR MIT"
 description = "Data Matrix (ECC 200) decoding and encoding with an optimizing encoder"
 repository = "https://github.com/jannschu/datamatrix-rs/"
 categories = ["encoding"]
-keywords = ["codematrix", "datamatrix"]
+keywords = ["codematrix", "datamatrix", "semacode", "no_std"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]

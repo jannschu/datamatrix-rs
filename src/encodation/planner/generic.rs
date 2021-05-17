@@ -1,4 +1,5 @@
-use std::fmt::{Debug, Error, Formatter};
+use alloc::{vec, vec::Vec};
+use core::fmt::{Debug, Error, Formatter};
 
 use crate::{encodation::encodation_type::EncodationType, symbol_size::Size};
 

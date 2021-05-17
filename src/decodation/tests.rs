@@ -4,6 +4,8 @@
 use crate::data::{decode_data, encode_data};
 use crate::SymbolSize;
 
+use alloc::vec;
+
 fn forth_and_back(data: &[u8]) -> Option<SymbolSize> {
     let encoded = encode_data(data, SymbolSize::Min, None);
     if let Ok(encoded) = encoded {
@@ -15,7 +17,7 @@ fn forth_and_back(data: &[u8]) -> Option<SymbolSize> {
             &encoded
         );
         assert_eq!(data, &decoded.unwrap(), "encoded: {:?}", &encoded);
-        println!("encoded: {:?}", &encoded);
+        // println!("encoded: {:?}", &encoded);
         Some(encoded.1)
     } else {
         assert!(

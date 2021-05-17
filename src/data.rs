@@ -9,6 +9,8 @@
 //!
 //! There is no reason I can think of for an end user of the library to ever call them directly
 //! but they can be useful if one needs to work on a lower level.
+use alloc::{string::String, vec::Vec};
+
 pub use crate::decodation::{decode_data, DataDecodingError};
 use crate::encodation::{planner::optimize, GenericDataEncoder};
 pub use crate::encodation::{DataEncodingError, EncodationType};

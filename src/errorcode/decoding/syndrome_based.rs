@@ -5,6 +5,8 @@ use super::ErrorDecodingError;
 use crate::errorcode::GF;
 use crate::{symbol_size::Size, SymbolSize};
 
+use alloc::{vec, vec::Vec};
+
 /// Decode the Reed-Solomon code using a syndrome based decoder.
 ///
 /// See the [module documentation](crate::errorcode) for some implementation details.
@@ -136,7 +138,7 @@ fn find_inv_error_locations_levinson_durbin(syn: &[GF]) -> Result<Vec<GF>, Error
     // initialize y = [1/b_v, 0, ..., 0]
     let mut y = Vec::with_capacity(t);
     y.push(GF(1) / syn[v - 1]);
-    y.extend(std::iter::repeat(GF(0)).take(v - 1));
+    y.extend(core::iter::repeat(GF(0)).take(v - 1));
 
     // initialize w, solve lower right triangular system H_v w = h_v
     let mut w = Vec::<GF>::with_capacity(t);
@@ -272,7 +274,7 @@ fn find_inv_error_locations_levinson_durbin(syn: &[GF]) -> Result<Vec<GF>, Error
                 }
                 tmp[m - i + v] -= *gamma_i;
             }
-            std::mem::swap(&mut tmp, &mut w);
+            core::mem::swap(&mut tmp, &mut w);
 
             v = n + 1;
         }
@@ -319,10 +321,10 @@ fn find_error_values_bp(x_loc: &mut [GF], _lambda: &[GF], syn: &mut [GF]) {
     // The coefficient matrix is a product of diagonal matrix and a
     // Vandermonde matrix.
     // First use the Björck-Pereyra algorithm to solve the Vandermonde system.
-    for k in 0..e - 1 {
+    for (k, x_loc_k) in x_loc.iter().enumerate().take(e - 1) {
         for j in (k + 1..e).rev() {
             let tmp = syn[j - 1];
-            syn[j] -= x_loc[k] * tmp;
+            syn[j] -= *x_loc_k * tmp;
         }
     }
     for k in (0..e - 1).rev() {

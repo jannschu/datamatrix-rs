@@ -36,6 +36,8 @@
 mod decoding;
 mod galois;
 
+use alloc::{vec, vec::Vec};
+
 use super::symbol_size::{Size, SymbolSize};
 use galois::GF;
 

@@ -25,12 +25,15 @@
 //! a * b = x^i * x^j = x^(i + j). Doing the inverse lookup of x^(i + j)
 //! gives us the result. These two lookup tables are called LOG and ANTI_LOG
 //! in this module.
-use std::ops::{Add, Div, Mul, Sub};
-use std::{
-    convert::{From, Into},
+use core::ops::{Add, Div, Mul, Sub};
+use core::{
+    convert::From,
     ops::{DivAssign, MulAssign, Neg, SubAssign},
 };
-use std::{iter::Sum, ops::AddAssign};
+use core::{iter::Sum, ops::AddAssign};
+
+#[cfg(test)]
+use alloc::vec::Vec;
 
 /// Compute two lookup tables for GF(256).
 const fn compute_alog_log() -> ([u8; 255], [u8; 256]) {
@@ -84,8 +87,8 @@ impl GF {
     }
 }
 
-impl std::fmt::Debug for GF {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+impl core::fmt::Debug for GF {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
         f.write_fmt(format_args!("{}₂₅₆", self.0))
     }
 }
@@ -93,6 +96,7 @@ impl std::fmt::Debug for GF {
 impl Add<GF> for GF {
     type Output = Self;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, rhs: Self) -> Self {
         GF(self.0 ^ rhs.0)
     }
@@ -107,6 +111,7 @@ impl AddAssign<GF> for GF {
 impl Sub<GF> for GF {
     type Output = Self;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, rhs: Self) -> Self {
         self + rhs
     }
@@ -187,9 +192,9 @@ impl Neg for GF {
     }
 }
 
-impl Into<u8> for GF {
-    fn into(self) -> u8 {
-        self.0
+impl From<GF> for u8 {
+    fn from(gf: GF) -> u8 {
+        gf.0
     }
 }
 
@@ -207,12 +212,12 @@ impl Sum for GF {
 
 #[test]
 fn sanity_check_tables() {
-    use std::collections::HashSet;
+    use alloc::collections::BTreeSet;
 
-    let anti_log: HashSet<u8> = ANTI_LOG.iter().cloned().collect();
+    let anti_log: BTreeSet<u8> = ANTI_LOG.iter().cloned().collect();
     assert_eq!(anti_log.len(), ANTI_LOG.len());
 
-    let log: HashSet<u8> = LOG[1..].iter().cloned().collect();
+    let log: BTreeSet<u8> = LOG[1..].iter().cloned().collect();
     assert_eq!(log.len(), LOG.len() - 1);
 
     for i in 0..255 {

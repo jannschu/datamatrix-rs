@@ -1,7 +1,7 @@
-use std::cmp::{Ord, Ordering, PartialOrd};
-use std::convert::From;
-use std::fmt::{Debug, Error, Formatter};
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use core::cmp::{Ord, Ordering, PartialOrd};
+use core::convert::From;
+use core::fmt::{Debug, Error, Formatter};
+use core::ops::{Add, AddAssign, Sub, SubAssign};
 
 pub(super) type C = u32;
 

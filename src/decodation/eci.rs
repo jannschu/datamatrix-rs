@@ -1,4 +1,5 @@
-use std::iter::once;
+use alloc::string::String;
+use core::iter::once;
 
 use super::DataDecodingError;
 
@@ -20,10 +21,10 @@ fn convert_chunk(bytes: &[u8], eci: u32, out: &mut String) -> Result<(), DataDec
         }
         11 => decode_iso_8859_9(bytes, out)?,
         13 => decode_iso_8859_11(bytes, out)?,
-        26 => out.push_str(std::str::from_utf8(bytes).or(Err(DataDecodingError::CharsetError))?),
+        26 => out.push_str(core::str::from_utf8(bytes).or(Err(DataDecodingError::CharsetError))?),
         27 => {
             if bytes.is_ascii() {
-                out.push_str(std::str::from_utf8(bytes).or(Err(DataDecodingError::CharsetError))?);
+                out.push_str(core::str::from_utf8(bytes).or(Err(DataDecodingError::CharsetError))?);
             } else {
                 return Err(DataDecodingError::CharsetError);
             }

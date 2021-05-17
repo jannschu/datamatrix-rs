@@ -3,6 +3,10 @@ use crate::{encodation::encodation_type::EncodationType, symbol_size::Size};
 
 use super::generic::GenericPlan;
 
+#[cfg(test)]
+use alloc::vec;
+use alloc::vec::Vec;
+
 /// Find an optimal encodation plan.
 ///
 /// # Arguments
@@ -86,7 +90,7 @@ pub(crate) fn optimize<S: Size>(
 
             return Some(plan.switches);
         }
-        std::mem::swap(&mut plans, &mut new_plan);
+        core::mem::swap(&mut plans, &mut new_plan);
     }
     unreachable!()
 }

@@ -1,6 +1,9 @@
-use std::fmt::Debug;
-use std::iter::Cloned;
-use std::slice::Iter;
+use core::fmt::Debug;
+use core::iter::Cloned;
+use core::slice::Iter;
+
+#[cfg(test)]
+use alloc::{vec, vec::Vec};
 
 #[doc(hidden)]
 pub(crate) trait Size: Copy + Debug {

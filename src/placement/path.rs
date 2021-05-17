@@ -1,3 +1,5 @@
+use alloc::{vec, vec::Vec};
+
 use super::Bitmap;
 type N = i16;
 
@@ -327,7 +329,7 @@ impl Graph {
                 (p, edge)
             })
             .filter(|e| *e.1)
-        };
+        }
 
         if let Some((pos, edge)) = free(self, self.pos.straight()) {
             *edge = false;

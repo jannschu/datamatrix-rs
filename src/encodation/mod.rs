@@ -1,6 +1,8 @@
 //! Implementation of the data encodation using all specified modes.
 use crate::symbol_size::Size;
 
+use alloc::{vec, vec::Vec};
+
 pub(crate) mod ascii;
 mod base256;
 mod c40;
@@ -229,7 +231,7 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
         self.add_padding();
 
         let mut codewords = vec![];
-        std::mem::swap(&mut codewords, &mut self.codewords);
+        core::mem::swap(&mut codewords, &mut self.codewords);
 
         Ok(codewords)
     }

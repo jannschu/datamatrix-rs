@@ -6,15 +6,15 @@ use datamatrix::{
 };
 
 fn bitmap_to_svg(bitmap: Bitmap<bool>) -> String {
-    // SVG header and begin path at 1,1
+    // SVG header, begin path at coordinate (1, 1)
     let mut svg: String = concat!(
         "<?xml version=\"1.0\"?><svg xmlns=\"http://www.w3.org/2000/svg\">",
         "<path fill-rule=\"evenodd\" d=\"M1,1",
     )
     .to_owned();
 
-    // Now add the path segments which map nicely to the SVG path syntax.
-    // One way to increase of decrease the size is to multiple everything
+    // Now add the path segments. They map nicely to the SVG path syntax.
+    // One way to increase or decrease the size is to multiply everything
     // with a constant scale factor.
     for part in bitmap.path() {
         match part {

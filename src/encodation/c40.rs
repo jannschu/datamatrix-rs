@@ -1,5 +1,8 @@
 use arrayvec::ArrayVec;
 
+#[cfg(test)]
+use alloc::{vec, vec::Vec};
+
 use super::{ascii, encodation_type::EncodationType, DataEncodingError, EncodingContext};
 
 const SHIFT1: u8 = 0;
@@ -167,7 +170,7 @@ where
         last_ch = ch;
         while buf.len() >= 3 {
             write_three_values(ctx, buf[0], buf[1], buf[2]);
-            buf.drain(0..3).for_each(std::mem::drop);
+            buf.drain(0..3).for_each(core::mem::drop);
         }
         if ctx.maybe_switch_mode()? {
             break;

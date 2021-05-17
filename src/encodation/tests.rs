@@ -1,5 +1,7 @@
-use std::iter::Cloned;
-use std::slice::Iter;
+use core::iter::Cloned;
+use core::slice::Iter;
+
+use alloc::{vec, vec::Vec};
 
 use super::{
     encodation_type::EncodationType, DataEncodingError, EncodingContext, GenericDataEncoder,

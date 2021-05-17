@@ -8,6 +8,8 @@
 //!
 //! An abstract bitmap struct [Bitmap] is the final output of encoding and the input
 //! for decoding. It also contains helpers for rendering.
+use alloc::{string::String, vec, vec::Vec};
+
 use crate::symbol_size::{Size, SymbolSize};
 
 mod path;
@@ -27,7 +29,7 @@ pub trait Visitor<B: Bit> {
 }
 
 /// Abstract "bit" type used in [MatrixMap].
-pub trait Bit: Clone + PartialEq + std::fmt::Debug {
+pub trait Bit: Clone + PartialEq + core::fmt::Debug {
     const LOW: Self;
     const HIGH: Self;
 }
@@ -425,7 +427,7 @@ impl<B: Bit> Bitmap<B> {
     ///     // place square/circle at (x, y) to render this Data Matrix
     /// }
     /// ```
-    pub fn pixels<'a>(&'a self) -> impl Iterator<Item = (usize, usize)> + 'a {
+    pub fn pixels(&self) -> impl Iterator<Item = (usize, usize)> + '_ {
         let w = self.width();
         self.bits
             .iter()
@@ -437,6 +439,8 @@ impl<B: Bit> Bitmap<B> {
 
 #[cfg(test)]
 mod tests {
+    use alloc::vec::Vec;
+
     impl super::Bit for (u16, u8) {
         const LOW: Self = (0, 0);
         const HIGH: Self = (0, 1);
