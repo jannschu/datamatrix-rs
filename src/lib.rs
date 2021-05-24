@@ -58,7 +58,7 @@
 //! also not implemented (metadata, ECI, etc.), if you have a use case for this
 //! let us know.
 
-// #![no_std]
+#![no_std]
 extern crate alloc;
 
 mod decodation;
@@ -116,11 +116,9 @@ pub fn encode(data: &[u8], symbol_size: SymbolSize) -> Result<Bitmap<bool>, Data
 pub fn encode_str(text: &str, symbol_size: SymbolSize) -> Result<Bitmap<bool>, DataEncodingError> {
     if let Some(data) = data::utf8_to_latin1(text) {
         // string is latin1
-        println!("Latin1");
         encode(&data, symbol_size)
     } else {
         // encode with UTF8 ECI
-        println!("UTF8");
         encode_eci(text.as_bytes(), symbol_size, 26)
     }
 }
