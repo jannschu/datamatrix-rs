@@ -57,7 +57,8 @@
 //! reader programming. The decoding output format specified in ISO/IEC 15424 is
 //! also not implemented (metadata, ECI, etc.), if you have a use case for this
 //! let us know.
-#![no_std]
+
+// #![no_std]
 extern crate alloc;
 
 mod decodation;
@@ -107,6 +108,23 @@ pub fn encode(data: &[u8], symbol_size: SymbolSize) -> Result<Bitmap<bool>, Data
     Ok(map.bitmap())
 }
 
+/// Encodes a string as a Data Matrix (ECC200).
+///
+/// If the string can be converted to latin1, no ECI is used, otherwise
+/// an initial UTF8 ECI is inserted. Please check if your decoder has support
+/// for that. See the notes on the [module documentation](crate) for more details.
+pub fn encode_str(text: &str, symbol_size: SymbolSize) -> Result<Bitmap<bool>, DataEncodingError> {
+    if let Some(data) = data::utf8_to_latin1(text) {
+        // string is latin1
+        println!("Latin1");
+        encode(&data, symbol_size)
+    } else {
+        // encode with UTF8 ECI
+        println!("UTF8");
+        encode_eci(text.as_bytes(), symbol_size, 26)
+    }
+}
+
 /// Encode a string as a Data Matrix (ECC200).
 #[doc(hidden)]
 pub fn encode_eci(
@@ -120,4 +138,14 @@ pub fn encode_eci(
     let mut map = MatrixMap::new(symbol_size);
     map.traverse(&mut CodewordPlacer(codewords));
     Ok(map.bitmap())
+}
+
+#[test]
+fn utf8_eci_test() {
+    let data = "🥸";
+    let symbol_size = SymbolSize::Min;
+    let eci = Some(26);
+    let (codewords, _symbol_size) = data::encode_data(data.as_bytes(), symbol_size, eci).unwrap();
+    let decoded = data::decode_str(&codewords).unwrap();
+    assert_eq!(decoded, data);
 }

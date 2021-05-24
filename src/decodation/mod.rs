@@ -2,7 +2,7 @@
 //!
 //! It performs the inverse of the `encodation` module.
 use super::encodation::{ascii, edifact, EncodationType, UNLATCH};
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 
 #[cfg(test)]
 use alloc::vec;
@@ -18,6 +18,8 @@ pub enum DataDecodingError {
     NotImplemented(&'static str),
     UnexpectedEnd,
     CharsetError,
+    /// An ECI code is not supported in raw data decoding
+    ECICode,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -53,6 +55,15 @@ impl<'a> Reader<'a> {
 
 /// Decode the data codewords of a Data Matrix.
 pub fn decode_data(data: &[u8]) -> Result<Vec<u8>, DataDecodingError> {
+    let (out, ecis) = decode_parts(data)?;
+    if !ecis.is_empty() {
+        Err(DataDecodingError::ECICode)
+    } else {
+        Ok(out)
+    }
+}
+
+fn decode_parts(data: &[u8]) -> Result<(Vec<u8>, Vec<(usize, u32)>), DataDecodingError> {
     let mut data = Reader(data, 0);
     let mut mode = EncodationType::Ascii;
     let mut out = Vec::with_capacity(data.len());
@@ -70,7 +81,16 @@ pub fn decode_data(data: &[u8]) -> Result<Vec<u8>, DataDecodingError> {
         data = rest;
         mode = new_mode;
     }
-    Ok(out)
+    Ok((out, ecis))
+}
+
+/// Decode the data codewords of a Data Matrix as a string.
+///
+/// This recognizes has some ECI support. Be aware that
+/// latin1 encoding is assumed if no ECI is there.
+pub fn decode_str(data: &[u8]) -> Result<String, DataDecodingError> {
+    let (out, ecis) = decode_parts(data)?;
+    eci::convert(&out, &ecis)
 }
 
 fn derandomize_253_state(ch: u8, pos: usize) -> u8 {

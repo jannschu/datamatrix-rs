@@ -11,7 +11,7 @@
 //! but they can be useful if one needs to work on a lower level.
 use alloc::{string::String, vec::Vec};
 
-pub use crate::decodation::{decode_data, DataDecodingError};
+pub use crate::decodation::{decode_data, decode_str, DataDecodingError};
 use crate::encodation::{planner::optimize, GenericDataEncoder};
 pub use crate::encodation::{DataEncodingError, EncodationType};
 
