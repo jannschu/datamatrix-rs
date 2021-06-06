@@ -11,7 +11,7 @@ Data Matrix (ECC 200) decoding and encoding library with an optimizing encoder.
   <img src="src/datamatrix-rs.png" alt="Data Matrix encoding 'datamatrix-rs'">
 </p>
 
-This library features a new, optimzing, and linear time encoder which achieves
+This library features an optimzing, and linear time encoder which achieves
 the smallest possible encoding size.
 
 The Data Matrix standard (ISO/IEC 16022:2006) contains a heuristic to decide
@@ -19,9 +19,9 @@ which encoding modes to use, and in most cases that works. A straightforward
 implementation will not have linear runtime, though. This library uses an idea
 similar to the A\* algorithm.
 
-The optimizer is unique about this implementation. See the list of related
-projects below for credits and references to other open source Data Matrix
-libraries.
+The optimizer is special about this implementation, most implementations use the
+heuristic. See the list of related projects below for credits and references to
+other open source Data Matrix libraries.
 
 ## Example
 
@@ -87,7 +87,7 @@ and stealing some of their test cases and bug reports.
   the Data Matrix code was forked into zxing.
 - [libdmtx](https://github.com/dmtx/libdmtx) is the most prominent open source
   C library for encoding and decoding Data Matrix. It has a more limited optimizer
-  compared to the specification, but is still very useable.
+  compared to the specification, but it can also decode Data Matric codes from images.
 - [zxing-cpp](https://github.com/nu-book/zxing-cpp) is a C++ port of zxing, it
   also contains some improvements.
 - [OkapiBarcode](https://github.com/woo-j/OkapiBarcode) is a Java library with
@@ -101,3 +101,6 @@ and stealing some of their test cases and bug reports.
   several 1D and 2D codes using only PostScript. It is also available as a LaTeX
   package. [Port to JavaScript](https://github.com/metafloor/bwip-js).
 - A [perl module](https://github.com/mstratman/Barcode-DataMatrix) for encoding.
+- [iec16022](https://github.com/rdoeffinger/iec16022) is a Data Matrix encoder originally
+  written by Andrews & Arnold Ltd. but is now maintained by Reimar Döffinger. It has a similar
+  optimizing encoder.

@@ -60,6 +60,12 @@ fn regression_zxing() {
 }
 
 #[test]
+fn regression_iec16022() {
+    // https://github.com/rdoeffinger/iec16022/issues/2
+    forth_and_back(b"UEXPLR4-CBR3A3-001-TSK 13471 3216");
+}
+
+#[test]
 fn regression1() {
     // Generates two big C40
     forth_and_back(&[50, 32, 32, 252]);
