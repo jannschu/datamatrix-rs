@@ -1,4 +1,5 @@
 use core::fmt::Debug;
+use core::ops::RangeBounds;
 
 use arrayvec::ArrayVec;
 
@@ -25,9 +26,9 @@ type SymbolVec = ArrayVec<SymbolSize, 48>;
 /// # use datamatrix::{DataMatrix, SymbolList};
 /// let code = DataMatrix::encode(
 ///     b"Hello, World!",
-///     SymbolList::with_dmre()
+///     SymbolList::with_extended_rectangles()
 ///         .enforce_rectangular()
-///         .height_range(0, 20),
+///         .enforce_height_in(..=20),
 /// );
 /// ```
 ///
@@ -55,9 +56,15 @@ impl SymbolList {
     /// your decoder might not recognize these.
     ///
     /// DMRE stands for Data Matrix Rectangular Extensions.
-    pub fn with_dmre() -> Self {
+    pub fn with_extended_rectangles() -> Self {
         let symbols: SymbolVec = SYMBOL_SIZES.iter().cloned().collect();
         Self::with_whitelist(&symbols)
+    }
+
+    #[deprecated(note = "use with_extended_rectangles()")]
+    #[doc(hidden)]
+    pub fn with_dmre() -> Self {
+        Self::with_extended_rectangles()
     }
 
     /// Remove all non-square symbols from the current selection.
@@ -78,30 +85,44 @@ impl SymbolList {
         self
     }
 
-    /// Only keep symbols with width in the given range (bounds inclusive).
-    pub fn width_range(mut self, min_width: usize, max_width: usize) -> Self {
+    /// Only keep symbols with width in the given range.
+    pub fn enforce_width_in<R: RangeBounds<usize>>(mut self, bounds: R) -> Self {
         self.symbols = self
             .symbols
             .into_iter()
-            .filter(|s| {
-                let width = s.block_setup().width;
-                min_width <= width && width <= max_width
-            })
+            .filter(|s| bounds.contains(&s.block_setup().width))
             .collect();
         self
     }
 
-    /// Only keep symbols with height in the given range (bounds inclusive).
-    pub fn height_range(mut self, min_height: usize, max_height: usize) -> Self {
+    #[deprecated(note = "use enforce_width_in")]
+    #[doc(hidden)]
+    pub fn width_range(self, min_width: usize, max_width: usize) -> Self {
+        if min_width <= max_width {
+            self.enforce_width_in(min_width..=max_width)
+        } else {
+            [].into()
+        }
+    }
+
+    /// Only keep symbols with height in the given range.
+    pub fn enforce_height_in<R: RangeBounds<usize>>(mut self, bounds: R) -> Self {
         self.symbols = self
             .symbols
             .into_iter()
-            .filter(|s| {
-                let height = s.block_setup().height;
-                min_height <= height && height <= max_height
-            })
+            .filter(|s| bounds.contains(&s.block_setup().height))
             .collect();
         self
+    }
+
+    #[deprecated(note = "use enforce_height_in")]
+    #[doc(hidden)]
+    pub fn height_range(self, min_height: usize, max_height: usize) -> Self {
+        if min_height <= max_height {
+            self.enforce_height_in(min_height..=max_height)
+        } else {
+            [].into()
+        }
     }
 
     /// Create a symbol list containing only the given symbols.
@@ -954,7 +975,9 @@ fn symbol_size_order() {
 
 #[test]
 fn test_height_range() {
-    let symbols = SymbolList::with_dmre().height_range(0, 20).symbols;
+    let symbols = SymbolList::with_extended_rectangles()
+        .enforce_height_in(0..21)
+        .symbols;
     for sym in symbols {
         assert!(sym.block_setup().height <= 20);
     }
@@ -962,7 +985,9 @@ fn test_height_range() {
 
 #[test]
 fn test_width_range() {
-    let symbols = SymbolList::with_dmre().width_range(9, 10).symbols;
+    let symbols = SymbolList::with_extended_rectangles()
+        .enforce_width_in(9..=10)
+        .symbols;
     for sym in symbols {
         assert!(sym.block_setup().width <= 10);
         assert!(sym.block_setup().width >= 9);
