@@ -1,5 +1,5 @@
 //! Implementation of the data encodation using all specified modes.
-use crate::symbol_size::Size;
+use crate::symbol_size::{SymbolList, SymbolSize};
 
 use alloc::{vec, vec::Vec};
 
@@ -32,6 +32,7 @@ pub(crate) const UNLATCH: u8 = 254;
 #[derive(Debug)]
 pub enum DataEncodingError {
     TooMuchData,
+    SymbolListEmpty,
 }
 
 trait EncodingContext {
@@ -79,17 +80,17 @@ trait EncodingContext {
     }
 }
 
-pub(crate) struct GenericDataEncoder<'a, S: Size> {
+pub(crate) struct GenericDataEncoder<'a> {
     data: &'a [u8],
     input: &'a [u8],
     encodation: EncodationType,
-    pub(crate) symbol_size: S,
+    symbol_list: &'a SymbolList,
     planned_switches: Vec<(usize, EncodationType)>,
     new_mode: Option<u8>,
     codewords: Vec<u8>,
 }
 
-impl<'a, S: Size> EncodingContext for GenericDataEncoder<'a, S> {
+impl<'a> EncodingContext for GenericDataEncoder<'a> {
     fn maybe_switch_mode(&mut self) -> Result<bool, DataEncodingError> {
         let chars_left = self.characters_left();
         assert!(
@@ -115,7 +116,7 @@ impl<'a, S: Size> EncodingContext for GenericDataEncoder<'a, S> {
     fn symbol_size_left(&mut self, extra_codewords: usize) -> Option<usize> {
         let size_used = self.codewords.len() + extra_codewords;
         let symbol = self.symbol_for(extra_codewords)?;
-        Some(symbol.num_data_codewords().unwrap() - size_used)
+        Some(symbol.num_data_codewords() - size_used)
     }
 
     fn eat(&mut self) -> Option<u8> {
@@ -157,12 +158,12 @@ impl<'a, S: Size> EncodingContext for GenericDataEncoder<'a, S> {
     }
 }
 
-impl<'a, S: Size> GenericDataEncoder<'a, S> {
-    pub fn with_size(data: &'a [u8], symbol_size: S) -> Self {
+impl<'a> GenericDataEncoder<'a> {
+    pub fn with_size(data: &'a [u8], symbol_list: &'a SymbolList) -> Self {
         Self {
             data,
             input: data,
-            symbol_size,
+            symbol_list,
             new_mode: None,
             encodation: EncodationType::Ascii,
             codewords: Vec::new(),
@@ -189,20 +190,20 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
         }
     }
 
-    pub fn codewords(&mut self) -> Result<Vec<u8>, DataEncodingError> {
+    pub fn codewords(&mut self) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
         // bigger than theoretical limit? then fail early
-        if self.data.len() > self.symbol_size.max_capacity().max {
+        if self.data.len() > self.symbol_list.max_capacity() {
             return Err(DataEncodingError::TooMuchData);
         }
 
         self.codewords
-            .reserve(self.upper_limit_for_number_of_codewords());
+            .reserve(self.upper_limit_for_number_of_codewords()?);
 
         self.planned_switches = planner::optimize(
             self.data,
             self.codewords.len(),
             EncodationType::Ascii,
-            self.symbol_size,
+            self.symbol_list,
         )
         .ok_or(DataEncodingError::TooMuchData)?;
 
@@ -227,22 +228,22 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
             }
         }
 
-        self.symbol_size = self.symbol_for(0).ok_or(DataEncodingError::TooMuchData)?;
-        self.add_padding();
+        let symbol_size = self.symbol_for(0).ok_or(DataEncodingError::TooMuchData)?;
+        self.add_padding(symbol_size);
 
         let mut codewords = vec![];
         core::mem::swap(&mut codewords, &mut self.codewords);
 
-        Ok(codewords)
+        Ok((codewords, symbol_size))
     }
 
-    fn symbol_for(&self, extra_codewords: usize) -> Option<S> {
-        self.symbol_size
-            .symbol_for(self.codewords.len() + extra_codewords)
+    fn symbol_for(&self, extra_codewords: usize) -> Option<SymbolSize> {
+        self.symbol_list
+            .first_symbol_big_enough_for(self.codewords.len() + extra_codewords)
     }
 
-    fn add_padding(&mut self) {
-        let mut size_left = self.symbol_size.num_data_codewords().unwrap() - self.codewords.len();
+    fn add_padding(&mut self, size: SymbolSize) {
+        let mut size_left = size.num_data_codewords() - self.codewords.len();
         if size_left == 0 {
             return;
         }
@@ -268,29 +269,18 @@ impl<'a, S: Size> GenericDataEncoder<'a, S> {
         }
     }
 
-    fn upper_limit_for_number_of_codewords(&self) -> usize {
-        if let Some(size) = self.symbol_size.num_data_codewords() {
-            size
-        } else {
-            // Min case, try to find a good upper limit
-            let upper_limit = self
-                .symbol_size
-                .candidates()
-                .find(|s| {
-                    // base256 encoding is the lower bound,
-                    // findest smallest symbol size to hold data with base256
-                    s.max_capacity().min >= self.data.len()
-                })
-                .map(|s| s.num_data_codewords().unwrap())
-                .unwrap_or_else(|| self.symbol_size.max_codeswords());
-            upper_limit
-        }
+    /// Get the theoretical maximum data length we can encode with our list of symbols.
+    fn upper_limit_for_number_of_codewords(&self) -> Result<usize, DataEncodingError> {
+        self.symbol_list
+            .upper_limit_for_number_of_codewords(self.data.len())
+            .ok_or(DataEncodingError::SymbolListEmpty)
     }
 }
 
 #[test]
 fn test_empty() {
-    let mut enc = GenericDataEncoder::with_size(&[], crate::SymbolSize::Min);
-    let cw = GenericDataEncoder::codewords(&mut enc).unwrap();
+    let symbols = crate::SymbolList::default();
+    let mut enc = GenericDataEncoder::with_size(&[], &symbols);
+    let (cw, _) = GenericDataEncoder::codewords(&mut enc).unwrap();
     assert_eq!(cw, vec![ascii::PAD, 175, 70]);
 }

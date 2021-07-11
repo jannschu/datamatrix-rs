@@ -38,7 +38,7 @@ mod galois;
 
 use alloc::{vec, vec::Vec};
 
-use super::symbol_size::{Size, SymbolSize};
+use super::symbol_size::SymbolSize;
 use galois::GF;
 
 pub use decoding::decode as decode_error;
@@ -49,7 +49,7 @@ pub use decoding::ErrorDecodingError;
 ///
 /// The coefficients are given in the standard, but can also
 /// be computed with the Python script "gf.py" in this repository.
-const GENERATOR_POLYNOMIALS: [&[u8]; 16] = [
+const GENERATOR_POLYNOMIALS: [&[u8]; 25] = [
     // 5
     &[1, 62, 111, 15, 48, 228],
     // 7
@@ -64,6 +64,10 @@ const GENERATOR_POLYNOMIALS: [&[u8]; 16] = [
     &[
         1, 185, 83, 186, 18, 45, 138, 119, 157, 9, 95, 252, 192, 97, 156,
     ],
+    // 15
+    &[
+        1, 93, 223, 139, 159, 35, 145, 234, 176, 153, 88, 201, 148, 33, 88, 116,
+    ],
     // 18
     &[
         1, 188, 90, 48, 225, 254, 94, 129, 109, 213, 241, 61, 66, 75, 188, 39, 100, 195, 83,
@@ -73,20 +77,52 @@ const GENERATOR_POLYNOMIALS: [&[u8]; 16] = [
         1, 172, 186, 174, 27, 82, 108, 79, 253, 145, 153, 160, 188, 2, 168, 71, 233, 9, 244, 195,
         15,
     ],
+    // 22
+    &[
+        1, 236, 188, 3, 209, 217, 125, 10, 38, 152, 1, 132, 27, 94, 71, 123, 5, 241, 95, 201, 76,
+        249, 75,
+    ],
     // 24
     &[
         1, 193, 50, 96, 184, 181, 12, 124, 254, 172, 5, 21, 155, 223, 251, 197, 155, 21, 176, 39,
         109, 205, 88, 190, 52,
+    ],
+    // 27
+    &[
+        1, 232, 180, 161, 246, 233, 134, 72, 108, 210, 246, 244, 65, 55, 123, 29, 229, 47, 205,
+        143, 74, 97, 147, 182, 96, 130, 183, 215,
     ],
     // 28
     &[
         1, 255, 93, 168, 233, 151, 120, 136, 141, 213, 110, 138, 17, 121, 249, 34, 75, 53, 170,
         151, 37, 174, 103, 96, 71, 97, 43, 231, 211,
     ],
+    // 32
+    &[
+        1, 104, 129, 163, 234, 55, 95, 144, 174, 249, 2, 145, 104, 19, 103, 202, 211, 38, 2, 120,
+        209, 58, 61, 21, 236, 95, 107, 199, 228, 130, 159, 184, 227,
+    ],
+    // 34
+    &[
+        1, 139, 4, 179, 189, 67, 14, 89, 138, 237, 152, 62, 154, 62, 107, 114, 189, 6, 143, 95, 90,
+        116, 237, 103, 42, 95, 203, 234, 71, 172, 210, 218, 231, 197, 190,
+    ],
     // 36
     &[
         1, 112, 81, 98, 225, 25, 59, 184, 175, 44, 115, 119, 95, 137, 101, 33, 68, 4, 2, 18, 229,
         182, 80, 251, 220, 179, 84, 120, 102, 181, 162, 250, 130, 218, 242, 127, 245,
+    ],
+    // 38
+    &[
+        1, 235, 181, 165, 241, 166, 169, 220, 128, 80, 134, 170, 223, 122, 215, 83, 183, 55, 211,
+        139, 103, 172, 41, 203, 123, 143, 233, 74, 237, 168, 102, 90, 166, 222, 239, 141, 101, 30,
+        109,
+    ],
+    // 41
+    &[
+        1, 149, 220, 249, 68, 38, 81, 71, 79, 244, 224, 15, 133, 132, 208, 211, 90, 165, 84, 144,
+        137, 250, 156, 120, 101, 136, 172, 193, 216, 99, 53, 48, 194, 222, 6, 142, 2, 43, 106, 123,
+        21, 35,
     ],
     // 42
     &[
@@ -94,11 +130,23 @@ const GENERATOR_POLYNOMIALS: [&[u8]; 16] = [
         105, 167, 9, 100, 95, 175, 8, 242, 133, 245, 2, 122, 105, 247, 153, 22, 38, 19, 31, 137,
         193, 77,
     ],
+    // 46
+    &[
+        1, 78, 62, 74, 235, 114, 62, 141, 178, 40, 98, 144, 118, 173, 138, 72, 43, 21, 77, 47, 127,
+        130, 206, 33, 221, 83, 171, 135, 29, 11, 61, 47, 51, 111, 129, 35, 186, 232, 160, 178, 114,
+        135, 113, 200, 197, 29, 195,
+    ],
     // 48
     &[
         1, 19, 225, 253, 92, 213, 69, 175, 160, 147, 187, 87, 176, 44, 82, 240, 186, 138, 66, 100,
         120, 88, 131, 205, 170, 90, 37, 23, 118, 147, 16, 106, 191, 87, 237, 188, 205, 231, 238,
         133, 238, 22, 117, 32, 96, 223, 172, 132, 245,
+    ],
+    // 50
+    &[
+        1, 74, 54, 162, 91, 167, 218, 212, 183, 156, 74, 16, 153, 79, 231, 112, 28, 25, 185, 8,
+        241, 243, 76, 80, 14, 205, 156, 65, 114, 251, 241, 14, 142, 9, 16, 112, 230, 36, 223, 222,
+        74, 245, 123, 150, 102, 167, 43, 165, 254, 166, 1,
     ],
     // 56
     &[
@@ -135,17 +183,17 @@ fn generator(len: usize) -> &'static [u8] {
 /// interleaved blocks. For each block an error code is computed.
 /// The resulting blocks of error codes are returned interleaved.
 pub fn encode_error(data: &[u8], size: SymbolSize) -> Vec<u8> {
-    let setup = size.block_setup().unwrap();
-    let num_codewords = size.num_data_codewords().unwrap();
+    let setup = size.block_setup();
+    let num_codewords = size.num_data_codewords();
     assert!(data.len() == num_codewords);
     let gen = generator(setup.num_ecc_per_block);
     // For bigger symbol sizes the data is split up into interleaved blocks
     // for which an error code is computed individually. we store
     // the error blocks interleaved in the returned result.
-    let stride = setup.num_blocks;
+    let stride = setup.num_ecc_blocks;
     let mut ecc = vec![0; setup.num_ecc_per_block + 1];
-    let mut full_ecc = vec![0; setup.num_ecc_per_block * setup.num_blocks];
-    for block in 0..setup.num_blocks {
+    let mut full_ecc = vec![0; setup.num_ecc_per_block * setup.num_ecc_blocks];
+    for block in 0..setup.num_ecc_blocks {
         for item in &mut ecc {
             // reset ecc for new block
             *item = 0;

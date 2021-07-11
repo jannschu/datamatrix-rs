@@ -192,7 +192,7 @@ def gen(n):
     p = Poly([GF(1)])
     two = GF(1)
     for i in range(1, n + 1):
-        two *= 2
+        two *= GF(2)
         p *= Poly([two, GF(1)])
     return p
 
@@ -215,11 +215,12 @@ assert GF(2) ** 3 == GF(2) * GF(2) * GF(2)
 
 
 # This will print the generating polynomials
-# gens = [5, 7, 10, 11, 12, 14, 18, 20, 24, 28, 36, 42, 48, 56, 62, 68]
-# print("Generating polynomials:")
-# for g in gens:
-#     cs = reversed(gen(g).coeffs)
-#     print("[" + ", ".join(str(c.v) for c in cs) + "],")
+gens = [5, 7, 10, 11, 12, 14, 15, 18, 20, 22, 24, 27, 28, 32, 34, 36, 38, 41, 42, 46, 48, 50, 56, 62, 68]
+print("Generating polynomials:")
+for g in gens:
+    cs = reversed(gen(g).coeffs)
+    print(f"// {g}")
+    print("&[" + ", ".join(str(c.v) for c in cs) + "],")
 
 
 print("Vandermonde")

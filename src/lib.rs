@@ -3,12 +3,12 @@
 //! # Usage example
 //!
 //! ```rust
-//! # use datamatrix::SymbolSize;
-//! let bitmap = datamatrix::encode(
+//! # use datamatrix::{DataMatrix, SymbolList};
+//! let code = DataMatrix::encode(
 //!     b"Hello, World!",
-//!     SymbolSize::Min,
+//!     SymbolList::default(),
 //! ).unwrap();
-//! print!("{}", bitmap.unicode());
+//! print!("{}", code.bitmap().unicode());
 //! ```
 //!
 //! This toy example will print a Data Matrix using Unicode block characters.
@@ -16,7 +16,7 @@
 //! defined for the [Bitmap struct](Bitmap), or the `examples/` directory of
 //! this project.
 //!
-//! You can specify other symbol sizes, see [SymbolSize] for details.
+//! You can specify other symbol sizes, see [SymbolList] for details.
 //!
 //! # Character encoding notes for Data Matrix
 //!
@@ -35,13 +35,13 @@
 //! the _printable_ ASCII characters unless you have control over the full encoding
 //! and decoding process.
 //!
-//! The Data Matrix specification defines ISO 8859-1 (Latin 1) as the standard
+//! The Data Matrix specification defines ISO 8859-1 (Latin-1) as the standard
 //! charset. Our tests indicate that some decoders (smartphone scanner apps) are
 //! reluctant to follow this and return binary output if there are charactes in
 //! the upper range, which is a safe choice. Unfortunately, some decoders try to guess the charset
 //! or just always assume UTF-8.
 //!
-//! To forestall your question: The full 8bit range can be encoded and
+//! The full 8bit range can be encoded and
 //! the decoder will also return this exact input. So the problems mentioned above
 //! are related to the _interpretation_ of the data and possible input limitations
 //! in the case of handheld scanners.
@@ -69,16 +69,16 @@ mod symbol_size;
 
 pub mod data;
 
-pub use symbol_size::SymbolSize;
+pub use symbol_size::{SymbolList, SymbolSize};
 
 use alloc::vec::Vec;
 
 use encodation::DataEncodingError;
 use placement::{Bitmap, MatrixMap, Visitor};
 
-struct CodewordPlacer(Vec<u8>);
+struct CodewordPlacer<'a>(&'a [u8]);
 
-impl Visitor<bool> for CodewordPlacer {
+impl<'a> Visitor<bool> for CodewordPlacer<'a> {
     fn visit(&mut self, idx: usize, mut bits: [&mut bool; 8]) {
         let codeword = self.0[idx];
         for (i, bit) in bits.iter_mut().enumerate() {
@@ -89,61 +89,88 @@ impl Visitor<bool> for CodewordPlacer {
     }
 }
 
-/// Encode data as a Data Matrix (ECC200).
-///
-/// Please read the [module documentation](crate) for some charset notes. If you
-/// did that and your input can be represented with the Latin 1 charset you may
-/// use the conversion function in the [data module](crate::data). If you only
-/// use printable ASCII you can just pass the data as is.
-///
-/// If the data does not fit into the given size encoding will fail. The encoder
-/// can automatically pick the smallest size which fits the data (see [SymbolSize])
-/// but there is an upper limit.
-pub fn encode(data: &[u8], symbol_size: SymbolSize) -> Result<Bitmap<bool>, DataEncodingError> {
-    let (mut codewords, symbol_size) = data::encode_data(data, symbol_size, None)?;
-    let ecc = errorcode::encode_error(&codewords, symbol_size);
-    codewords.extend_from_slice(&ecc);
-    let mut map = MatrixMap::new(symbol_size);
-    map.traverse(&mut CodewordPlacer(codewords));
-    Ok(map.bitmap())
+/// Encoded Data Matrix.
+pub struct DataMatrix {
+    /// Size of the encoded Data Matrix
+    pub size: SymbolSize,
+    data: Vec<u8>,
+    num_codewords: usize,
 }
 
-/// Encodes a string as a Data Matrix (ECC200).
-///
-/// If the string can be converted to latin1, no ECI is used, otherwise
-/// an initial UTF8 ECI is inserted. Please check if your decoder has support
-/// for that. See the notes on the [module documentation](crate) for more details.
-pub fn encode_str(text: &str, symbol_size: SymbolSize) -> Result<Bitmap<bool>, DataEncodingError> {
-    if let Some(data) = data::utf8_to_latin1(text) {
-        // string is latin1
-        encode(&data, symbol_size)
-    } else {
-        // encode with UTF8 ECI
-        encode_eci(text.as_bytes(), symbol_size, 26)
+impl DataMatrix {
+    /// Get the data in encoded form.
+    ///
+    /// Error correction is not included.
+    pub fn codewords(&self) -> &[u8] {
+        &self.data[..self.num_codewords]
     }
-}
 
-/// Encode a string as a Data Matrix (ECC200).
-#[doc(hidden)]
-pub fn encode_eci(
-    data: &[u8],
-    symbol_size: SymbolSize,
-    eci: u32,
-) -> Result<Bitmap<bool>, DataEncodingError> {
-    let (mut codewords, symbol_size) = data::encode_data(data, symbol_size, Some(eci))?;
-    let ecc = errorcode::encode_error(&codewords, symbol_size);
-    codewords.extend_from_slice(&ecc);
-    let mut map = MatrixMap::new(symbol_size);
-    map.traverse(&mut CodewordPlacer(codewords));
-    Ok(map.bitmap())
+    /// Create an abstract bitmap representing the Data Matrix.
+    pub fn bitmap(&self) -> Bitmap<bool> {
+        let mut map = MatrixMap::new(self.size);
+        map.traverse(&mut CodewordPlacer(&self.data));
+        map.bitmap()
+    }
+
+    /// Encode data as a Data Matrix (ECC200).
+    ///
+    /// Please read the [module documentation](crate) for some charset notes. If you
+    /// did that and your input can be represented with the Latin 1 charset you may
+    /// use the conversion function in the [data module](crate::data). If you only
+    /// use printable ASCII you can just pass the data as is.
+    ///
+    /// If the data does not fit into the given size encoding will fail. The encoder
+    /// can automatically pick the smallest size which fits the data (see [SymbolList])
+    /// but there is an upper limit.
+    pub fn encode<I: Into<SymbolList>>(
+        data: &[u8],
+        symbol_list: I,
+    ) -> Result<DataMatrix, DataEncodingError> {
+        Self::encode_eci(data, &symbol_list.into(), None)
+    }
+
+    /// Encodes a string as a Data Matrix (ECC200).
+    ///
+    /// If the string can be converted to Latin-1, no ECI is used, otherwise
+    /// an initial UTF8 ECI is inserted. Please check if your decoder has support
+    /// for that. See the notes on the [module documentation](crate) for more details.
+    pub fn encode_str<I: Into<SymbolList>>(
+        text: &str,
+        symbol_list: I,
+    ) -> Result<DataMatrix, DataEncodingError> {
+        let symbol_list = symbol_list.into();
+        if let Some(data) = data::utf8_to_latin1(text) {
+            // string is latin1
+            Self::encode_eci(&data, &symbol_list, None)
+        } else {
+            // encode with UTF8 ECI
+            Self::encode_eci(text.as_bytes(), &symbol_list, Some(26))
+        }
+    }
+
+    /// Encode a string as a Data Matrix (ECC200).
+    #[doc(hidden)]
+    pub fn encode_eci(
+        data: &[u8],
+        symbol_list: &SymbolList,
+        eci: Option<u32>,
+    ) -> Result<DataMatrix, DataEncodingError> {
+        let (mut codewords, size) = data::encode_data(data, symbol_list, eci)?;
+        let ecc = errorcode::encode_error(&codewords, size);
+        let num_codewords = codewords.len();
+        codewords.extend_from_slice(&ecc);
+        Ok(DataMatrix {
+            data: codewords,
+            size,
+            num_codewords,
+        })
+    }
 }
 
 #[test]
 fn utf8_eci_test() {
     let data = "🥸";
-    let symbol_size = SymbolSize::Min;
-    let eci = Some(26);
-    let (codewords, _symbol_size) = data::encode_data(data.as_bytes(), symbol_size, eci).unwrap();
-    let decoded = data::decode_str(&codewords).unwrap();
+    let code = DataMatrix::encode_str(data, SymbolList::default()).unwrap();
+    let decoded = data::decode_str(code.codewords()).unwrap();
     assert_eq!(decoded, data);
 }

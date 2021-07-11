@@ -11,7 +11,7 @@ const SHIFT3: u8 = 2;
 const UPPER_SHIFT: u8 = 30;
 
 #[inline(always)]
-pub(super) fn low_ascii_to_c40_symbols(ctx: &mut ArrayVec<[u8; 6]>, ch: u8) {
+pub(super) fn low_ascii_to_c40_symbols(ctx: &mut ArrayVec<u8, 6>, ch: u8) {
     match ch {
         // Basic set
         b' ' => ctx.push(3),
@@ -66,7 +66,7 @@ pub(super) fn write_three_values<T: EncodingContext>(ctx: &mut T, c1: u8, c2: u8
 pub(super) fn handle_end<T>(
     ctx: &mut T,
     last_ch: u8,
-    mut buf: ArrayVec<[u8; 6]>,
+    mut buf: ArrayVec<u8, 6>,
 ) -> Result<(), DataEncodingError>
 where
     T: EncodingContext,
@@ -149,7 +149,7 @@ where
 pub(super) fn encode_generic<T, F>(ctx: &mut T, low_ascii_write: F) -> Result<(), DataEncodingError>
 where
     T: EncodingContext,
-    F: Fn(&mut ArrayVec<[u8; 6]>, u8),
+    F: Fn(&mut ArrayVec<u8, 6>, u8),
 {
     let mut buf = ArrayVec::new();
     let mut last_ch = 0;
@@ -179,9 +179,9 @@ where
     handle_end(ctx, last_ch, buf)
 }
 
-fn to_vals<F>(buf: &mut ArrayVec<[u8; 6]>, ch: u8, low_ascii_write: F) -> usize
+fn to_vals<F>(buf: &mut ArrayVec<u8, 6>, ch: u8, low_ascii_write: F) -> usize
 where
-    F: Fn(&mut ArrayVec<[u8; 6]>, u8),
+    F: Fn(&mut ArrayVec<u8, 6>, u8),
 {
     let len_before = buf.len();
     match ch {

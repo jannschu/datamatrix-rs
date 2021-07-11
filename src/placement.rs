@@ -10,7 +10,7 @@
 //! for decoding. It also contains helpers for rendering.
 use alloc::{string::String, vec, vec::Vec};
 
-use crate::symbol_size::{Size, SymbolSize};
+use crate::symbol_size::SymbolSize;
 
 mod path;
 
@@ -48,8 +48,8 @@ pub struct MatrixMap<B: Bit> {
 impl<M: Bit> MatrixMap<M> {
     /// Create a new, empty matrix for the given symbol size.
     pub fn new(size: SymbolSize) -> Self {
-        let num_data = size.num_data_codewords().unwrap();
-        let setup = size.block_setup().unwrap();
+        let num_data = size.num_data_codewords();
+        let setup = size.block_setup();
         let num_error = setup.num_error_codes();
 
         let has_padding = size.has_padding_modules();
@@ -421,9 +421,9 @@ impl<B: Bit> Bitmap<B> {
     /// # Example
     ///
     /// ```rust
-    /// # use datamatrix::SymbolSize;
-    /// let bitmap = datamatrix::encode(b"Foo", SymbolSize::Square10).unwrap();
-    /// for (x, y) in bitmap.pixels() {
+    /// # use datamatrix::{DataMatrix, SymbolSize};
+    /// let code = DataMatrix::encode(b"Foo", SymbolSize::Square10).unwrap();
+    /// for (x, y) in code.bitmap().pixels() {
     ///     // place square/circle at (x, y) to render this Data Matrix
     /// }
     /// ```

@@ -1,4 +1,4 @@
-use datamatrix::SymbolSize;
+use datamatrix::{DataMatrix, SymbolList};
 use image::{GrayImage, Luma};
 
 /// Generate image which only contains a Data Matrix
@@ -10,7 +10,9 @@ fn main() {
     const N: usize = 5;
 
     // Encode "Hello, World!" using the smallest square it can fit into
-    let bitmap = datamatrix::encode(b"Hello, World!", SymbolSize::MinSquare).unwrap();
+    let bitmap = DataMatrix::encode(b"Hello, World!", SymbolList::default().enforce_square())
+        .unwrap()
+        .bitmap();
 
     // Create an image which only contains the Data Matrix including a quiet zone
     let width = ((bitmap.width() + 2) * N) as u32;

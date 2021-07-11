@@ -15,20 +15,19 @@ pub use crate::decodation::{decode_data, decode_str, DataDecodingError};
 use crate::encodation::{planner::optimize, GenericDataEncoder};
 pub use crate::encodation::{DataEncodingError, EncodationType};
 
-use super::SymbolSize;
+use super::{SymbolList, SymbolSize};
 
 /// Encode input to data codewords for Data Matrix.
 pub fn encode_data(
     data: &[u8],
-    symbol_size: SymbolSize,
+    symbol_list: &SymbolList,
     eci: Option<u32>,
 ) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
-    let mut encoder = GenericDataEncoder::with_size(data, symbol_size);
+    let mut encoder = GenericDataEncoder::with_size(data, symbol_list);
     if let Some(eci) = eci {
         encoder.write_eci(eci);
     }
-    let cw = encoder.codewords()?;
-    Ok((cw, encoder.symbol_size))
+    encoder.codewords()
 }
 
 /// Compute a plan for when to switch encodation types during data encoding.
@@ -46,9 +45,9 @@ pub fn encode_data(
 /// more than one possibilites, the plan returned is an implementation detail.
 pub fn encodation_plan(
     data: &[u8],
-    symbol_size: SymbolSize,
+    symbol_list: &SymbolList,
 ) -> Option<Vec<(usize, EncodationType)>> {
-    optimize(data, 0, EncodationType::Ascii, symbol_size)
+    optimize(data, 0, EncodationType::Ascii, symbol_list)
 }
 
 /// Try to convert an UTF-8 encoded string to Latin 1.

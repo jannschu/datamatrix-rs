@@ -2,12 +2,12 @@
 ///
 /// I now believe in magic. Holy. Shit. 10/10.
 use crate::data::{decode_data, encode_data};
-use crate::SymbolSize;
+use crate::{SymbolList, SymbolSize};
 
 use alloc::vec;
 
 fn forth_and_back(data: &[u8]) -> Option<SymbolSize> {
-    let encoded = encode_data(data, SymbolSize::Min, None);
+    let encoded = encode_data(data, &SymbolList::default(), None);
     if let Ok(encoded) = encoded {
         let decoded = decode_data(&encoded.0);
         assert!(

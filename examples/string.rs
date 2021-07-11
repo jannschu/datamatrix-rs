@@ -1,7 +1,7 @@
-use datamatrix::SymbolSize;
+use datamatrix::{DataMatrix, SymbolList};
 
 fn main() {
     let text = "Doppelgänger";
-    let enc = datamatrix::encode_str(text, SymbolSize::MinSquare).unwrap();
-    print!("{}", enc.unicode());
+    let enc = DataMatrix::encode_str(text, SymbolList::default().enforce_square()).unwrap();
+    print!("{}", enc.bitmap().unicode());
 }

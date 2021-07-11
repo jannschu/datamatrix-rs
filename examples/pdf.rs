@@ -1,6 +1,6 @@
 use std::io::BufWriter;
 
-use datamatrix::{placement::PathSegment, SymbolSize};
+use datamatrix::{placement::PathSegment, DataMatrix, SymbolList};
 use lopdf::content::Operation;
 use printpdf::*;
 
@@ -21,7 +21,9 @@ fn main() {
         "So long as men can breathe, or eyes can see,\n",
         "So long lives this, and this gives life to thee.",
     );
-    let bitmap = datamatrix::encode(s.as_bytes(), SymbolSize::Min).unwrap();
+    let bitmap = DataMatrix::encode(s.as_bytes(), SymbolList::default())
+        .unwrap()
+        .bitmap();
 
     // Size of one black square, you also compute this with bitmap.width(),
     // bitmap.height() and the available space.

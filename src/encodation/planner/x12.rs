@@ -103,9 +103,9 @@ impl<T: ContextInformation> Plan for X12Plan<T> {
 #[test]
 fn test_eod_case1() {
     use super::generic::Context;
-    use crate::SymbolSize;
 
-    let mut plan = X12Plan::new(Context::new(b"DEABCFG", SymbolSize::Min));
+    let symbols = crate::SymbolList::default();
+    let mut plan = X12Plan::new(Context::new(b"DEABCFG", &symbols));
     for _ in 0..7 {
         assert!(plan.step().is_some());
     }
@@ -115,9 +115,9 @@ fn test_eod_case1() {
 #[test]
 fn test_eod_case2() {
     use super::generic::Context;
-    use crate::SymbolSize;
 
-    let mut plan = X12Plan::new(Context::new(b"AIMAIMAIMAIMAI", SymbolSize::Min));
+    let symbols = crate::SymbolList::default();
+    let mut plan = X12Plan::new(Context::new(b"AIMAIMAIMAIMAI", &symbols));
     for i in 0..12 {
         assert!(plan.step().is_some(), "char {}", i + 1);
     }

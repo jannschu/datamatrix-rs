@@ -14,7 +14,7 @@ pub(crate) fn is_encodable(ch: u8) -> bool {
 }
 
 /// Encode 1 to 4 characters using EDIFACT and write it to the context.
-fn write4<T: EncodingContext>(ctx: &mut T, s: &ArrayVec<[u8; 4]>) {
+fn write4<T: EncodingContext>(ctx: &mut T, s: &ArrayVec<u8, 4>) {
     let s1 = s.get(1).cloned().unwrap_or(0) & 0b11_1111;
     ctx.push((s[0] << 2) | (s1 >> 4));
 
@@ -31,7 +31,7 @@ fn write4<T: EncodingContext>(ctx: &mut T, s: &ArrayVec<[u8; 4]>) {
 
 fn handle_end<T: EncodingContext>(
     ctx: &mut T,
-    mut symbols: ArrayVec<[u8; 4]>,
+    mut symbols: ArrayVec<u8, 4>,
 ) -> Result<(), DataEncodingError> {
     // check case "encoding with <= 2 ASCII, no UNLATCH"
     let rest_chars = symbols.len() + ctx.characters_left();
@@ -39,7 +39,7 @@ fn handle_end<T: EncodingContext>(
         // The standard allows ASCII encoding without UNLATCH if there
         // are <= 2 words of space left in the symbol and
         // we can encode the rest with ASCII in this space.
-        let rest: ArrayVec<[u8; 4]> = symbols
+        let rest: ArrayVec<u8, 4> = symbols
             .iter()
             .cloned()
             .chain(ctx.rest().iter().cloned())
@@ -94,7 +94,7 @@ fn handle_end<T: EncodingContext>(
 }
 
 pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncodingError> {
-    let mut symbols = ArrayVec::<[u8; 4]>::new();
+    let mut symbols = ArrayVec::<u8, 4>::new();
     while let Some(ch) = ctx.eat() {
         symbols.push(ch);
 
@@ -126,7 +126,7 @@ fn test_write4_four() {
 fn test_write4_three() {
     use super::tests::DummyLogic;
     let mut enc = DummyLogic::new(vec![], 3, -1);
-    let mut s = ArrayVec::<[u8; 4]>::new();
+    let mut s = ArrayVec::<u8, 4>::new();
     s.try_extend_from_slice(&[0b10_01_00, 0b11_01_10, 0b011010])
         .unwrap();
     write4(&mut enc, &s);
@@ -140,7 +140,7 @@ fn test_write4_three() {
 fn test_write4_two() {
     use super::tests::DummyLogic;
     let mut enc = DummyLogic::new(vec![], 2, -1);
-    let mut s = ArrayVec::<[u8; 4]>::new();
+    let mut s = ArrayVec::<u8, 4>::new();
     s.try_extend_from_slice(&[0b10_01_00, 0b11_01_10]).unwrap();
     write4(&mut enc, &s);
     assert_eq!(enc.codewords, vec![0b10_01_00_11, 0b01_10_00_00]);
@@ -150,7 +150,7 @@ fn test_write4_two() {
 fn test_write4_one() {
     use super::tests::DummyLogic;
     let mut enc = DummyLogic::new(vec![], 1, -1);
-    let mut s = ArrayVec::<[u8; 4]>::new();
+    let mut s = ArrayVec::<u8, 4>::new();
     s.try_extend_from_slice(&[0b10_01_00]).unwrap();
     write4(&mut enc, &s);
     assert_eq!(enc.codewords, vec![0b10_01_00_00]);

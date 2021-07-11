@@ -1,7 +1,7 @@
 use super::{c40, DataEncodingError, EncodingContext};
 use arrayvec::ArrayVec;
 
-fn low_ascii_to_text_symbols(ctx: &mut ArrayVec<[u8; 6]>, ch: u8) {
+fn low_ascii_to_text_symbols(ctx: &mut ArrayVec<u8, 6>, ch: u8) {
     let new_ch = match ch {
         // switch case
         ch @ b'A'..=b'Z' => ch - b'A' + b'a',

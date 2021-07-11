@@ -1,7 +1,7 @@
 use alloc::{vec, vec::Vec};
 use core::fmt::{Debug, Error, Formatter};
 
-use crate::{encodation::encodation_type::EncodationType, symbol_size::Size};
+use crate::{encodation::encodation_type::EncodationType, symbol_size::SymbolList};
 
 use super::{
     ascii::AsciiPlan, base256::Base256Plan, c40::C40Plan, edifact::EdifactPlan, frac::Frac,
@@ -9,13 +9,13 @@ use super::{
 };
 
 #[derive(Clone, PartialEq)]
-pub(super) struct GenericPlan<'a, S: Size> {
+pub(super) struct GenericPlan<'a> {
     extra: Frac,
     pub(super) switches: Vec<(usize, EncodationType)>,
-    plan: PlanImpl<'a, S>,
+    plan: PlanImpl<'a>,
 }
 
-impl<'a, S: Size> Debug for GenericPlan<'a, S> {
+impl<'a> Debug for GenericPlan<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match &self.plan {
             PlanImpl::Ascii(pl) => f.write_fmt(format_args!(
@@ -71,23 +71,28 @@ impl<'a, S: Size> Debug for GenericPlan<'a, S> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum PlanImpl<'a, S: Size> {
-    Ascii(AsciiPlan<Context<'a, S>>),
-    C40(C40Plan<Context<'a, S>>),
-    Text(TextPlan<Context<'a, S>>),
-    X12(X12Plan<Context<'a, S>>),
-    Edifact(EdifactPlan<Context<'a, S>>),
-    Base256(Base256Plan<Context<'a, S>>),
+enum PlanImpl<'a> {
+    Ascii(AsciiPlan<Context<'a>>),
+    C40(C40Plan<Context<'a>>),
+    Text(TextPlan<Context<'a>>),
+    X12(X12Plan<Context<'a>>),
+    Edifact(EdifactPlan<Context<'a>>),
+    Base256(Base256Plan<Context<'a>>),
 }
 
-impl<'a, S: Size> GenericPlan<'a, S> {
+impl<'a> GenericPlan<'a> {
     /// Create an instance which starts with the given encodation type.
     ///
     /// The `free_unlatch` is currently only used by EDIFACT, it marks
     /// that 3 out of 4 values are read, a UNLATCH would now not
     /// result in additional cost.
-    pub(super) fn for_mode(mode: EncodationType, data: &'a [u8], written: usize, size: S) -> Self {
-        let mut ctx = Context::new(data, size);
+    pub(super) fn for_mode(
+        mode: EncodationType,
+        data: &'a [u8],
+        written: usize,
+        symbol_list: &'a SymbolList,
+    ) -> Self {
+        let mut ctx = Context::new(data, symbol_list);
         ctx.write(written);
         let plan = match mode {
             EncodationType::Ascii => PlanImpl::Ascii(AsciiPlan::new(ctx)),
@@ -211,8 +216,8 @@ impl<'a, S: Size> GenericPlan<'a, S> {
     }
 }
 
-impl<'a, S: Size> Plan for GenericPlan<'a, S> {
-    type Context = Context<'a, S>;
+impl<'a> Plan for GenericPlan<'a> {
+    type Context = Context<'a>;
 
     fn mode_switch_cost(&self) -> Option<Frac> {
         // only add costs from previous modes
@@ -249,7 +254,7 @@ impl<'a, S: Size> Plan for GenericPlan<'a, S> {
         }
     }
 
-    fn write_unlatch(&self) -> Context<'a, S> {
+    fn write_unlatch(&self) -> Context<'a> {
         match &self.plan {
             PlanImpl::Ascii(pl) => pl.write_unlatch(),
             PlanImpl::C40(pl) => pl.write_unlatch(),
@@ -262,29 +267,29 @@ impl<'a, S: Size> Plan for GenericPlan<'a, S> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub(super) struct Context<'a, S: Size> {
+pub(super) struct Context<'a> {
     data: &'a [u8],
-    size: S,
+    symbol_list: &'a SymbolList,
     consumed: usize,
     written: usize,
 }
 
-impl<'a, S: Size> Context<'a, S> {
-    pub(super) fn new(data: &'a [u8], size: S) -> Self {
+impl<'a> Context<'a> {
+    pub(super) fn new(data: &'a [u8], symbol_list: &'a SymbolList) -> Self {
         Self {
             data,
-            size,
+            symbol_list,
             consumed: 0,
             written: 0,
         }
     }
 }
 
-impl<'a, S: Size> ContextInformation for Context<'a, S> {
+impl<'a> ContextInformation for Context<'a> {
     fn symbol_size_left(&self, extra_chars: usize) -> Option<usize> {
         let size_needed = self.written + extra_chars;
-        let symbol = self.size.symbol_for(size_needed)?;
-        Some(symbol.num_data_codewords().unwrap() - size_needed)
+        let symbol = self.symbol_list.first_symbol_big_enough_for(size_needed)?;
+        Some(symbol.num_data_codewords() - size_needed)
     }
 
     fn write(&mut self, size: usize) {
@@ -308,8 +313,8 @@ impl<'a, S: Size> ContextInformation for Context<'a, S> {
 
 #[test]
 fn test_add_switch_ascii() {
-    use crate::SymbolSize;
-    let mut plan = GenericPlan::for_mode(EncodationType::Ascii, b"[]ABC01", 0, SymbolSize::Min);
+    let symbols = crate::SymbolList::default();
+    let mut plan = GenericPlan::for_mode(EncodationType::Ascii, b"[]ABC01", 0, &symbols);
     plan.step();
     plan.step();
     plan.step();

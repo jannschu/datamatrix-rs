@@ -3,7 +3,7 @@
 
 use super::ErrorDecodingError;
 use crate::errorcode::GF;
-use crate::{symbol_size::Size, SymbolSize};
+use crate::SymbolSize;
 
 use alloc::{vec, vec::Vec};
 
@@ -19,19 +19,17 @@ use alloc::{vec, vec::Vec};
 /// For larger symbols the error codes are interleaved in a certain way
 /// (see specification), this is considered in this decoder.
 pub fn decode(codewords: &mut [u8], size: SymbolSize) -> Result<(), ErrorDecodingError> {
-    let setup = size
-        .block_setup()
-        .expect("must be symbol with explicit size");
+    let setup = size.block_setup();
     let err_len = setup.num_ecc_per_block;
-    let stride = setup.num_blocks;
-    let num_data = size.num_data_codewords().unwrap();
+    let stride = setup.num_ecc_blocks;
+    let num_data = size.num_data_codewords();
 
     // For Square144 the first 8 blocks are 218 codewords (156 data codewords)
     // and the last two are 217 (155 data codewords). The stride will
     // be 10 in this case. Using just step_by(10) would give us the wrong error
     // codewords, so need to step the data and error parts separately...
     let (data, error) = codewords.split_at_mut(num_data);
-    for block in 0..setup.num_blocks {
+    for block in 0..setup.num_ecc_blocks {
         decode_gen(
             &mut data[block..],
             &mut error[block..],

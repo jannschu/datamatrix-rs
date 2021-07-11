@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use datamatrix::{
     placement::{Bitmap, PathSegment},
-    SymbolSize,
+    DataMatrix, SymbolList,
 };
 
 fn bitmap_to_svg(bitmap: Bitmap<bool>) -> String {
@@ -30,6 +30,8 @@ fn bitmap_to_svg(bitmap: Bitmap<bool>) -> String {
 }
 
 fn main() {
-    let bitmap = datamatrix::encode(b"Hello, SVG!", SymbolSize::MinRect).unwrap();
+    let bitmap = DataMatrix::encode(b"Hello, SVG!", SymbolList::default().enforce_rectangular())
+        .unwrap()
+        .bitmap();
     println!("{}", bitmap_to_svg(bitmap));
 }

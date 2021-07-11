@@ -1,13 +1,8 @@
-use core::iter::Cloned;
-use core::slice::Iter;
-
 use alloc::{vec, vec::Vec};
 
-use super::{
-    encodation_type::EncodationType, DataEncodingError, EncodingContext, GenericDataEncoder,
-};
+use super::{encodation_type::EncodationType, DataEncodingError, EncodingContext};
 use crate::data::encode_data;
-use crate::symbol_size::{Capacity, Size, SymbolSize};
+use crate::symbol_size::SymbolList;
 
 pub(super) trait TestEncoderLogic: Sized {
     type State;
@@ -130,86 +125,9 @@ impl<T: TestEncoderLogic> EncodingContext for TestEncodingContext<T> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(super) enum TestSymbol {
-    // error codewords, matrix width, matrix height, data regions
-    Square3,  // 5, 8, 8, 1),
-    Square5,  // 7, 10, 10, 1),
-    Rect5,    // 7, 16, 6, 1),
-    Square8,  // 10, 12, 12, 1),
-    Rect10,   // 11, 14, 6, 2),
-    Square13, // 0, 0, 0, 1),
-    Square1X,
-    Square2X,
-    Square77, // 0, 0, 0, 1)
-    Min,
-}
-
-#[rustfmt::skip]
-static SYMBOLS: [TestSymbol; 9] = [
-    TestSymbol::Square3, TestSymbol::Square5, TestSymbol::Rect5, TestSymbol::Square8,
-    TestSymbol::Rect10, TestSymbol::Square13, TestSymbol::Square1X, TestSymbol::Square2X,
-    TestSymbol::Square77,
-];
-
-impl Size for TestSymbol {
-    const DEFAULT: Self = TestSymbol::Min;
-
-    fn num_data_codewords(&self) -> Option<usize> {
-        match self {
-            Self::Square3 => Some(3),
-            Self::Square5 => Some(5),
-            Self::Rect5 => Some(5),
-            Self::Square8 => Some(8),
-            Self::Rect10 => Some(10),
-            Self::Square13 => Some(13),
-            Self::Square1X => Some(19),
-            Self::Square2X => Some(24),
-            Self::Square77 => Some(77),
-            Self::Min => None,
-        }
-    }
-
-    fn candidates(&self) -> Cloned<Iter<Self>> {
-        if self == &Self::Min {
-            return SYMBOLS.iter().cloned();
-        }
-        let index = SYMBOLS
-            .iter()
-            .enumerate()
-            .find(|(_i, size)| size == &self)
-            .unwrap()
-            .0;
-        SYMBOLS[index..index + 1].iter().cloned()
-    }
-
-    fn max_codeswords(&self) -> usize {
-        if let Some(num) = self.num_data_codewords() {
-            return num;
-        }
-        77
-    }
-
-    fn max_capacity(&self) -> Capacity {
-        match self {
-            Self::Square3 => Capacity::new(6, 2),
-            Self::Square5 => Capacity::new(10, 4),
-            Self::Rect5 => Capacity::new(10, 4),
-            Self::Square8 => Capacity::new(16, 7),
-            Self::Rect10 => Capacity::new(20, 9),
-            Self::Square13 => Capacity::new(26, 12),
-            Self::Square1X => Capacity::new(32, 15),
-            Self::Square2X => Capacity::new(40, 15),
-            Self::Square77 | Self::Min => Capacity::new(154, 76),
-        }
-    }
-}
-
-type TestEncoder<'a> = GenericDataEncoder<'a, TestSymbol>;
-
 #[cfg(test)]
 fn enc(data: &[u8]) -> Vec<u8> {
-    encode_data(data, SymbolSize::Min, None).unwrap().0
+    encode_data(data, &SymbolList::default(), None).unwrap().0
 }
 
 #[test]
@@ -258,13 +176,7 @@ fn test_c40_spec_example() {
 #[test]
 fn test_c40_special_case_a() {
     // case "a": Unlatch is not required
-    let mut encoder: GenericDataEncoder<_> =
-        TestEncoder::with_size(b"AI_IM_MA_AI_IM", TestSymbol::DEFAULT);
-    let words = GenericDataEncoder::<_>::codewords(&mut encoder).unwrap();
-    assert_eq!(
-        words,
-        vec![230, 90, 242, 166, 11, 10, 107, 87, 195, 90, 242, 166, 11]
-    );
+    assert_eq!(enc(b"lvzvlv"), vec![239, 161, 224, 222, 204]);
 }
 
 #[test]
@@ -312,7 +224,9 @@ fn test_c40_special_cases2() {
 #[test]
 fn test_text_encoding_1() {
     // 239 shifts to Text encodation, 254 unlatches
-    let words = encode_data(b"aimaimaim", SymbolSize::Min, None).unwrap().0;
+    let words = encode_data(b"aimaimaim", &SymbolList::default(), None)
+        .unwrap()
+        .0;
     assert_eq!(words, vec![239, 91, 11, 91, 11, 91, 11, 254]);
 }
 

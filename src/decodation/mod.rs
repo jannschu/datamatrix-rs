@@ -480,13 +480,15 @@ fn test_base256() {
 #[test]
 fn test_read_eci() {
     use crate::encodation::GenericDataEncoder;
-    use crate::SymbolSize;
+
     fn enc_dec(eci: u32) -> u32 {
-        let mut encoder = GenericDataEncoder::with_size(&[], SymbolSize::Min);
+        let symbols = crate::SymbolList::default();
+        let mut encoder = GenericDataEncoder::with_size(&[], &symbols);
         encoder.write_eci(eci);
-        let cw = encoder.codewords().unwrap();
+        let (cw, _) = encoder.codewords().unwrap();
         read_eci(Reader(&cw[1..], 0)).unwrap().1
     }
+
     for eci in (0..=999999).step_by(31) {
         assert_eq!(enc_dec(eci), eci);
     }

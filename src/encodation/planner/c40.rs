@@ -192,8 +192,9 @@ pub(super) type C40Plan<T> = C40LikePlan<T, C40Charset>;
 #[test]
 fn test_eod_case1() {
     use super::generic::Context;
-    use crate::SymbolSize;
-    let mut plan = C40Plan::new(Context::new(b"DEABCFG", SymbolSize::Min));
+
+    let symbols = crate::SymbolList::default();
+    let mut plan = C40Plan::new(Context::new(b"DEABCFG", &symbols));
     for _ in 0..7 {
         plan.step();
     }

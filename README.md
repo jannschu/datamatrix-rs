@@ -26,13 +26,13 @@ other open source Data Matrix libraries.
 ## Example
 
 ```rust
-let bitmap = datamatrix::encode(
+let code = DataMatrix::encode(
     b"Hello, World!",
-    SymbolSize::Min,
+    SymbolList::default(),
 ).unwrap();
 
 // print an "ASCII art" version
-print!("{}", bitmap.unicode());
+print!("{}", code.bitmap().unicode());
 ```
 
 The library contains helpers for generating other output formats. Example code can be found
@@ -50,7 +50,7 @@ this approach allows high flexibility.
 - [x] Reed Solomon de-/encoder.
 - [x] Tile placement encoding.
 - [x] Helpers for rendering
-- [ ] Implement [Extended Rectangular Data Matrix (DMRE)](https://e-d-c.info/projekte/dmre.html)
+- [x] Implement [Extended Rectangular Data Matrix (DMRE)](https://e-d-c.info/projekte/dmre.html)
   defined in ISO 21471 which adds more rectangular symbol sizes
 - [ ] ECI support. This has progressed as far as I could get without buying the
       standards for this (several hundred dollars).
@@ -59,7 +59,6 @@ this approach allows high flexibility.
 
 Things in consideration for after that:
 
-- Refine API for better symbol size control ("at least 14x14" for example)
 - "Structured Append"
 - "Reader Programming"
 - FCN1 and GS1
