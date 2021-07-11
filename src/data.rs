@@ -43,8 +43,8 @@ pub fn encode_data(
 ///
 /// The plan is chosen to obtain a minimal encoding size. If there are
 /// multiple solutions, a plan is picked by first filtering by the "complexity"
-/// of the modes, and then by the number of mode switches. If there are still
-/// more than one possibilites, the plan returned is an implementation detail.
+/// of the modes, and then by the number of mode switches. If there is still
+/// more than one possibility the returned plan is an implementation detail.
 ///
 /// # Example
 ///
