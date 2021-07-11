@@ -3,7 +3,7 @@ use arrayvec::ArrayVec;
 #[cfg(test)]
 use alloc::{vec, vec::Vec};
 
-use super::{ascii, encodation_type::EncodationType, DataEncodingError, EncodingContext};
+use super::{ascii, DataEncodingError, EncodingContext};
 
 const SHIFT1: u8 = 0;
 const SHIFT2: u8 = 1;
@@ -79,7 +79,7 @@ where
     if !ctx.has_more_characters() {
         let size_left = ctx
             .symbol_size_left(buf.len())
-            .ok_or(DataEncodingError::TooMuchData)?;
+            .ok_or(DataEncodingError::TooMuchOrIllegalData)?;
         match (size_left + buf.len(), buf.len()) {
             // case a) handled by standard loop
             // case b)
@@ -90,14 +90,14 @@ where
             // case c), explicit UNLATCH, rest ASCII
             (2, 1) => {
                 ctx.push(super::UNLATCH);
-                ctx.set_mode(EncodationType::Ascii);
+                ctx.set_ascii_until_end();
                 ctx.backup(1);
                 return Ok(());
             }
             // case d), implicit unlatch, then ascii
             (1, 1) => {
                 if ascii::encoding_size(&[last_ch]) == 1 {
-                    ctx.set_mode(EncodationType::Ascii);
+                    ctx.set_ascii_until_end();
                     ctx.backup(1);
                     return Ok(());
                 }
@@ -115,7 +115,7 @@ where
         // much space for one of the cases a) - d) above, we need to explicitely
         // set the new mode, otherwise infinite loop
         if !mode_switch {
-            ctx.set_mode(EncodationType::Ascii);
+            ctx.set_ascii_until_end();
         }
     }
     let chars_left = ctx.characters_left();
@@ -125,8 +125,8 @@ where
             // we can encode them with one ASCII byte, maybe with UNLATCH before
             let space_left = ctx
                 .symbol_size_left(1)
-                .ok_or(DataEncodingError::TooMuchData)?;
-            ctx.set_mode(EncodationType::Ascii);
+                .ok_or(DataEncodingError::TooMuchOrIllegalData)?;
+            ctx.set_ascii_until_end();
             if space_left >= 1 {
                 ctx.push(super::UNLATCH);
             }
@@ -135,12 +135,12 @@ where
         ctx.push(super::UNLATCH);
     } else if ctx
         .symbol_size_left(0)
-        .ok_or(DataEncodingError::TooMuchData)?
+        .ok_or(DataEncodingError::TooMuchOrIllegalData)?
         > 0
     {
         ctx.push(super::UNLATCH);
         if !mode_switch {
-            ctx.set_mode(EncodationType::Ascii);
+            ctx.set_ascii_until_end();
         }
     }
     Ok(())

@@ -483,7 +483,7 @@ fn test_read_eci() {
 
     fn enc_dec(eci: u32) -> u32 {
         let symbols = crate::SymbolList::default();
-        let mut encoder = GenericDataEncoder::with_size(&[], &symbols);
+        let mut encoder = GenericDataEncoder::with_size(&[], &symbols, EncodationType::all());
         encoder.write_eci(eci);
         let (cw, _) = encoder.codewords().unwrap();
         read_eci(Reader(&cw[1..], 0)).unwrap().1

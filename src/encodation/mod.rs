@@ -2,6 +2,7 @@
 use crate::symbol_size::{SymbolList, SymbolSize};
 
 use alloc::{vec, vec::Vec};
+use flagset::FlagSet;
 
 pub(crate) mod ascii;
 mod base256;
@@ -29,9 +30,9 @@ pub use encodation_type::EncodationType;
 
 pub(crate) const UNLATCH: u8 = 254;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum DataEncodingError {
-    TooMuchData,
+    TooMuchOrIllegalData,
     SymbolListEmpty,
 }
 
@@ -63,7 +64,7 @@ trait EncodingContext {
     /// Get the codewords written so far.
     fn codewords(&self) -> &[u8];
 
-    fn set_mode(&mut self, mode: EncodationType);
+    fn set_ascii_until_end(&mut self);
 
     fn peek(&self, n: usize) -> Option<u8> {
         self.rest().get(n).cloned()
@@ -88,6 +89,7 @@ pub(crate) struct GenericDataEncoder<'a> {
     planned_switches: Vec<(usize, EncodationType)>,
     new_mode: Option<u8>,
     codewords: Vec<u8>,
+    enabled_modes: FlagSet<EncodationType>,
 }
 
 impl<'a> EncodingContext for GenericDataEncoder<'a> {
@@ -108,7 +110,10 @@ impl<'a> EncodingContext for GenericDataEncoder<'a> {
         let switch = new_mode != self.encodation;
         if switch {
             // switch to new mode if not ASCII
-            self.set_mode(new_mode);
+            self.encodation = new_mode;
+            if !new_mode.is_ascii() {
+                self.new_mode = Some(new_mode.latch_from_ascii());
+            }
         }
         Ok(switch)
     }
@@ -150,16 +155,18 @@ impl<'a> EncodingContext for GenericDataEncoder<'a> {
         self.codewords.insert(index, ch);
     }
 
-    fn set_mode(&mut self, mode: EncodationType) {
-        self.encodation = mode;
-        if !mode.is_ascii() {
-            self.new_mode = Some(mode.latch_from_ascii());
-        }
+    fn set_ascii_until_end(&mut self) {
+        self.encodation = EncodationType::Ascii;
+        self.planned_switches = vec![(0, EncodationType::Ascii)];
     }
 }
 
 impl<'a> GenericDataEncoder<'a> {
-    pub fn with_size(data: &'a [u8], symbol_list: &'a SymbolList) -> Self {
+    pub fn with_size(
+        data: &'a [u8],
+        symbol_list: &'a SymbolList,
+        enabled_modes: FlagSet<EncodationType>,
+    ) -> Self {
         Self {
             data,
             input: data,
@@ -168,6 +175,7 @@ impl<'a> GenericDataEncoder<'a> {
             encodation: EncodationType::Ascii,
             codewords: Vec::new(),
             planned_switches: vec![],
+            enabled_modes,
         }
     }
 
@@ -193,7 +201,7 @@ impl<'a> GenericDataEncoder<'a> {
     pub fn codewords(&mut self) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
         // bigger than theoretical limit? then fail early
         if self.data.len() > self.symbol_list.max_capacity() {
-            return Err(DataEncodingError::TooMuchData);
+            return Err(DataEncodingError::TooMuchOrIllegalData);
         }
 
         self.codewords
@@ -204,8 +212,9 @@ impl<'a> GenericDataEncoder<'a> {
             self.codewords.len(),
             EncodationType::Ascii,
             self.symbol_list,
+            self.enabled_modes,
         )
-        .ok_or(DataEncodingError::TooMuchData)?;
+        .ok_or(DataEncodingError::TooMuchOrIllegalData)?;
 
         let mut no_write_run = 0;
         while self.has_more_characters() {
@@ -220,7 +229,7 @@ impl<'a> GenericDataEncoder<'a> {
             if words_written <= 1 {
                 // no mode can do something useful in 1 word (at EOD, but that is fine)
                 no_write_run += 1;
-                if no_write_run > 2 {
+                if no_write_run > 5 {
                     panic!("no progress in encoder, this is a bug");
                 }
             } else {
@@ -228,7 +237,9 @@ impl<'a> GenericDataEncoder<'a> {
             }
         }
 
-        let symbol_size = self.symbol_for(0).ok_or(DataEncodingError::TooMuchData)?;
+        let symbol_size = self
+            .symbol_for(0)
+            .ok_or(DataEncodingError::TooMuchOrIllegalData)?;
         self.add_padding(symbol_size);
 
         let mut codewords = vec![];
@@ -280,7 +291,7 @@ impl<'a> GenericDataEncoder<'a> {
 #[test]
 fn test_empty() {
     let symbols = crate::SymbolList::default();
-    let mut enc = GenericDataEncoder::with_size(&[], &symbols);
+    let mut enc = GenericDataEncoder::with_size(&[], &symbols, EncodationType::all());
     let (cw, _) = GenericDataEncoder::codewords(&mut enc).unwrap();
     assert_eq!(cw, vec![ascii::PAD, 175, 70]);
 }

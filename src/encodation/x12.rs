@@ -1,4 +1,4 @@
-use super::{ascii, c40, encodation_type::EncodationType, DataEncodingError, EncodingContext};
+use super::{ascii, c40, DataEncodingError, EncodingContext};
 
 pub(crate) fn is_native_x12(ch: u8) -> bool {
     matches!(ch, 13 | 42 | 62 | 32 | b'0'..=b'9' | b'A'..=b'Z')
@@ -35,20 +35,20 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncoding
     if one_ascii_remain_maybe
         && ctx
             .symbol_size_left(1)
-            .ok_or(DataEncodingError::TooMuchData)?
+            .ok_or(DataEncodingError::TooMuchOrIllegalData)?
             == 0
     {
-        ctx.set_mode(EncodationType::Ascii);
+        ctx.set_ascii_until_end();
         return Ok(());
     }
     if ctx.has_more_characters()
         || ctx
             .symbol_size_left(0)
-            .ok_or(DataEncodingError::TooMuchData)?
+            .ok_or(DataEncodingError::TooMuchOrIllegalData)?
             > 0
     {
         if !switch {
-            ctx.set_mode(EncodationType::Ascii);
+            ctx.set_ascii_until_end();
         }
         ctx.push(super::UNLATCH);
     }

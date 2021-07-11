@@ -17,6 +17,7 @@ extended_eci = ["encoding_rs"]
 
 [dependencies]
 arrayvec = "0.7"
+flagset = "0.4"
 encoding_rs = { version = "0.8", optional = true }
 
 [dev-dependencies]

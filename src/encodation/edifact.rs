@@ -1,6 +1,5 @@
 use arrayvec::ArrayVec;
 
-use super::encodation_type::EncodationType;
 use super::{ascii, DataEncodingError, EncodingContext};
 
 pub(crate) const UNLATCH: u8 = 0b011111;
@@ -49,7 +48,7 @@ fn handle_end<T: EncodingContext>(
             match ctx.symbol_size_left(ascii_size).map(|x| x + ascii_size) {
                 Some(space) if space <= 2 && ascii_size <= space => {
                     ctx.backup(symbols.len());
-                    ctx.set_mode(EncodationType::Ascii);
+                    ctx.set_ascii_until_end();
                     return Ok(());
                 }
                 _ => (),
@@ -61,13 +60,13 @@ fn handle_end<T: EncodingContext>(
             // eod
             let space_left = ctx
                 .symbol_size_left(0)
-                .ok_or(DataEncodingError::TooMuchData)?;
+                .ok_or(DataEncodingError::TooMuchOrIllegalData)?;
             // padding case
             if space_left > 0 {
                 // the other case is caught in the "special end of data rule" above
                 assert!(space_left > 2);
                 ctx.push(UNLATCH << 2);
-                ctx.set_mode(EncodationType::Ascii);
+                ctx.set_ascii_until_end();
             }
         } else {
             // mode switch
@@ -79,11 +78,11 @@ fn handle_end<T: EncodingContext>(
             // eod, maybe add UNLATCH for padding if space allows
             let space_left = ctx
                 .symbol_size_left(symbols.len())
-                .ok_or(DataEncodingError::TooMuchData)?
+                .ok_or(DataEncodingError::TooMuchOrIllegalData)?
                 > 0;
             if space_left || symbols.len() == 3 {
                 symbols.push(UNLATCH);
-                ctx.set_mode(EncodationType::Ascii);
+                ctx.set_ascii_until_end();
             }
         } else {
             symbols.push(UNLATCH);

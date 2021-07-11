@@ -69,6 +69,7 @@ mod symbol_size;
 
 pub mod data;
 
+pub use encodation::EncodationType;
 pub use symbol_size::{SymbolList, SymbolSize};
 
 use alloc::vec::Vec;
@@ -155,7 +156,8 @@ impl DataMatrix {
         symbol_list: &SymbolList,
         eci: Option<u32>,
     ) -> Result<DataMatrix, DataEncodingError> {
-        let (mut codewords, size) = data::encode_data(data, symbol_list, eci)?;
+        let (mut codewords, size) =
+            data::encode_data(data, symbol_list, eci, EncodationType::all())?;
         let ecc = errorcode::encode_error(&codewords, size);
         let num_codewords = codewords.len();
         codewords.extend_from_slice(&ecc);

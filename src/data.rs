@@ -10,6 +10,7 @@
 //! There is no reason I can think of for an end user of the library to ever call them directly
 //! but they can be useful if one needs to work on a lower level.
 use alloc::{string::String, vec::Vec};
+use flagset::FlagSet;
 
 pub use crate::decodation::{decode_data, decode_str, DataDecodingError};
 use crate::encodation::{planner::optimize, GenericDataEncoder};
@@ -22,8 +23,9 @@ pub fn encode_data(
     data: &[u8],
     symbol_list: &SymbolList,
     eci: Option<u32>,
+    enabled_modes: impl Into<FlagSet<EncodationType>>,
 ) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
-    let mut encoder = GenericDataEncoder::with_size(data, symbol_list);
+    let mut encoder = GenericDataEncoder::with_size(data, symbol_list, enabled_modes.into());
     if let Some(eci) = eci {
         encoder.write_eci(eci);
     }
@@ -43,11 +45,26 @@ pub fn encode_data(
 /// multiple solutions, a plan is picked by first filtering by the "complexity"
 /// of the modes, and then by the number of mode switches. If there are still
 /// more than one possibilites, the plan returned is an implementation detail.
+///
+/// # Example
+///
+/// ```rust
+/// # use datamatrix::{data::encodation_plan, EncodationType, SymbolList};
+/// encodation_plan(b"Hello!", &SymbolList::default(), EncodationType::all());
+/// encodation_plan(b"Hello!", &SymbolList::default(), EncodationType::Ascii | EncodationType::Edifact);
+/// ```
 pub fn encodation_plan(
     data: &[u8],
     symbol_list: &SymbolList,
+    enabled_modes: impl Into<FlagSet<EncodationType>>,
 ) -> Option<Vec<(usize, EncodationType)>> {
-    optimize(data, 0, EncodationType::Ascii, symbol_list)
+    optimize(
+        data,
+        0,
+        EncodationType::Ascii,
+        symbol_list,
+        enabled_modes.into(),
+    )
 }
 
 /// Try to convert an UTF-8 encoded string to Latin 1.

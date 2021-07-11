@@ -20,15 +20,15 @@ pub(super) fn two_digits_coming(rest: &[u8]) -> bool {
 pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncodingError> {
     loop {
         // If two digits are next, encode without asking for mode switch
+        if ctx.maybe_switch_mode()? {
+            return Ok(());
+        }
         let two_digits = two_digits_coming(ctx.rest());
         if two_digits {
             let a = ctx.eat().unwrap();
             let b = ctx.eat().unwrap();
             ctx.push((a - b'0') * 10 + (b - b'0') + 130);
             continue;
-        }
-        if ctx.maybe_switch_mode()? {
-            return Ok(());
         }
         match ctx.eat() {
             None => return Ok(()),

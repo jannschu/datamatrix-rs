@@ -1,17 +1,20 @@
+use flagset::{flags, FlagSet};
+
 use super::{ascii, base256, c40, edifact, text, x12, DataEncodingError, GenericDataEncoder};
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-/// List of data encodation types
-///
-/// Data Matrix can switch between different "codecs" in a symbol. Each one
-/// has its strenghts and weaknesses.
-pub enum EncodationType {
-    Ascii,
-    C40,
-    Text,
-    X12,
-    Edifact,
-    Base256,
+flags! {
+    /// List of data encodation types
+    ///
+    /// Data Matrix can switch between different "codecs" in a symbol. Each one
+    /// has its strenghts and weaknesses.
+    pub enum EncodationType: u8 {
+        Ascii   = 0b000001,
+        C40     = 0b000010,
+        Text    = 0b000100,
+        X12     = 0b001000,
+        Edifact = 0b010000,
+        Base256 = 0b100000,
+    }
 }
 
 impl EncodationType {
@@ -30,6 +33,11 @@ impl EncodationType {
             Self::C40 => 4,
             Self::Text => 5,
         }
+    }
+
+    /// Get flag set with all encodation types activated.
+    pub fn all() -> FlagSet<Self> {
+        FlagSet::full()
     }
 
     pub(super) fn encode<'a, 'b: 'a>(

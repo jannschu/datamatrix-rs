@@ -1,4 +1,4 @@
-use super::{encodation_type::EncodationType, DataEncodingError, EncodingContext};
+use super::{DataEncodingError, EncodingContext};
 
 /// Perform the 255 state randomization as defined in the standard.
 ///
@@ -18,7 +18,7 @@ fn randomize_255_state(ch: u8, pos: usize) -> u8 {
 fn write_length<T: EncodingContext>(ctx: &mut T, start: usize) -> Result<(), DataEncodingError> {
     let space_left = ctx
         .symbol_size_left(0)
-        .ok_or(DataEncodingError::TooMuchData)?;
+        .ok_or(DataEncodingError::TooMuchOrIllegalData)?;
     let mut data_written = ctx.codewords().len() - start;
     if ctx.has_more_characters() || space_left > 0 {
         let data_count = data_written - 1;
@@ -51,7 +51,7 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncoding
         if !ctx.has_more_characters() || ctx.maybe_switch_mode()? {
             write_length(ctx, start)?;
             if !ctx.has_more_characters() {
-                ctx.set_mode(EncodationType::Ascii);
+                ctx.set_ascii_until_end();
             }
             return Ok(());
         }

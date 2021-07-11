@@ -1,5 +1,7 @@
 use alloc::{vec, vec::Vec};
 
+use flagset::FlagSet;
+
 use super::{encodation_type::EncodationType, DataEncodingError, EncodingContext};
 use crate::data::encode_data;
 use crate::symbol_size::SymbolList;
@@ -116,8 +118,8 @@ impl<T: TestEncoderLogic> EncodingContext for TestEncodingContext<T> {
         self.codewords.insert(index, ch);
     }
 
-    fn set_mode(&mut self, mode: super::encodation_type::EncodationType) {
-        self.mode = mode;
+    fn set_ascii_until_end(&mut self) {
+        self.mode = EncodationType::Ascii;
     }
 
     fn codewords(&self) -> &[u8] {
@@ -127,7 +129,14 @@ impl<T: TestEncoderLogic> EncodingContext for TestEncodingContext<T> {
 
 #[cfg(test)]
 fn enc(data: &[u8]) -> Vec<u8> {
-    encode_data(data, &SymbolList::default(), None).unwrap().0
+    enc_mode(data, EncodationType::all())
+}
+
+#[cfg(test)]
+fn enc_mode(data: &[u8], enabled_modes: impl Into<FlagSet<EncodationType>>) -> Vec<u8> {
+    encode_data(data, &SymbolList::default(), None, enabled_modes.into())
+        .unwrap()
+        .0
 }
 
 #[test]
@@ -224,9 +233,14 @@ fn test_c40_special_cases2() {
 #[test]
 fn test_text_encoding_1() {
     // 239 shifts to Text encodation, 254 unlatches
-    let words = encode_data(b"aimaimaim", &SymbolList::default(), None)
-        .unwrap()
-        .0;
+    let words = encode_data(
+        b"aimaimaim",
+        &SymbolList::default(),
+        None,
+        EncodationType::all(),
+    )
+    .unwrap()
+    .0;
     assert_eq!(words, vec![239, 91, 11, 91, 11, 91, 11, 254]);
 }
 
@@ -605,4 +619,31 @@ fn test_bug_3048549() {
         enc(b"fiykmj*Rh2`,e6"),
         vec![239, 122, 87, 154, 40, 7, 171, 115, 207, 12, 130, 71, 155, 254, 129, 237]
     );
+}
+
+#[test]
+fn test_only_base256() {
+    assert_eq!(
+        enc_mode(b"01", EncodationType::Base256),
+        vec![231, 46, 241, 136, 129],
+    );
+}
+
+#[test]
+fn test_only_edifact() {
+    assert_eq!(
+        enc_mode(b"01", EncodationType::Edifact),
+        vec![240, 131, 129],
+    );
+}
+
+#[test]
+fn test_only_edifact_impossible() {
+    let code = encode_data(
+        b"aaa",
+        &SymbolList::default(),
+        None,
+        EncodationType::Edifact,
+    );
+    assert_eq!(code, Err(DataEncodingError::TooMuchOrIllegalData),);
 }

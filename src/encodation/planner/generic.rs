@@ -1,6 +1,8 @@
 use alloc::{vec, vec::Vec};
 use core::fmt::{Debug, Error, Formatter};
 
+use flagset::FlagSet;
+
 use crate::{encodation::encodation_type::EncodationType, symbol_size::SymbolList};
 
 use super::{
@@ -126,7 +128,13 @@ impl<'a> GenericPlan<'a> {
         }
     }
 
-    pub(super) fn add_switches(self, list: &mut Vec<Self>, rest_len: usize, as_start: bool) {
+    pub(super) fn add_switches(
+        self,
+        list: &mut Vec<Self>,
+        rest_len: usize,
+        as_start: bool,
+        enabled_modes: FlagSet<EncodationType>,
+    ) {
         let ascii_cost = if let Some(cost) = self.mode_switch_cost() {
             cost
         } else {
@@ -158,32 +166,36 @@ impl<'a> GenericPlan<'a> {
         }
 
         // Add switch to ASCII
-        if !self.is_ascii() {
+        if !self.is_ascii() && enabled_modes.contains(EncodationType::Ascii) {
             add_switch!(AsciiPlan, Ascii, 0);
         }
 
         // Add switch to Base256
-        if !matches!(self.plan, PlanImpl::Base256(_)) {
+        if !matches!(self.plan, PlanImpl::Base256(_))
+            && enabled_modes.contains(EncodationType::Base256)
+        {
             add_switch!(Base256Plan, Base256, 1);
         }
 
         // Add switch to Edifact
-        if !matches!(self.plan, PlanImpl::Edifact(_)) {
+        if !matches!(self.plan, PlanImpl::Edifact(_))
+            && enabled_modes.contains(EncodationType::Edifact)
+        {
             add_switch!(EdifactPlan, Edifact, 1);
         }
 
         // Add switch to X12
-        if !self.is_x12() {
+        if !self.is_x12() && enabled_modes.contains(EncodationType::X12) {
             add_switch!(X12Plan, X12, 1);
         }
 
         // Add switch to Text
-        if !matches!(self.plan, PlanImpl::Text(_)) {
+        if !matches!(self.plan, PlanImpl::Text(_)) && enabled_modes.contains(EncodationType::Text) {
             add_switch!(TextPlan, Text, 1);
         }
 
         // Add switch to C40
-        if !self.is_c40() {
+        if !self.is_c40() && enabled_modes.contains(EncodationType::C40) {
             add_switch!(C40Plan, C40, 1);
         }
     }
@@ -320,7 +332,7 @@ fn test_add_switch_ascii() {
     plan.step();
     assert_eq!(plan.cost(), 3.into());
     let mut list = vec![];
-    plan.add_switches(&mut list, 20, false);
+    plan.add_switches(&mut list, 20, false, EncodationType::all());
     match &list[4].plan {
         PlanImpl::C40(pl) => {
             // one char was consumed

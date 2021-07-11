@@ -1,3 +1,5 @@
+use flagset::FlagSet;
+
 use super::Plan;
 use crate::{encodation::encodation_type::EncodationType, symbol_size::SymbolList};
 
@@ -23,13 +25,18 @@ pub(crate) fn optimize(
     written: usize,
     mode: EncodationType,
     symbol_list: &SymbolList,
+    enabled_modes: FlagSet<EncodationType>,
 ) -> Option<Vec<(usize, EncodationType)>> {
     let start_plan = GenericPlan::for_mode(mode, data, written, symbol_list);
 
     let mut plans = Vec::with_capacity(36);
     let mut new_plan = Vec::with_capacity(36);
 
-    plans.push(start_plan);
+    if enabled_modes.contains(mode) {
+        plans.push(start_plan);
+    } else {
+        start_plan.add_switches(&mut plans, data.len(), true, enabled_modes);
+    }
 
     for iteration in 0usize.. {
         let mut at_end = false;
@@ -45,6 +52,7 @@ pub(crate) fn optimize(
                     &mut new_plan,
                     rest_chars, // chars left
                     use_as_start,
+                    enabled_modes,
                 );
                 // remove plan, it can not process input
                 continue;
@@ -55,7 +63,12 @@ pub(crate) fn optimize(
             // the step was optimal (unbeatable) or we are at the end.
             if !result.unbeatable && !result.end {
                 // this also calls step() one time.
-                plan_copy_before_step.add_switches(&mut new_plan, rest_chars, use_as_start);
+                plan_copy_before_step.add_switches(
+                    &mut new_plan,
+                    rest_chars,
+                    use_as_start,
+                    enabled_modes,
+                );
             }
             if result.end {
                 // since all modes step one character at a time,
@@ -186,20 +199,38 @@ fn test_hopeless_remove_2() {
 
 #[test]
 fn test_ascii_case1() {
-    let result = optimize(b"ab*de", 0, EncodationType::Ascii, &SymbolList::default());
+    let result = optimize(
+        b"ab*de",
+        0,
+        EncodationType::Ascii,
+        &SymbolList::default(),
+        EncodationType::all(),
+    );
     assert_eq!(result.map(|v| v[0].1), Some(EncodationType::Ascii));
 }
 
 #[test]
 fn test_x12_case1() {
     // from b"ABC>ABC123>ABCDE", which should switches to X12 until end
-    let result = optimize(b"BCDE", 0, EncodationType::X12, &SymbolList::default());
+    let result = optimize(
+        b"BCDE",
+        0,
+        EncodationType::X12,
+        &SymbolList::default(),
+        EncodationType::all(),
+    );
     assert_eq!(result.map(|v| v[0].1), Some(EncodationType::X12));
 }
 
 #[test]
 fn test_x12_case2() {
-    let result = optimize(b"CP0*", 3, EncodationType::X12, &SymbolList::default());
+    let result = optimize(
+        b"CP0*",
+        3,
+        EncodationType::X12,
+        &SymbolList::default(),
+        EncodationType::all(),
+    );
     assert_eq!(result.map(|v| v[0].1), Some(EncodationType::X12));
 }
 
@@ -212,13 +243,20 @@ fn test_x12_case3() {
         0,
         EncodationType::Ascii,
         &SymbolList::default(),
+        EncodationType::all(),
     );
     assert_eq!(result.map(|v| v[0].1), Some(EncodationType::X12));
 }
 
 #[test]
 fn test_edifact_case1() {
-    let result = optimize(b"XX", 42, EncodationType::Edifact, &SymbolList::default());
+    let result = optimize(
+        b"XX",
+        42,
+        EncodationType::Edifact,
+        &SymbolList::default(),
+        EncodationType::all(),
+    );
     assert_eq!(result.map(|v| v[0].1), Some(EncodationType::Edifact));
 }
 
@@ -230,6 +268,7 @@ fn test_edifact_case2() {
         971,
         EncodationType::Edifact,
         &SymbolList::default(),
+        EncodationType::all(),
     );
     assert!(result.is_some());
 }
@@ -241,6 +280,7 @@ fn test_x12_case4() {
         11,
         EncodationType::X12,
         &SymbolList::default(),
+        EncodationType::all(),
     );
     assert_eq!(result.map(|v| v[0].1), Some(EncodationType::X12));
 }
