@@ -97,11 +97,10 @@ impl DataMatrix {
     pub fn bitmap(&self) -> Bitmap<bool> {
         let mut map = MatrixMap::new(self.size);
         map.traverse(|idx, bits| {
-            let codeword = self.data[idx];
-            for (i, bit) in IntoIterator::into_iter(bits).enumerate() {
-                // 0 = MSB
-                // 7 = LSB
-                *bit = ((codeword >> (7 - i)) & 1) == 1;
+            let mut codeword = self.data[idx];
+            for bit in IntoIterator::into_iter(bits).rev() {
+                *bit = codeword & 1 == 1;
+                codeword >>= 1;
             }
         });
         map.bitmap()
