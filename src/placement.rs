@@ -4,7 +4,7 @@
 //! to iterate over the bit
 //! positions of each codeword in the final symbol, i.e., how the black squares are
 //! mapped to the encoded data as bytes. This is used to write
-//! the encoded into a bitmap, and also to read it from a bitmap.
+//! the encoded data into a bitmap, and also to read it from a bitmap.
 //!
 //! An abstract bitmap struct [Bitmap] is the final output of encoding and the input
 //! for decoding. It also contains helpers for rendering.
@@ -15,18 +15,6 @@ use crate::symbol_size::SymbolSize;
 mod path;
 
 pub use path::PathSegment;
-
-/// Trait for a visitor to the symbol's bits.
-///
-/// A bit is called "module" in the specification. Each codeword consists
-/// of eight bits (modules).
-///
-/// During traversal the visitor is called with pointers to the
-/// codewords' bits. It can either read of write them.
-pub trait Visitor<B: Bit> {
-    /// Visit the next codewords' bits.
-    fn visit(&mut self, codeword_index: usize, bits: [&mut B; 8]);
-}
 
 /// Abstract "bit" type used in [MatrixMap].
 pub trait Bit: Clone + PartialEq + core::fmt::Debug {
@@ -145,8 +133,11 @@ impl<M: Bit> MatrixMap<M> {
         Bitmap { width: w, bits }
     }
 
-    /// Traverse the symbol in codeword order and call the visitor.
-    pub fn traverse<V: Visitor<M>>(&mut self, visitor: &mut V) {
+    /// Traverse the symbol in codeword order and call the function for each position.
+    pub fn traverse<F>(&mut self, mut visit: F)
+    where
+        F: FnMut(usize, [&mut M; 8]),
+    {
         let nrow = self.height as i16;
         let ncol = self.width as i16;
         self.visited = vec![false; (nrow * ncol) as usize];
@@ -159,25 +150,25 @@ impl<M: Bit> MatrixMap<M> {
         loop {
             // repeatedly first check for one of the special corner cases
             if i == nrow && j == 0 {
-                visitor.visit(codeword_idx, self.corner1());
+                visit(codeword_idx, self.corner1());
                 codeword_idx += 1;
             }
             if i == nrow - 2 && j == 0 && ncol % 4 != 0 {
-                visitor.visit(codeword_idx, self.corner2());
+                visit(codeword_idx, self.corner2());
                 codeword_idx += 1;
             }
             if i == nrow - 2 && j == 0 && ncol % 8 == 4 {
-                visitor.visit(codeword_idx, self.corner3());
+                visit(codeword_idx, self.corner3());
                 codeword_idx += 1;
             }
             if i == nrow + 4 && j == 2 && ncol % 8 == 0 {
-                visitor.visit(codeword_idx, self.corner4());
+                visit(codeword_idx, self.corner4());
                 codeword_idx += 1;
             }
             // sweep upward diagonally
             loop {
                 if i < nrow && j >= 0 && !self.visited[(i * ncol + j) as usize] {
-                    visitor.visit(codeword_idx, self.utah(i, j));
+                    visit(codeword_idx, self.utah(i, j));
                     codeword_idx += 1;
                 }
                 i -= 2;
@@ -192,7 +183,7 @@ impl<M: Bit> MatrixMap<M> {
             // sweep downard diagonally
             loop {
                 if i >= 0 && j < ncol && !self.visited[(i * ncol + j) as usize] {
-                    visitor.visit(codeword_idx, self.utah(i, j));
+                    visit(codeword_idx, self.utah(i, j));
                     codeword_idx += 1;
                 }
                 i += 2;
@@ -446,19 +437,13 @@ mod tests {
         const HIGH: Self = (0, 1);
     }
 
-    struct LogVisitor;
-
-    impl super::Visitor<(u16, u8)> for LogVisitor {
-        fn visit(&mut self, cw: usize, bits: [&mut (u16, u8); 8]) {
+    pub fn log(s: super::SymbolSize) -> Vec<(u16, u8)> {
+        let mut m = super::MatrixMap::<(u16, u8)>::new(s);
+        m.traverse(|cw, bits| {
             for i in 0..8 {
                 *bits[i as usize] = ((cw + 1) as u16, (i + 1) as u8);
             }
-        }
-    }
-
-    pub fn log(s: super::SymbolSize) -> Vec<(u16, u8)> {
-        let mut m = super::MatrixMap::<(u16, u8)>::new(s);
-        m.traverse(&mut LogVisitor);
+        });
         m.entries
     }
 }

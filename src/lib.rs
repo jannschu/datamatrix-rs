@@ -75,20 +75,7 @@ pub use symbol_size::{SymbolList, SymbolSize};
 use alloc::vec::Vec;
 
 use encodation::DataEncodingError;
-use placement::{Bitmap, MatrixMap, Visitor};
-
-struct CodewordPlacer<'a>(&'a [u8]);
-
-impl<'a> Visitor<bool> for CodewordPlacer<'a> {
-    fn visit(&mut self, idx: usize, mut bits: [&mut bool; 8]) {
-        let codeword = self.0[idx];
-        for (i, bit) in bits.iter_mut().enumerate() {
-            // 0 = MSB
-            // 7 = LSB
-            **bit = ((codeword >> (7 - i)) & 1) == 1;
-        }
-    }
-}
+use placement::{Bitmap, MatrixMap};
 
 /// Encoded Data Matrix.
 pub struct DataMatrix {
@@ -109,7 +96,14 @@ impl DataMatrix {
     /// Create an abstract bitmap representing the Data Matrix.
     pub fn bitmap(&self) -> Bitmap<bool> {
         let mut map = MatrixMap::new(self.size);
-        map.traverse(&mut CodewordPlacer(&self.data));
+        map.traverse(|idx, bits| {
+            let codeword = self.data[idx];
+            for (i, bit) in IntoIterator::into_iter(bits).enumerate() {
+                // 0 = MSB
+                // 7 = LSB
+                *bit = ((codeword >> (7 - i)) & 1) == 1;
+            }
+        });
         map.bitmap()
     }
 
