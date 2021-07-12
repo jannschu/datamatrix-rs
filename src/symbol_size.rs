@@ -74,8 +74,6 @@ impl SymbolList {
     }
 
     /// Remove all square symbols from the current selection.
-    ///
-    /// Although squares rectangles mathematically they are not removed.
     pub fn enforce_rectangular(mut self) -> Self {
         self.symbols = self
             .symbols
