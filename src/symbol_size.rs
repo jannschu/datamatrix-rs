@@ -143,6 +143,10 @@ impl SymbolList {
         self.symbols.iter().cloned()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.symbols.is_empty()
+    }
+
     pub(crate) fn max_capacity(&self) -> usize {
         self.symbols
             .iter()

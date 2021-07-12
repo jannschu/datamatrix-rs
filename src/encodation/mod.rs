@@ -199,6 +199,10 @@ impl<'a> GenericDataEncoder<'a> {
     }
 
     pub fn codewords(&mut self) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
+        if self.symbol_list.is_empty() {
+            return Err(DataEncodingError::SymbolListEmpty);
+        }
+
         // bigger than theoretical limit? then fail early
         if self.data.len() > self.symbol_list.max_capacity() {
             return Err(DataEncodingError::TooMuchOrIllegalData);
