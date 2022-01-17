@@ -2,7 +2,7 @@
 //!
 //! The bytes encoded into a Data Matrix symbol consist of two parts,
 //! the first part is the actual information one wants to encode,
-//! the second part error consist of correction bytes.
+//! the second part consists of error correction bytes.
 //!
 //! The functions in this module can be used to de- and encode
 //! the first part, the data part.
