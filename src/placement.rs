@@ -216,6 +216,9 @@ impl<M: Bit> MatrixMap<M> {
             j += w;
             i += 4 - ((w + 4) % 8);
         }
+        if i >= h {
+            i -= h;
+        }
         (i * w + j) as usize
     }
 

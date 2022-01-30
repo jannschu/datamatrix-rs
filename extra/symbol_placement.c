@@ -14,6 +14,10 @@ void module(int row, int col, int chr, int bit) {
     col += ncol;
     row += 4 - ((ncol + 4) % 8);
   }
+  // for DMRE
+  if (row >= nrow) {
+    row -= nrow;
+  }
   array[row * ncol + col] = 10 * chr + bit;
 }
 
