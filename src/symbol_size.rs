@@ -146,6 +146,16 @@ impl SymbolList {
         self.symbols.is_empty()
     }
 
+    /// Get a list with all supported symbol sizes.
+    pub fn all() -> Self {
+        Self::with_extended_rectangles()
+    }
+
+    /// Check if a symbol size is in this symbol list.
+    pub fn contains(&self, symbol_size: &SymbolSize) -> bool {
+        self.iter_symbols().any(|s| s == *symbol_size)
+    }
+
     pub(crate) fn max_capacity(&self) -> usize {
         self.symbols
             .iter()
@@ -239,8 +249,12 @@ pub(crate) struct BlockSetup {
 }
 
 impl BlockSetup {
-    pub fn num_error_codes(&self) -> usize {
-        self.num_ecc_blocks * self.num_ecc_per_block
+    pub(crate) fn content_width(&self) -> usize {
+        self.width - 2 - self.extra_vertical_alignments * 2
+    }
+
+    pub(crate) fn content_height(&self) -> usize {
+        self.height - 2 - self.extra_horizontal_alignments * 2
     }
 }
 
@@ -896,6 +910,14 @@ impl SymbolSize {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn num_codewords(&self) -> usize {
+        let num_data = self.num_data_codewords();
+        let setup = self.block_setup();
+        let num_error = setup.num_ecc_blocks * setup.num_ecc_per_block;
+        num_data + num_error
+    }
+
     pub(crate) fn has_padding_modules(&self) -> bool {
         matches!(
             self,
@@ -1011,5 +1033,43 @@ fn test_minimal_example_every_symbol() {
     use crate::DataMatrix;
     for sym in SYMBOL_SIZES {
         DataMatrix::encode(b"OK", *sym).unwrap();
+    }
+}
+
+#[test]
+fn test_distinquishable_by_size() {
+    use alloc::collections::btree_set::BTreeSet;
+    use core::iter::FromIterator;
+
+    let sizes: Vec<_> = SYMBOL_SIZES
+        .iter()
+        .map(|s| {
+            let setup = s.block_setup();
+            (setup.width, setup.height)
+        })
+        .collect();
+    let n = sizes.len();
+    assert_eq!(n, BTreeSet::from_iter(sizes).len());
+}
+
+#[test]
+fn test_list_all() {
+    assert_eq!(SymbolList::all().iter_symbols().count(), SYMBOL_SIZES.len());
+
+    for size in SymbolList::all() {
+        assert!(SYMBOL_SIZES.iter().find(|s| **s == size).is_some());
+    }
+}
+
+#[test]
+fn test_content_sizes_consistency() {
+    for size in SymbolList::all() {
+        let setup = size.block_setup();
+        let codewords = size.num_codewords();
+        let has_padding = size.has_padding_modules();
+        let padding = if has_padding { 4 } else { 0 };
+        let len = codewords * 8 + padding;
+
+        assert_eq!(len, setup.content_width() * setup.content_height());
     }
 }

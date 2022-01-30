@@ -54,7 +54,7 @@ this approach allows high flexibility.
   defined in ISO 21471 which adds more rectangular symbol sizes
 - [ ] ECI support. This has progressed as far as I could get without buying the
       standards for this (several hundred dollars).
-- [ ] Tile placement decoding.
+- [x] Tile placement decoding.
 - [ ] Visual detection in images
 
 Things in consideration for after that:

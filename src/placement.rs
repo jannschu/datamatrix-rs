@@ -10,11 +10,18 @@
 //! for decoding. It also contains helpers for rendering.
 use alloc::{string::String, vec, vec::Vec};
 
-use crate::symbol_size::SymbolSize;
+use crate::symbol_size::{SymbolList, SymbolSize};
 
 mod path;
 
 pub use path::PathSegment;
+
+pub struct ConversionReport<B: Bit> {
+    pub alignment_ok: bool,
+    pub padding_ok: bool,
+    pub symbol_size: SymbolSize,
+    pub matrix_map: MatrixMap<B>,
+}
 
 /// Abstract "bit" type used in [MatrixMap].
 pub trait Bit: Clone + PartialEq + core::fmt::Debug {
@@ -36,29 +43,100 @@ pub struct MatrixMap<B: Bit> {
 impl<M: Bit> MatrixMap<M> {
     /// Create a new, empty matrix for the given symbol size.
     pub fn new(size: SymbolSize) -> Self {
-        let num_data = size.num_data_codewords();
         let setup = size.block_setup();
-        let num_error = setup.num_error_codes();
-
-        let has_padding = size.has_padding_modules();
-        let padding = if has_padding { 4 } else { 0 };
-        let len = (num_data + num_error) * 8 + padding;
-        let mut entries = Vec::with_capacity(len);
-        entries.resize(len, M::LOW);
-
-        let w = setup.width - 2 - setup.extra_vertical_alignments * 2;
-        let h = setup.height - 2 - setup.extra_horizontal_alignments * 2;
-        debug_assert_eq!(w * h, len);
-
+        let w = setup.content_width();
+        let h = setup.content_height();
         Self {
+            entries: vec![M::LOW; w * h],
+            visited: vec![],
+            width: w,
+            height: h,
+            extra_vertical_alignments: setup.extra_vertical_alignments,
+            extra_horizontal_alignments: setup.extra_horizontal_alignments,
+            has_padding: size.has_padding_modules(),
+        }
+    }
+
+    /// Read the data from bits.
+    ///
+    /// The `bits` shall reprersent a rectangular image, enumerated starting
+    /// in the top left corner.
+    pub fn try_from_bits(bits: &[M], width: usize) -> Option<ConversionReport<M>>
+    where
+        M: PartialEq,
+    {
+        if bits.len() % width != 0 {
+            return None;
+        }
+        let height = bits.len() / width;
+        let size = SymbolList::all().iter_symbols().find(|s| {
+            let bs = s.block_setup();
+            bs.width == width && bs.height == height
+        })?;
+        let setup = size.block_setup();
+        let w = setup.content_width();
+        let h = setup.content_height();
+        let mut entries = Vec::with_capacity(w * h);
+
+        let blk_h = h / (setup.extra_horizontal_alignments + 1);
+        let blk_w = w / (setup.extra_vertical_alignments + 1);
+
+        let mut alignment_ok = true;
+        for row_chunk in bits.chunks((blk_h + 2) * width) {
+            debug_assert_eq!(row_chunk.len(), (blk_h + 2) * width);
+            if alignment_ok {
+                // first row must be alternating, the one before all HIGH
+                let first_row = &row_chunk[..width];
+                let last_row = &row_chunk[(blk_h + 1) * width..];
+                debug_assert_eq!(last_row.len(), width);
+                alignment_ok = last_row.iter().all(|b| *b == M::HIGH)
+                    && first_row
+                        .iter()
+                        .zip([M::HIGH, M::LOW].into_iter().cycle())
+                        .all(|(a, b)| *a == b);
+            }
+            let rows = &row_chunk[width..(blk_h + 1) * width];
+            debug_assert_eq!(rows.len(), blk_h * width);
+            debug_assert_eq!(width % (blk_w + 2), 0);
+            let mut alignment_bit = M::LOW;
+            for (j, row) in rows.chunks(blk_w + 2).enumerate() {
+                debug_assert_eq!(row.len(), blk_w + 2);
+                if j % (setup.extra_vertical_alignments + 1) == 0 {
+                    alignment_bit = if alignment_bit == M::LOW {
+                        M::HIGH
+                    } else {
+                        M::LOW
+                    };
+                }
+                alignment_ok = alignment_ok && row[0] == M::HIGH && row[blk_w + 1] == alignment_bit;
+                entries.extend_from_slice(&row[1..blk_w + 1]);
+                debug_assert_eq!(row[1..blk_w + 1].len(), blk_w);
+            }
+        }
+        debug_assert_eq!(entries.len(), w * h);
+
+        let padding_ok = if size.has_padding_modules() {
+            entries[entries.len() - 2..] == [M::LOW, M::HIGH]
+                && entries[entries.len() - w - 2..entries.len() - w] == [M::HIGH, M::LOW]
+        } else {
+            true
+        };
+
+        let matrix_map = Self {
             entries,
             visited: vec![],
             width: w,
             height: h,
             extra_vertical_alignments: setup.extra_vertical_alignments,
             extra_horizontal_alignments: setup.extra_horizontal_alignments,
-            has_padding,
-        }
+            has_padding: size.has_padding_modules(),
+        };
+        Some(ConversionReport {
+            symbol_size: size,
+            padding_ok,
+            alignment_ok,
+            matrix_map,
+        })
     }
 
     // Write a 4x4 padding pattern in the lower right corner if needed.
@@ -79,9 +157,9 @@ impl<M: Bit> MatrixMap<M> {
         let idx = |i: usize, j: usize| i * w + j;
 
         // draw horizontal alignments
-        let xtr_hor = self.extra_horizontal_alignments;
-        let blk_h = (h - 2 * (xtr_hor + 1)) / (xtr_hor + 1);
-        for i in 0..xtr_hor {
+        let extra_hor = self.extra_horizontal_alignments;
+        let blk_h = (h - 2 * (extra_hor + 1)) / (extra_hor + 1);
+        for i in 0..extra_hor {
             let rows_before = 1 + (blk_h + 2) * i + blk_h;
             for j in 0..w {
                 bits[idx(rows_before, j)] = M::HIGH;
@@ -92,9 +170,9 @@ impl<M: Bit> MatrixMap<M> {
         }
 
         // draw vertical alignments
-        let xtr_ver = self.extra_vertical_alignments;
-        let blk_w = (w - 2 * (xtr_ver + 1)) / (xtr_ver + 1);
-        for j in 0..xtr_ver {
+        let extra_ver = self.extra_vertical_alignments;
+        let blk_w = (w - 2 * (extra_ver + 1)) / (extra_ver + 1);
+        for j in 0..extra_ver {
             let cols_before = 1 + (blk_w + 2) * j + blk_w;
             for i in 1..h {
                 bits[idx(i, cols_before + 1)] = M::HIGH;
@@ -134,6 +212,12 @@ impl<M: Bit> MatrixMap<M> {
     }
 
     /// Traverse the symbol in codeword order and call the function for each position.
+    ///
+    /// The codewords are visited in order. Its index is given as the first
+    /// argument to `visit`.
+    ///
+    /// The second argument of `visit` contains the bits of the codewords, most significant
+    /// first.
     pub fn traverse<F>(&mut self, mut visit: F)
     where
         F: FnMut(usize, [&mut M; 8]),
@@ -330,6 +414,35 @@ impl<M: Bit> MatrixMap<M> {
     }
 }
 
+impl MatrixMap<bool> {
+    pub fn new_with_codewords(data: &[u8], symbol_size: SymbolSize) -> Self {
+        let mut m = Self::new(symbol_size);
+        m.fill_with_codewords(data);
+        m
+    }
+
+    fn fill_with_codewords(&mut self, data: &[u8]) {
+        self.traverse(|idx, bits| {
+            let mut codeword = data[idx];
+            for bit in bits.into_iter().rev() {
+                *bit = codeword & 1 == 1;
+                codeword >>= 1;
+            }
+        });
+    }
+
+    pub fn codewords(&mut self) -> Vec<u8> {
+        let mut data = vec![0; self.entries.len() / 8];
+        self.traverse(|idx, bits| {
+            let codeword = &mut data[idx];
+            for bit in bits {
+                *codeword = (*codeword << 1) | (*bit as u8);
+            }
+        });
+        data
+    }
+}
+
 /// An abstract bitmap.
 ///
 /// Contains helpers for rendering the content. For rendering targets which
@@ -429,6 +542,11 @@ impl<B: Bit> Bitmap<B> {
             .filter(|(_i, b)| **b == B::HIGH)
             .map(move |(i, _b)| (i % w, i / w))
     }
+
+    #[cfg(test)]
+    pub(crate) fn bits(&self) -> &[B] {
+        &self.bits
+    }
 }
 
 #[cfg(test)]
@@ -500,4 +618,17 @@ fn test_8x32() {
         (1,3), (6,6), (6,7), (6,8), (3,3), (3,4), (3,5), (4,1), (4,2), (12,6), (12,7), (12,8), (9,3), (9,4), (9,5), (10,1), (10,2), (18,6), (18,7), (18,8), (15,3), (15,4), (15,5), (16,1), (16,2), (21,6), (21,7), (21,8),
     ];
     assert_eq!(&log, &should);
+}
+
+#[test]
+fn test_from_bits_all() {
+    let mut random_map = crate::test::random_maps();
+    for size in SymbolList::all() {
+        let map = random_map(size);
+        let bitmap = map.bitmap();
+        let map2 = MatrixMap::try_from_bits(&bitmap.bits, bitmap.width).unwrap();
+        assert_eq!(map.entries, map2.matrix_map.entries);
+        assert!(map2.padding_ok);
+        assert!(map2.alignment_ok);
+    }
 }

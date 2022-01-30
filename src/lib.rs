@@ -95,15 +95,7 @@ impl DataMatrix {
 
     /// Create an abstract bitmap representing the Data Matrix.
     pub fn bitmap(&self) -> Bitmap<bool> {
-        let mut map = MatrixMap::new(self.size);
-        map.traverse(|idx, bits| {
-            let mut codeword = self.data[idx];
-            for bit in IntoIterator::into_iter(bits).rev() {
-                *bit = codeword & 1 == 1;
-                codeword >>= 1;
-            }
-        });
-        map.bitmap()
+        MatrixMap::new_with_codewords(&self.data, self.size).bitmap()
     }
 
     /// Encode data as a Data Matrix (ECC200).
@@ -168,4 +160,60 @@ fn utf8_eci_test() {
     let code = DataMatrix::encode_str(data, SymbolList::default()).unwrap();
     let decoded = data::decode_str(code.codewords()).unwrap();
     assert_eq!(decoded, data);
+}
+
+#[test]
+fn test_tile_placement_forth_and_back() {
+    let mut rnd_data = test::random_data();
+    for size in SymbolList::all() {
+        let data = rnd_data(size.num_codewords());
+        let mut map = MatrixMap::new_with_codewords(&data, size);
+        assert_eq!(map.codewords(), data);
+        let bitmap = map.bitmap();
+        let mut report = MatrixMap::try_from_bits(&bitmap.bits(), bitmap.width()).unwrap();
+        assert_eq!(report.matrix_map.codewords(), data);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::placement::MatrixMap;
+    use crate::symbol_size::SymbolSize;
+    use alloc::vec::Vec;
+
+    /// Simple LCG random generator for test data generation
+    pub fn random_maps() -> impl FnMut(SymbolSize) -> MatrixMap<bool> {
+        let mut rnd = random_bytes();
+        move |size| {
+            let mut map = MatrixMap::new(size);
+            map.traverse(|_, bits| {
+                for bit in bits {
+                    *bit = rnd() > 127;
+                }
+            });
+            map
+        }
+    }
+
+    pub fn random_bytes() -> impl FnMut() -> u8 {
+        let mut seed = 0;
+        move || {
+            let modulus = 2u64.pow(31);
+            let a = 1103515245u64;
+            let c = 12345u64;
+            seed = (a * seed + c) % modulus;
+            (seed % 256) as u8
+        }
+    }
+
+    pub fn random_data() -> impl FnMut(usize) -> Vec<u8> {
+        let mut rnd = random_bytes();
+        move |len| {
+            let mut v = Vec::with_capacity(len);
+            for _ in 0..len {
+                v.push(rnd());
+            }
+            v
+        }
+    }
 }
