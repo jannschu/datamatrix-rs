@@ -1,4 +1,5 @@
 use core::fmt::Debug;
+use core::iter::IntoIterator;
 use core::ops::RangeBounds;
 
 use arrayvec::ArrayVec;
@@ -174,6 +175,15 @@ impl SymbolList {
                 })
                 .map(|s| s.num_data_codewords())
         }
+    }
+}
+
+impl IntoIterator for SymbolList {
+    type Item = SymbolSize;
+    type IntoIter = <SymbolVec as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.symbols.into_iter()
     }
 }
 
