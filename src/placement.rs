@@ -23,7 +23,7 @@ pub struct ConversionReport<B: Bit> {
     /// The padding area was correct if present in the symbol size.
     pub padding_ok: bool,
     /// The [SymbolSize] of the converted pixels.
-    pub symbol_size: SymbolSize,
+    pub size: SymbolSize,
     pub matrix_map: MatrixMap<B>,
 }
 
@@ -59,14 +59,12 @@ impl<M: Bit> MatrixMap<M> {
         }
     }
 
-    /// Read the data from bits (pixels).
+    /// Read the data from a bitmap.
     ///
-    /// The `bits` shall reprersent a rectangular image, enumerated starting
-    /// from the top left corner.
+    /// The argument `bits` shall reprersent a rectangular image, enumerated starting
+    /// from the top left corner. The alignment patterns must be included.
     ///
-    /// The alignment patterns must be included.
-    ///
-    /// Padding and alignment are checked but result not in an error, see [ConversionReport].
+    /// Padding and alignment are checked and the result is reported, see [ConversionReport].
     pub fn try_from_bits(bits: &[M], width: usize) -> Option<ConversionReport<M>>
     where
         M: PartialEq,
@@ -137,7 +135,7 @@ impl<M: Bit> MatrixMap<M> {
             has_padding: size.has_padding_modules(),
         };
         Some(ConversionReport {
-            symbol_size: size,
+            size,
             padding_ok,
             alignment_ok,
             matrix_map,
@@ -466,6 +464,7 @@ impl IndexTraversal {
 impl MatrixMap<bool> {
     /// Create a MatrixMap from codewords and a symbol size.
     pub fn new_with_codewords(data: &[u8], symbol_size: SymbolSize) -> Self {
+        // FIXME: Catch panic if data is too short?
         let mut m = Self::new(symbol_size);
         m.fill_with_codewords(data);
         m
@@ -598,8 +597,8 @@ impl<B: Bit> Bitmap<B> {
             .map(move |(i, _b)| (i % w, i / w))
     }
 
-    #[cfg(test)]
-    pub(crate) fn bits(&self) -> &[B] {
+    #[doc(hidden)]
+    pub fn bits(&self) -> &[B] {
         &self.bits
     }
 }

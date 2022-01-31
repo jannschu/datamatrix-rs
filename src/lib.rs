@@ -46,6 +46,22 @@
 //! are related to the _interpretation_ of the data and possible input limitations
 //! in the case of handheld scanners.
 //!
+//! # Decoding
+//!
+//! Assuming you have detected a Data Matrix you may decode the message like
+//! this:
+//!
+//! ```rust
+//! # use datamatrix::{SymbolSize, placement::MatrixMap, DataMatrix};
+//! # let codewords1 = [73, 239, 116, 130, 175, 52, 19, 40, 179, 242, 106, 105, 97, 98, 35, 165, 137, 102, 203, 106, 207, 48, 186, 66];
+//! # let map = MatrixMap::new_with_codewords(&codewords1, SymbolSize::Square16);
+//! # let pixels: Vec<bool> = map.bitmap().bits().into();
+//! // let pixels: Vec<bool> = …
+//! let width = 16;
+//! let data = DataMatrix::decode(&pixels, width).unwrap();
+//! assert_eq!(&data, b"Hello, World!");
+//! ```
+//!
 //! # Current limitations
 //!
 //! No visual detection is currently implemented, but the decoding backend
@@ -81,21 +97,44 @@ use placement::{Bitmap, MatrixMap};
 pub struct DataMatrix {
     /// Size of the encoded Data Matrix
     pub size: SymbolSize,
-    data: Vec<u8>,
-    num_codewords: usize,
+    codewords: Vec<u8>,
+    num_data_codewords: usize,
 }
 
 impl DataMatrix {
+    /// Decode a Data Matrix from its pixels representation.
+    ///
+    /// The alignment pattern must be included. The argument `width` denotes the number of
+    /// pixels in one row.
+    ///
+    /// The pixels are expected to be given in row-major order, i.e., the top
+    /// row of pixels comes first, then the second row and so on.
+    pub fn decode(pixels: &[bool], width: usize) -> Option<Vec<u8>> {
+        let conversion = MatrixMap::try_from_bits(pixels, width)?;
+        if !conversion.padding_ok || !conversion.alignment_ok {
+            return None;
+        }
+        let mut codewords = conversion.matrix_map.codewords();
+        errorcode::decode_error(&mut codewords, conversion.size).ok()?;
+        decodation::decode_data(&codewords[..conversion.size.num_data_codewords()]).ok()
+    }
+
     /// Get the data in encoded form.
     ///
-    /// Error correction is not included.
+    /// Error correction is included.
+    /// See [Self::data_codewords] if you only need the data.
     pub fn codewords(&self) -> &[u8] {
-        &self.data[..self.num_codewords]
+        &self.codewords
+    }
+
+    /// Get the length of the encoded data.
+    pub fn data_codewords(&self) -> &[u8] {
+        &self.codewords[..self.num_data_codewords]
     }
 
     /// Create an abstract bitmap representing the Data Matrix.
     pub fn bitmap(&self) -> Bitmap<bool> {
-        MatrixMap::new_with_codewords(&self.data, self.size).bitmap()
+        MatrixMap::new_with_codewords(&self.codewords, self.size).bitmap()
     }
 
     /// Encode data as a Data Matrix (ECC200).
@@ -144,12 +183,12 @@ impl DataMatrix {
         let (mut codewords, size) =
             data::encode_data(data, symbol_list, eci, EncodationType::all())?;
         let ecc = errorcode::encode_error(&codewords, size);
-        let num_codewords = codewords.len();
+        let num_data_codewords = codewords.len();
         codewords.extend_from_slice(&ecc);
         Ok(DataMatrix {
-            data: codewords,
+            codewords,
             size,
-            num_codewords,
+            num_data_codewords,
         })
     }
 }
@@ -158,7 +197,7 @@ impl DataMatrix {
 fn utf8_eci_test() {
     let data = "🥸";
     let code = DataMatrix::encode_str(data, SymbolList::default()).unwrap();
-    let decoded = data::decode_str(code.codewords()).unwrap();
+    let decoded = data::decode_str(code.data_codewords()).unwrap();
     assert_eq!(decoded, data);
 }
 
@@ -167,10 +206,10 @@ fn test_tile_placement_forth_and_back() {
     let mut rnd_data = test::random_data();
     for size in SymbolList::all() {
         let data = rnd_data(size.num_codewords());
-        let mut map = MatrixMap::new_with_codewords(&data, size);
+        let map = MatrixMap::new_with_codewords(&data, size);
         assert_eq!(map.codewords(), data);
         let bitmap = map.bitmap();
-        let mut report = MatrixMap::try_from_bits(&bitmap.bits(), bitmap.width()).unwrap();
+        let report = MatrixMap::try_from_bits(&bitmap.bits(), bitmap.width()).unwrap();
         assert_eq!(report.matrix_map.codewords(), data);
     }
 }
