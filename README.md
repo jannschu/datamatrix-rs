@@ -52,9 +52,9 @@ this approach allows high flexibility.
 - [x] Helpers for rendering
 - [x] Implement [Extended Rectangular Data Matrix (DMRE)](https://e-d-c.info/projekte/dmre.html)
   defined in ISO 21471 which adds more rectangular symbol sizes
+- [x] Tile placement decoding.
 - [ ] ECI support. This has progressed as far as I could get without buying the
       standards for this (several hundred dollars).
-- [x] Tile placement decoding.
 - [ ] Visual detection in images
 
 Things in consideration for after that:
