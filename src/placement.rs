@@ -36,7 +36,6 @@ pub trait Bit: Clone + PartialEq + core::fmt::Debug {
 /// Representation of the bits in a Data Matrix symbol without alignment patterns.
 pub struct MatrixMap<B: Bit> {
     entries: Vec<B>,
-    visited: Vec<bool>,
     width: usize,
     height: usize,
     extra_vertical_alignments: usize,
@@ -52,7 +51,6 @@ impl<M: Bit> MatrixMap<M> {
         let h = setup.content_height();
         Self {
             entries: vec![M::LOW; w * h],
-            visited: vec![],
             width: w,
             height: h,
             extra_vertical_alignments: setup.extra_vertical_alignments,
@@ -132,7 +130,6 @@ impl<M: Bit> MatrixMap<M> {
 
         let matrix_map = Self {
             entries,
-            visited: vec![],
             width: w,
             height: h,
             extra_vertical_alignments: setup.extra_vertical_alignments,
@@ -232,7 +229,7 @@ impl<M: Bit> MatrixMap<M> {
     {
         let nrow = self.height as i16;
         let ncol = self.width as i16;
-        self.visited = vec![false; (nrow * ncol) as usize];
+        let mut visited = vec![false; (nrow * ncol) as usize];
 
         // starting in the correct location for first character, bit 8
         let mut i = 4;
@@ -242,25 +239,25 @@ impl<M: Bit> MatrixMap<M> {
         loop {
             // repeatedly first check for one of the special corner cases
             if i == nrow && j == 0 {
-                visit(codeword_idx, self.corner1());
+                visit(codeword_idx, self.corner1(&mut visited));
                 codeword_idx += 1;
             }
             if i == nrow - 2 && j == 0 && ncol % 4 != 0 {
-                visit(codeword_idx, self.corner2());
+                visit(codeword_idx, self.corner2(&mut visited));
                 codeword_idx += 1;
             }
             if i == nrow - 2 && j == 0 && ncol % 8 == 4 {
-                visit(codeword_idx, self.corner3());
+                visit(codeword_idx, self.corner3(&mut visited));
                 codeword_idx += 1;
             }
             if i == nrow + 4 && j == 2 && ncol % 8 == 0 {
-                visit(codeword_idx, self.corner4());
+                visit(codeword_idx, self.corner4(&mut visited));
                 codeword_idx += 1;
             }
             // sweep upward diagonally
             loop {
-                if i < nrow && j >= 0 && !self.visited[(i * ncol + j) as usize] {
-                    visit(codeword_idx, self.utah(i, j));
+                if i < nrow && j >= 0 && !visited[(i * ncol + j) as usize] {
+                    visit(codeword_idx, self.utah(i, j, &mut visited));
                     codeword_idx += 1;
                 }
                 i -= 2;
@@ -274,8 +271,8 @@ impl<M: Bit> MatrixMap<M> {
 
             // sweep downard diagonally
             loop {
-                if i >= 0 && j < ncol && !self.visited[(i * ncol + j) as usize] {
-                    visit(codeword_idx, self.utah(i, j));
+                if i >= 0 && j < ncol && !visited[(i * ncol + j) as usize] {
+                    visit(codeword_idx, self.utah(i, j, &mut visited));
                     codeword_idx += 1;
                 }
                 i += 2;
@@ -315,77 +312,92 @@ impl<M: Bit> MatrixMap<M> {
     }
 
     // compute indices for utah-shaped symbol (the standard symbol)
-    fn utah(&mut self, i: i16, j: i16) -> [&mut M; 8] {
-        self.bits_mut([
-            self.idx(i - 2, j - 2),
-            self.idx(i - 2, j - 1),
-            self.idx(i - 1, j - 2),
-            self.idx(i - 1, j - 1),
-            self.idx(i - 1, j),
-            self.idx(i, j - 2),
-            self.idx(i, j - 1),
-            self.idx(i, j),
-        ])
+    fn utah(&mut self, i: i16, j: i16, visited: &mut [bool]) -> [&mut M; 8] {
+        self.bits_mut(
+            [
+                self.idx(i - 2, j - 2),
+                self.idx(i - 2, j - 1),
+                self.idx(i - 1, j - 2),
+                self.idx(i - 1, j - 1),
+                self.idx(i - 1, j),
+                self.idx(i, j - 2),
+                self.idx(i, j - 1),
+                self.idx(i, j),
+            ],
+            visited,
+        )
     }
 
-    fn corner1(&mut self) -> [&mut M; 8] {
+    fn corner1(&mut self, visited: &mut [bool]) -> [&mut M; 8] {
         let h = self.height as i16;
         let w = self.width as i16;
-        self.bits_mut([
-            self.idx(h - 1, 0),
-            self.idx(h - 1, 1),
-            self.idx(h - 1, 2),
-            self.idx(0, w - 2),
-            self.idx(0, w - 1),
-            self.idx(1, w - 1),
-            self.idx(2, w - 1),
-            self.idx(3, w - 1),
-        ])
+        self.bits_mut(
+            [
+                self.idx(h - 1, 0),
+                self.idx(h - 1, 1),
+                self.idx(h - 1, 2),
+                self.idx(0, w - 2),
+                self.idx(0, w - 1),
+                self.idx(1, w - 1),
+                self.idx(2, w - 1),
+                self.idx(3, w - 1),
+            ],
+            visited,
+        )
     }
 
-    fn corner2(&mut self) -> [&mut M; 8] {
+    fn corner2(&mut self, visited: &mut [bool]) -> [&mut M; 8] {
         let h = self.height as i16;
         let w = self.width as i16;
-        self.bits_mut([
-            self.idx(h - 3, 0),
-            self.idx(h - 2, 0),
-            self.idx(h - 1, 0),
-            self.idx(0, w - 4),
-            self.idx(0, w - 3),
-            self.idx(0, w - 2),
-            self.idx(0, w - 1),
-            self.idx(1, w - 1),
-        ])
+        self.bits_mut(
+            [
+                self.idx(h - 3, 0),
+                self.idx(h - 2, 0),
+                self.idx(h - 1, 0),
+                self.idx(0, w - 4),
+                self.idx(0, w - 3),
+                self.idx(0, w - 2),
+                self.idx(0, w - 1),
+                self.idx(1, w - 1),
+            ],
+            visited,
+        )
     }
 
-    fn corner3(&mut self) -> [&mut M; 8] {
+    fn corner3(&mut self, visited: &mut [bool]) -> [&mut M; 8] {
         let h = self.height as i16;
         let w = self.width as i16;
-        self.bits_mut([
-            self.idx(h - 3, 0),
-            self.idx(h - 2, 0),
-            self.idx(h - 1, 0),
-            self.idx(0, w - 2),
-            self.idx(0, w - 1),
-            self.idx(1, w - 1),
-            self.idx(2, w - 1),
-            self.idx(3, w - 1),
-        ])
+        self.bits_mut(
+            [
+                self.idx(h - 3, 0),
+                self.idx(h - 2, 0),
+                self.idx(h - 1, 0),
+                self.idx(0, w - 2),
+                self.idx(0, w - 1),
+                self.idx(1, w - 1),
+                self.idx(2, w - 1),
+                self.idx(3, w - 1),
+            ],
+            visited,
+        )
     }
 
-    fn corner4(&mut self) -> [&mut M; 8] {
+    fn corner4(&mut self, visited: &mut [bool]) -> [&mut M; 8] {
         let h = self.height as i16;
         let w = self.width as i16;
-        self.bits_mut([
-            self.idx(h - 1, 0),
-            self.idx(h - 1, w - 1),
-            self.idx(0, w - 3),
-            self.idx(0, w - 2),
-            self.idx(0, w - 1),
-            self.idx(1, w - 3),
-            self.idx(1, w - 2),
-            self.idx(1, w - 1),
-        ])
+        self.bits_mut(
+            [
+                self.idx(h - 1, 0),
+                self.idx(h - 1, w - 1),
+                self.idx(0, w - 3),
+                self.idx(0, w - 2),
+                self.idx(0, w - 1),
+                self.idx(1, w - 3),
+                self.idx(1, w - 2),
+                self.idx(1, w - 1),
+            ],
+            visited,
+        )
     }
 
     fn bit_mut(&mut self, i: usize, j: usize) -> &mut M {
@@ -393,7 +405,7 @@ impl<M: Bit> MatrixMap<M> {
     }
 
     /// Get mutable references to the indices specified in `indices`.
-    fn bits_mut(&mut self, indices: [usize; 8]) -> [&mut M; 8] {
+    fn bits_mut(&mut self, indices: [usize; 8], visited: &mut [bool]) -> [&mut M; 8] {
         let mut refs = [None, None, None, None, None, None, None, None];
         let mut perm: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
         perm.sort_unstable_by_key(|i| indices[*i as usize]);
@@ -404,7 +416,7 @@ impl<M: Bit> MatrixMap<M> {
             let idx = indices[*perm_idx as usize];
             let (e, new_rest) = rest[(idx - prev)..].split_first_mut().unwrap();
             refs[*perm_idx as usize] = Some(e);
-            self.visited[idx] = true;
+            visited[idx] = true;
             rest = new_rest;
             prev = idx + 1;
         }
