@@ -122,12 +122,14 @@ impl DataMatrix {
     /// Get the data in encoded form.
     ///
     /// Error correction is included.
-    /// See [Self::data_codewords] if you only need the data.
+    /// See [data_codewords()](Self::data_codewords) if you only need the data.
     pub fn codewords(&self) -> &[u8] {
         &self.codewords
     }
 
-    /// Get the length of the encoded data.
+    /// Get the codewords that encode the data.
+    ///
+    /// This is a prefix of the codewords returned by [codewords()](Self::codewords).
     pub fn data_codewords(&self) -> &[u8] {
         &self.codewords[..self.num_data_codewords]
     }
