@@ -213,12 +213,12 @@ impl<M: Bit> MatrixMap<M> {
 
     /// Traverse the symbol in codeword order and call the function for each position.
     ///
-    /// The codewords are visited in order. Its index is given as the first
+    /// The codeword index is given as the first
     /// argument to `visit`.
     ///
     /// The second argument of `visit` contains the bits of the codewords, most significant
     /// first.
-    pub fn traverse<F>(&mut self, mut visit: F)
+    pub fn traverse_mut<F>(&mut self, mut visit: F)
     where
         F: FnMut(usize, [&mut M; 8]),
     {
@@ -422,7 +422,7 @@ impl MatrixMap<bool> {
     }
 
     fn fill_with_codewords(&mut self, data: &[u8]) {
-        self.traverse(|idx, bits| {
+        self.traverse_mut(|idx, bits| {
             let mut codeword = data[idx];
             for bit in bits.into_iter().rev() {
                 *bit = codeword & 1 == 1;
@@ -433,7 +433,7 @@ impl MatrixMap<bool> {
 
     pub fn codewords(&mut self) -> Vec<u8> {
         let mut data = vec![0; self.entries.len() / 8];
-        self.traverse(|idx, bits| {
+        self.traverse_mut(|idx, bits| {
             let codeword = &mut data[idx];
             for bit in bits {
                 *codeword = (*codeword << 1) | (*bit as u8);
@@ -560,7 +560,7 @@ mod tests {
 
     pub fn log(s: super::SymbolSize) -> Vec<(u16, u8)> {
         let mut m = super::MatrixMap::<(u16, u8)>::new(s);
-        m.traverse(|cw, bits| {
+        m.traverse_mut(|cw, bits| {
             for i in 0..8 {
                 *bits[i as usize] = ((cw + 1) as u16, (i + 1) as u8);
             }

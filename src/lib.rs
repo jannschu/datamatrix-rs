@@ -186,7 +186,7 @@ mod test {
         let mut rnd = random_bytes();
         move |size| {
             let mut map = MatrixMap::new(size);
-            map.traverse(|_, bits| {
+            map.traverse_mut(|_, bits| {
                 for bit in bits {
                     *bit = rnd() > 127;
                 }
