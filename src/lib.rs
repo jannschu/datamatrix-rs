@@ -191,6 +191,7 @@ mod test {
                     *bit = rnd() > 127;
                 }
             });
+            map.write_padding();
             map
         }
     }
