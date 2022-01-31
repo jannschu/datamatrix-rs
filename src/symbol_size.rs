@@ -138,7 +138,7 @@ impl SymbolList {
         Self { symbols }
     }
 
-    pub fn iter_symbols(&self) -> impl Iterator<Item = SymbolSize> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = SymbolSize> + '_ {
         self.symbols.iter().cloned()
     }
 
@@ -153,7 +153,7 @@ impl SymbolList {
 
     /// Check if a symbol size is in this symbol list.
     pub fn contains(&self, symbol_size: &SymbolSize) -> bool {
-        self.iter_symbols().any(|s| s == *symbol_size)
+        self.iter().any(|s| s == *symbol_size)
     }
 
     pub(crate) fn max_capacity(&self) -> usize {
@@ -929,13 +929,13 @@ impl SymbolSize {
 #[test]
 fn test_size_candidates_for_non_auto() {
     let list: SymbolList = SymbolSize::Square10.into();
-    let symbols: Vec<SymbolSize> = list.iter_symbols().collect();
+    let symbols: Vec<SymbolSize> = list.iter().collect();
     assert_eq!(symbols, vec![SymbolSize::Square10]);
 }
 
 #[test]
 fn test_size_candidates_auto() {
-    let all: Vec<SymbolSize> = SymbolList::default().iter_symbols().collect();
+    let all: Vec<SymbolSize> = SymbolList::default().iter().collect();
     let mut expected: Vec<SymbolSize> = SYMBOL_SIZES
         .iter()
         .filter(|s| !s.is_dmre())
@@ -947,10 +947,7 @@ fn test_size_candidates_auto() {
 
 #[test]
 fn test_size_candidates_auto_rect() {
-    let all: Vec<SymbolSize> = SymbolList::default()
-        .enforce_rectangular()
-        .iter_symbols()
-        .collect();
+    let all: Vec<SymbolSize> = SymbolList::default().enforce_rectangular().iter().collect();
     let expected = vec![
         SymbolSize::Rect8x18,
         SymbolSize::Rect8x32,
@@ -964,10 +961,7 @@ fn test_size_candidates_auto_rect() {
 
 #[test]
 fn test_size_candidates_auto_square() {
-    let all: Vec<SymbolSize> = SymbolList::default()
-        .enforce_square()
-        .iter_symbols()
-        .collect();
+    let all: Vec<SymbolSize> = SymbolList::default().enforce_square().iter().collect();
     let expected = vec![
         SymbolSize::Square10,
         SymbolSize::Square12,
@@ -1054,7 +1048,7 @@ fn test_distinquishable_by_size() {
 
 #[test]
 fn test_list_all() {
-    assert_eq!(SymbolList::all().iter_symbols().count(), SYMBOL_SIZES.len());
+    assert_eq!(SymbolList::all().iter().count(), SYMBOL_SIZES.len());
 
     for size in SymbolList::all() {
         assert!(SYMBOL_SIZES.iter().find(|s| **s == size).is_some());

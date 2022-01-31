@@ -69,7 +69,7 @@ impl<M: Bit> MatrixMap<M> {
             return None;
         }
         let height = bits.len() / width;
-        let size = SymbolList::all().iter_symbols().find(|s| {
+        let size = SymbolList::all().iter().find(|s| {
             let bs = s.block_setup();
             bs.width == width && bs.height == height
         })?;
