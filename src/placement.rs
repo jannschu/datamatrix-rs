@@ -16,9 +16,13 @@ mod path;
 
 pub use path::PathSegment;
 
+/// Result of a pixel to [MatrixMap] conversion.
 pub struct ConversionReport<B: Bit> {
+    /// The alignment pattern was correct.
     pub alignment_ok: bool,
+    /// The padding area was correct if present in the symbol size.
     pub padding_ok: bool,
+    /// The [SymbolSize] of the converted pixels.
     pub symbol_size: SymbolSize,
     pub matrix_map: MatrixMap<B>,
 }
@@ -57,10 +61,14 @@ impl<M: Bit> MatrixMap<M> {
         }
     }
 
-    /// Read the data from bits.
+    /// Read the data from bits (pixels).
     ///
     /// The `bits` shall reprersent a rectangular image, enumerated starting
-    /// in the top left corner.
+    /// from the top left corner.
+    ///
+    /// The alignment patterns must be included.
+    ///
+    /// Padding and alignment are checked but result not in an error, see [ConversionReport].
     pub fn try_from_bits(bits: &[M], width: usize) -> Option<ConversionReport<M>>
     where
         M: PartialEq,
