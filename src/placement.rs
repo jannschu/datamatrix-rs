@@ -62,7 +62,7 @@ impl<M: Bit> MatrixMap<M> {
     /// Read the data from a bitmap.
     ///
     /// The argument `bits` shall reprersent a rectangular image, enumerated starting
-    /// from the top left corner. The alignment patterns must be included.
+    /// from the top left corner in row-major order. The alignment patterns must be included.
     ///
     /// Padding and alignment are checked and the result is reported, see [ConversionReport].
     pub fn try_from_bits(bits: &[M], width: usize) -> Option<ConversionReport<M>>
@@ -233,6 +233,7 @@ impl<M: Bit> MatrixMap<M> {
         });
     }
 
+    /// Nonmutable version of [traverse_mut](Self::traverse_mut).
     pub fn traverse<F>(&self, mut visit_fn: F)
     where
         F: FnMut(usize, [M; 8]),
@@ -368,7 +369,7 @@ impl IndexTraversal {
         }
     }
 
-    // compute idx with wrapping
+    /// Compute index with wrapping
     fn idx(&self, mut i: i16, mut j: i16) -> usize {
         let h = self.height as i16;
         let w = self.width as i16;
@@ -380,13 +381,14 @@ impl IndexTraversal {
             j += w;
             i += 4 - ((w + 4) % 8);
         }
+        // this is needed for DMRE sizes
         if i >= h {
             i -= h;
         }
         (i * w + j) as usize
     }
 
-    // compute indices for utah-shaped symbol (the standard symbol)
+    /// Compute indices for utah-shaped symbol (the standard symbol)
     fn utah(&self, i: i16, j: i16) -> [usize; 8] {
         [
             self.idx(i - 2, j - 2),
@@ -462,18 +464,22 @@ impl IndexTraversal {
 }
 
 impl MatrixMap<bool> {
-    /// Create a MatrixMap from codewords and a symbol size.
+    /// Create a MatrixMap and fills with codewords.
     pub fn new_with_codewords(data: &[u8], symbol_size: SymbolSize) -> Self {
-        // FIXME: Catch panic if data is too short?
+        // FIXME: Should not panic if data is too short
         let mut m = Self::new(symbol_size);
-        m.fill_with_codewords(data);
+        m.copy_from_codewords(data);
         m
     }
 
     /// Copy the data from the codewords to the corresponding positions.
     ///
     /// Also writes a padding pattern if necessary.
-    fn fill_with_codewords(&mut self, data: &[u8]) {
+    ///
+    /// # Panics
+    ///
+    /// Panics if the data is too short.
+    fn copy_from_codewords(&mut self, data: &[u8]) {
         self.traverse_mut(|idx, bits| {
             let mut codeword = data[idx];
             for bit in bits.into_iter().rev() {
@@ -484,7 +490,9 @@ impl MatrixMap<bool> {
         self.write_padding();
     }
 
-    /// Extract the codewords from the MatrixMap.
+    /// Extract the codewords.
+    ///
+    /// This includes the error correction codewords.
     pub fn codewords(&self) -> Vec<u8> {
         let mut data = vec![0; self.entries.len() / 8];
         self.traverse(|idx, bits| {

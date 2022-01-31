@@ -397,7 +397,7 @@ fn find_inv_error_locations_lu(syndomes: &[GF]) -> Result<Vec<GF>, ErrorDecoding
     // step 1: find the error locator polynomial
 
     // build syndrome matrix
-    let mut matrix = vec![GF(0); v * v]; // row major order
+    let mut matrix = vec![GF(0); v * v]; // row-major order
     for i in 0..v {
         for j in 0..v {
             matrix[i * v + j] = syndomes[i + j];
