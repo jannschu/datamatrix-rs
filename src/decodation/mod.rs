@@ -94,7 +94,7 @@ fn decode_parts(data: &[u8]) -> Result<DecodedParts, DataDecodingError> {
 
 /// Decode the data codewords of a Data Matrix as a string.
 ///
-/// This recognizes has some ECI support. Be aware that
+/// This function has some ECI support. Be aware that
 /// latin1 encoding is assumed if no ECI is there.
 pub fn decode_str(data: &[u8]) -> Result<String, DataDecodingError> {
     let parts = decode_parts(data)?;
