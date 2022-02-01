@@ -17,6 +17,7 @@ jobs:
         rust: [stable]
     env:
       RUST_BACKTRACE: full
+      RUSTDOCFLAGS: -Dwarnings
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust ${{ matrix.rust }}
@@ -24,15 +25,27 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           profile: minimal
-          components: clippy
+          components: clippy, rustfmt
           override: true
       - uses: Swatinem/rust-cache@v1
+      - name: Code format
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
       - name: Clippy
         if: matrix.os == 'ubuntu-latest'
         uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: --tests -- -D warnings
+      - name: Check rustdoc
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --no-deps --document-private-items
       - name: Tests
         uses: actions-rs/cargo@v1
         with:
