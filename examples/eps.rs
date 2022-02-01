@@ -6,10 +6,9 @@ use datamatrix::{
 };
 
 fn bitmap_to_eps(bitmap: Bitmap<bool>) -> String {
-    // SVG header, begin path at coordinate (1, 1)
     let w = bitmap.width();
     let h = bitmap.height();
-    let mut svg: String = format!(
+    let mut eps: String = format!(
         concat!(
             "%!PS-Adobe-2.0 EPSF-3.0\n",
             "%%BoundingBox: 0 0 {} {}\n",
@@ -30,15 +29,15 @@ fn bitmap_to_eps(bitmap: Bitmap<bool>) -> String {
     );
     for part in bitmap.path() {
         match part {
-            PathSegment::Horizontal(n) => write!(svg, "{} h\n", n),
-            PathSegment::Vertical(n) => write!(svg, "{} v\n", -n),
-            PathSegment::Move(dx, dy) => write!(svg, "{} {} m\n", dx, -dy),
-            PathSegment::Close => write!(svg, "z\n"),
+            PathSegment::Horizontal(n) => write!(eps, "{} h\n", n),
+            PathSegment::Vertical(n) => write!(eps, "{} v\n", -n),
+            PathSegment::Move(dx, dy) => write!(eps, "{} {} m\n", dx, -dy),
+            PathSegment::Close => write!(eps, "z\n"),
         }
         .unwrap();
     }
-    svg.push_str("eofill\ngrestore");
-    svg
+    eps.push_str("eofill\ngrestore");
+    eps
 }
 
 fn main() {
