@@ -211,7 +211,7 @@ fn test_tile_placement_forth_and_back() {
         let map = MatrixMap::new_with_codewords(&data, size);
         assert_eq!(map.codewords(), data);
         let bitmap = map.bitmap();
-        let report = MatrixMap::try_from_bits(&bitmap.bits(), bitmap.width()).unwrap();
+        let report = MatrixMap::try_from_bits(bitmap.bits(), bitmap.width()).unwrap();
         assert_eq!(report.matrix_map.codewords(), data);
     }
 }

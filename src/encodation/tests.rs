@@ -37,11 +37,7 @@ impl TestEncoderLogic for DummyLogic {
 
     fn maybe_switch_mode(enc: &mut TestEncodingContext<Self>) -> bool {
         enc.state.1 -= 1;
-        if enc.state.1 == 0 {
-            true
-        } else {
-            false
-        }
+        enc.state.1 == 0
     }
 
     fn symbol_size_left(
@@ -419,9 +415,7 @@ fn test_edifact_8() {
 #[cfg(test)]
 fn create_binary_test_message(len: usize) -> Vec<u8> {
     let mut vec = vec![171, 228, 246, 252, 233, 224, 225, 45];
-    for _ in 0..len - 9 {
-        vec.push(b'\xB7');
-    }
+    vec.resize(len - 1, b'\xB7');
     vec.push(b'\xBB');
     vec
 }

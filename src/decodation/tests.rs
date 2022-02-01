@@ -287,7 +287,7 @@ fn regression14() {
 #[test]
 fn regression15() {
     let input = &include_bytes!("input1.raw")[..];
-    forth_and_back(&input[..]);
+    forth_and_back(input);
 }
 
 #[test]

@@ -475,7 +475,7 @@ fn solve_vandermonde_diag() {
         *tmp = GF(1) / *tmp;
     }
     let mut rhs = [GF(66), GF(27), GF(189), GF(255), GF(206)];
-    let mut y1 = rhs.clone();
+    let mut y1 = rhs;
     find_error_values_bp(&mut x[..], &[], &mut y1[..]);
 
     let mut mat = [

@@ -267,6 +267,7 @@ fn test_neg() {
 }
 
 #[test]
+#[allow(clippy::identity_op)]
 fn test_mul_usize() {
     assert_eq!(GF(5) * 1, GF(5));
     assert_eq!(GF(5) * 2, GF(5) + GF(5));

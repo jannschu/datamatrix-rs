@@ -1051,7 +1051,7 @@ fn test_list_all() {
     assert_eq!(SymbolList::all().iter().count(), SYMBOL_SIZES.len());
 
     for size in SymbolList::all() {
-        assert!(SYMBOL_SIZES.iter().find(|s| **s == size).is_some());
+        assert!(SYMBOL_SIZES.iter().any(|s| *s == size));
     }
 }
 
