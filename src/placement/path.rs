@@ -36,7 +36,7 @@ pub enum PathSegment {
 }
 
 #[derive(Debug)]
-enum MicroSteps {
+enum MicroStep {
     Jump(N),
     Step(N),
 }
@@ -58,7 +58,7 @@ impl Bitmap<bool> {
     ///
     /// # Example
     ///
-    /// The `examples/` directory contains a SVG and PDF code example using this
+    /// The `examples/` directory contains a SVG, EPS and PDF code example using this
     /// helper.
     ///
     /// # Implementation
@@ -75,7 +75,7 @@ impl Bitmap<bool> {
         let mut insert = 0;
         // loop over the eulerian walks in the graph (composed of multiple in general)
         loop {
-            // complete an euler walk, Hierholzer's algorithm
+            // complete an Eulerian tour, Hierholzer's algorithm
             'euler: loop {
                 *graph.edge_mut(&graph.pos.clone()) = false;
                 let start = graph.pos.start_node();
@@ -119,18 +119,17 @@ impl Bitmap<bool> {
     }
 }
 
-fn compress_path(mut micro_steps: Vec<MicroSteps>, width: N) -> Vec<PathSegment> {
+fn compress_path(micro_steps: impl Iterator<Item=MicroStep>, width: N) -> Vec<PathSegment> {
     let mut steps = Vec::new();
     let mut pos = (0, 0);
-    micro_steps.reverse();
 
     let ij = |n: N| (n / (width + 1), n % (width + 1));
 
     // step, "work in progress"
     let mut step_wip = None;
-    while let Some(micro_step) = micro_steps.pop() {
+    for micro_step in micro_steps {
         match micro_step {
-            MicroSteps::Step(n) => {
+            MicroStep::Step(n) => {
                 let (i, j) = ij(n);
                 match step_wip {
                     // check if we can combine step with step_wip
@@ -154,7 +153,7 @@ fn compress_path(mut micro_steps: Vec<MicroSteps>, width: N) -> Vec<PathSegment>
                 }
                 pos = (i, j);
             }
-            MicroSteps::Jump(n) => {
+            MicroStep::Jump(n) => {
                 // drop content of step_wip, just add close
                 step_wip = None;
                 steps.push(PathSegment::Close);
@@ -360,17 +359,29 @@ impl Graph {
         alternatives
     }
 
-    fn edge(&self, pos: &Position) -> bool {
+    fn has_edge(&self, pos: &Position) -> bool {
         match pos.dir {
-            Direction::Left | Direction::Right => *self.top(pos.i, pos.j),
-            Direction::Up | Direction::Down => *self.left(pos.i, pos.j),
+            Direction::Left | Direction::Right => self.top(pos.i, pos.j),
+            Direction::Up | Direction::Down => self.left(pos.i, pos.j),
         }
     }
 
-    fn edge_mut<'a>(&'a mut self, pos: &Position) -> &'a mut bool {
+    fn remove_top(&mut self, i: N, j: N) -> bool {
+        let i = i as usize;
+        let j = j as usize;
+        self.edges[i * (self.pos.width as usize + 1) + j].1 = false;
+    }
+
+    fn remove_left(&mut self, i: N, j: N) -> bool {
+        let i = i as usize;
+        let j = j as usize;
+        self.edges[i * (self.pos.width as usize + 1) + j].0 = false;
+    }
+
+    fn remove_edge<'a>(&'a mut self, pos: &Position) -> bool {
         match pos.dir {
-            Direction::Left | Direction::Right => self.top_mut(pos.i, pos.j),
-            Direction::Up | Direction::Down => self.left_mut(pos.i, pos.j),
+            Direction::Left | Direction::Right => self.remove_top(pos.i, pos.j),
+            Direction::Up | Direction::Down => self.remove_left(pos.i, pos.j),
         }
     }
 

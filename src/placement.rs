@@ -521,6 +521,25 @@ impl Bit for bool {
 }
 
 impl<B: Bit> Bitmap<B> {
+    /// Create a new Bitmap.
+    ///
+    /// This allows you to use the rendering helpers also for, say, QR codes:
+    ///
+    /// ```rust
+    /// # use datamatrix::placement::Bitmap;
+    /// use qrcode::{QrCode, Color};
+    ///
+    /// let code = QrCode::new(b"Hello, World!!").unwrap();
+    /// let width = code.width();
+    /// let bits = code.into_colors().into_iter().map(|c| c == Color::Dark).collect();
+    /// let bitmap = Bitmap::new(bits, width);
+    /// print!("{}", bitmap.unicode());
+    /// ```
+    pub fn new(bits: Vec<B>, width: usize) -> Self {
+        assert_eq!(bits.len() % width, 0);
+        Self { bits, width }
+    }
+
     /// Return the width of the bitmap (no quiet zone included).
     pub fn width(&self) -> usize {
         self.width
@@ -539,7 +558,7 @@ impl<B: Bit> Bitmap<B> {
         const BORDER: usize = 1;
         const INVERT: bool = false;
         const CHAR: [char; 4] = [' ', '▄', '▀', '█'];
-        let height = self.bits.len() / self.width;
+        let height = self.height();
         let get = |i: usize, j: usize| -> usize {
             let res =
                 if i < BORDER || i >= BORDER + height || j < BORDER || j >= BORDER + self.width {
