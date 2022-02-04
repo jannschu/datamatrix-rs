@@ -5,6 +5,8 @@
 ### Features
 
 - Tile decoding is now implemented.
+- Speed up `Bitmap::pixels()` for large symbols by about factor six. The performance
+  should now be linear in the number of pixels.
 
 ### Fixes
 

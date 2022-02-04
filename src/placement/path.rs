@@ -1,4 +1,5 @@
 use alloc::{vec, vec::Vec};
+use core::cell::RefCell;
 
 use super::Bitmap;
 type N = i16;
@@ -23,15 +24,15 @@ pub enum PathSegment {
     Move(i16, i16),
     /// A horizontal draw, relative distance.
     ///
-    /// This is like a `h` entry in a  SVG path.
+    /// This is like a `h` entry in a SVG path.
     Horizontal(i16),
     /// A vertical draw, relative distance.
     ///
-    /// This is like a `v` entry in a  SVG path.
+    /// This is like a `v` entry in a SVG path.
     Vertical(i16),
     /// Close the current (sub)path. Can occur multiple times.
     ///
-    /// This is like a `z` entry in a  SVG path.
+    /// This is like a `z` entry in a SVG path.
     Close,
 }
 
@@ -64,9 +65,7 @@ impl Bitmap<bool> {
     /// # Implementation
     ///
     /// The outline is modeled as a graph which is then decomposed into
-    /// Eulerian circuits. The worst case runtime is quadratic in the number of
-    /// "pixels". This could be improved by using a hash set data structure or
-    /// something similar.
+    /// Eulerian circuits.
     pub fn path(&self) -> Vec<PathSegment> {
         let mut graph = bits_to_edge_graph(&self.bits, self.width() as N, self.height() as N);
         let mut elements = Vec::new();
@@ -77,9 +76,12 @@ impl Bitmap<bool> {
         loop {
             // complete an Eulerian tour, Hierholzer's algorithm
             'euler: loop {
-                *graph.edge_mut(&graph.pos.clone()) = false;
+                let mut local_loop = Vec::new();
+                let insert_pos = insert;
+
+                graph.remove_edge(&graph.pos.clone());
                 let start = graph.pos.start_node();
-                elements.insert(insert, MicroSteps::Step(graph.pos.end_node()));
+                local_loop.push(MicroStep::Step(graph.pos.end_node()));
                 insert += 1;
 
                 // walk until we find start node again
@@ -89,12 +91,14 @@ impl Bitmap<bool> {
                         alternatives.push((insert, pos));
                     }
                     let end = graph.pos.end_node();
-                    elements.insert(insert, MicroSteps::Step(end));
+                    local_loop.push(MicroStep::Step(end));
                     if end == start {
                         break;
                     }
                     insert += 1;
                 }
+                elements.splice(insert_pos..insert_pos, local_loop.drain(0..));
+
                 // are there remaining edges for this euler walk?
                 for (idx, pos) in alternatives.drain(0..) {
                     if let Some(new_pos) = graph.can_step(&pos) {
@@ -106,20 +110,20 @@ impl Bitmap<bool> {
                 break;
             }
 
-            // are there edges remaining in the graph, then start a new euler tour
-            if let Some(pos) = graph.has_edge() {
-                elements.push(MicroSteps::Jump(pos.start_node()));
+            // are there edges remaining in the graph, then start a new Eulerian tour
+            if let Some(pos) = graph.edge_left() {
+                elements.push(MicroStep::Jump(pos.start_node()));
                 graph.pos = pos;
                 insert = elements.len();
                 continue;
             }
             break;
         }
-        compress_path(elements, self.width() as N)
+        compress_path(elements.into_iter(), self.width() as N)
     }
 }
 
-fn compress_path(micro_steps: impl Iterator<Item=MicroStep>, width: N) -> Vec<PathSegment> {
+fn compress_path(micro_steps: impl Iterator<Item = MicroStep>, width: N) -> Vec<PathSegment> {
     let mut steps = Vec::new();
     let mut pos = (0, 0);
 
@@ -277,81 +281,60 @@ struct Graph {
     /// Two marker for each grid cell, (edge left, edge top)
     edges: Vec<(bool, bool)>,
     pos: Position,
+    edge_hint: RefCell<usize>,
 }
 
 impl Graph {
-    fn left_mut(&mut self, i: N, j: N) -> &mut bool {
+    fn left(&self, i: N, j: N) -> bool {
         let i = i as usize;
         let j = j as usize;
-        &mut self.edges[i * (self.pos.width as usize + 1) + j].0
+        self.edges[i * (self.pos.width as usize + 1) + j].0
     }
 
-    fn top_mut(&mut self, i: N, j: N) -> &mut bool {
+    fn top(&self, i: N, j: N) -> bool {
         let i = i as usize;
         let j = j as usize;
-        &mut self.edges[i * (self.pos.width as usize + 1) + j].1
-    }
-
-    fn right_mut(&mut self, i: N, j: N) -> &mut bool {
-        self.left_mut(i, j + 1)
-    }
-
-    fn bottom_mut(&mut self, i: N, j: N) -> &mut bool {
-        self.top_mut(i + 1, j)
-    }
-
-    fn left(&self, i: N, j: N) -> &bool {
-        let i = i as usize;
-        let j = j as usize;
-        &self.edges[i * (self.pos.width as usize + 1) + j].0
-    }
-
-    fn top(&self, i: N, j: N) -> &bool {
-        let i = i as usize;
-        let j = j as usize;
-        &self.edges[i * (self.pos.width as usize + 1) + j].1
+        self.edges[i * (self.pos.width as usize + 1) + j].1
     }
 
     fn can_step(&self, pos: &Position) -> Option<Position> {
-        None.or_else(|| pos.straight().filter(|p| self.edge(p)))
-            .or_else(|| pos.left().filter(|p| self.edge(p)))
-            .or_else(|| pos.right().filter(|p| self.edge(p)))
+        None.or_else(|| pos.straight().filter(|p| self.has_edge(p)))
+            .or_else(|| pos.left().filter(|p| self.has_edge(p)))
+            .or_else(|| pos.right().filter(|p| self.has_edge(p)))
     }
 
     fn step_and_had_alternatives(&mut self) -> bool {
-        let mut found = None;
+        fn free(s: &mut Graph, p: Option<Position>, remove: bool) -> Option<Position> {
+            p.and_then(move |p: Position| {
+                let found = if remove {
+                    s.remove_edge(&p)
+                } else {
+                    s.has_edge(&p)
+                };
+                if found {
+                    Some(p)
+                } else {
+                    None
+                }
+            })
+        }
+
+        let mut found = free(self, self.pos.straight(), true);
         let mut alternatives = false;
 
-        fn free(s: &mut Graph, p: Option<Position>) -> Option<(Position, &mut bool)> {
-            p.map(move |p: Position| {
-                let edge = s.edge_mut(&p);
-                (p, edge)
-            })
-            .filter(|e| *e.1)
-        }
-
-        if let Some((pos, edge)) = free(self, self.pos.straight()) {
-            *edge = false;
-            found = Some(pos);
-        }
-
-        if let Some((pos, edge)) = free(self, self.pos.left()) {
+        if let Some(pos) = free(self, self.pos.left(), found.is_none()) {
             if found.is_none() {
-                *edge = false;
                 found = Some(pos);
             } else {
                 alternatives = true;
             }
         }
 
-        if !alternatives {
-            if let Some((pos, edge)) = free(self, self.pos.right()) {
-                if found.is_none() {
-                    *edge = false;
-                    found = Some(pos);
-                } else {
-                    alternatives = true;
-                }
+        if let Some(pos) = free(self, self.pos.right(), found.is_none()) {
+            if found.is_none() {
+                found = Some(pos);
+            } else {
+                alternatives = true;
             }
         }
 
@@ -369,45 +352,48 @@ impl Graph {
     fn remove_top(&mut self, i: N, j: N) -> bool {
         let i = i as usize;
         let j = j as usize;
+        let found = self.edges[i * (self.pos.width as usize + 1) + j].1;
         self.edges[i * (self.pos.width as usize + 1) + j].1 = false;
+        found
     }
 
     fn remove_left(&mut self, i: N, j: N) -> bool {
         let i = i as usize;
         let j = j as usize;
+        let found = self.edges[i * (self.pos.width as usize + 1) + j].0;
         self.edges[i * (self.pos.width as usize + 1) + j].0 = false;
+        found
     }
 
-    fn remove_edge<'a>(&'a mut self, pos: &Position) -> bool {
+    fn remove_edge(&mut self, pos: &Position) -> bool {
         match pos.dir {
             Direction::Left | Direction::Right => self.remove_top(pos.i, pos.j),
             Direction::Up | Direction::Down => self.remove_left(pos.i, pos.j),
         }
     }
 
-    fn has_edge(&self) -> Option<Position> {
-        for i in 0..=self.pos.height {
-            for j in 0..=self.pos.width {
-                if *self.top(i, j) {
-                    return Some(Position {
-                        i,
-                        j,
-                        width: self.pos.width,
-                        height: self.pos.height,
-                        dir: Direction::Right,
-                    });
-                }
-                if *self.left(i, j) {
-                    return Some(Position {
-                        i,
-                        j,
-                        width: self.pos.width,
-                        height: self.pos.height,
-                        dir: Direction::Up,
-                    });
-                }
+    fn edge_left(&self) -> Option<Position> {
+        let hint = *self.edge_hint.borrow();
+        for (idx, edge) in self.edges[hint..].iter().enumerate() {
+            if edge.0 || edge.1 {
+                let idx = idx + hint;
+                let i = (idx / (self.pos.width + 1) as usize) as N;
+                let j = (idx % (self.pos.width + 1) as usize) as N;
+                self.edge_hint.replace_with(|_| idx + 1);
+                return Some(Position {
+                    i,
+                    j,
+                    width: self.pos.width,
+                    height: self.pos.height,
+                    dir: if edge.1 {
+                        Direction::Right
+                    } else {
+                        Direction::Up
+                    },
+                });
             }
         }
+        self.edge_hint.replace_with(|_| self.edges.len());
         None
     }
 }
@@ -415,6 +401,7 @@ impl Graph {
 fn bits_to_edge_graph(bits: &[bool], width: N, height: N) -> Graph {
     let mut graph = Graph {
         edges: vec![(false, false); (width as usize + 1) * (height as usize + 1)],
+        edge_hint: RefCell::new(0),
         pos: Position {
             i: 0,
             j: 0,
@@ -423,6 +410,7 @@ fn bits_to_edge_graph(bits: &[bool], width: N, height: N) -> Graph {
             dir: Direction::Right,
         },
     };
+
     for i in 0..height {
         for j in 0..width {
             let idx = i * width + j;
@@ -430,16 +418,20 @@ fn bits_to_edge_graph(bits: &[bool], width: N, height: N) -> Graph {
                 continue;
             }
             if j == 0 || !bits[(idx - 1) as usize] {
-                *graph.left_mut(i, j) = true;
+                // left
+                graph.edges[i as usize * (width as usize + 1) + j as usize].0 = true;
             }
             if j == width - 1 || !bits[(idx + 1) as usize] {
-                *graph.right_mut(i, j) = true;
+                // right
+                graph.edges[i as usize * (width as usize + 1) + (j as usize + 1)].0 = true;
             }
             if i == 0 || !bits[(idx - width) as usize] {
-                *graph.top_mut(i, j) = true;
+                // top
+                graph.edges[i as usize * (width as usize + 1) + j as usize].1 = true;
             }
             if i == height - 1 || !bits[(idx + width) as usize] {
-                *graph.bottom_mut(i, j) = true;
+                // bottom
+                graph.edges[(i as usize + 1) * (width as usize + 1) + j as usize].1 = true;
             }
         }
     }
@@ -466,6 +458,7 @@ fn mini_2x2_one_euler() {
                 (false, true),
                 (false, false),
             ],
+            edge_hint: RefCell::new(0),
             pos: Position {
                 i: 0,
                 j: 0,
