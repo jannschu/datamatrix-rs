@@ -1,4 +1,5 @@
-// This program is copied from Appendix F.1 of the specification.
+// This program is copied from Appendix F.1 of the specification
+// and then slightly modified to generate test data.
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -152,12 +153,7 @@ int main(int argc, char *argv[]) {
       for (x = 0; x < nrow; x++) {
         for (y = 0; y < ncol; y++) {
           z = array[x * ncol + y];
-          if (z == 0)
-            printf("(0,0), ");
-          else if (z == 1)
-            printf("(0,1), ");
-          else
-            printf("(%d,%d), ", z / 10, z % 10);
+          printf("(%d,%d), ", z / 10, z % 10);
         }
         printf("\n");
       }
