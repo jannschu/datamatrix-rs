@@ -60,7 +60,7 @@ impl<'a> Reader<'a> {
 
 /// Decode the data codewords of a Data Matrix.
 pub fn decode_data(data: &[u8]) -> Result<Vec<u8>, DataDecodingError> {
-    let parts = decode_parts(data)?;
+    let parts = decode_parts(data, true)?;
     if !parts.eci_spans.is_empty() {
         Err(DataDecodingError::ECICode)
     } else {
@@ -75,7 +75,7 @@ struct DecodedParts {
     fnc1: bool,
 }
 
-fn decode_parts(data: &[u8]) -> Result<DecodedParts, DataDecodingError> {
+fn decode_parts(data: &[u8], raw: bool) -> Result<DecodedParts, DataDecodingError> {
     let mut data = Reader(data, 0);
     let mut mode = EncodationType::Ascii;
     let mut out = Vec::with_capacity(data.len());
@@ -94,6 +94,11 @@ fn decode_parts(data: &[u8]) -> Result<DecodedParts, DataDecodingError> {
         }
         _ => false,
     };
+
+    if !raw && add_macro_trail {
+        ecis.push((0, ECI_UTF8));
+        ecis.push((out.len(), 0));
+    }
 
     let fnc1 = data.peek(0) == Some(ascii::FNC1);
     if fnc1 {
@@ -132,7 +137,7 @@ fn decode_parts(data: &[u8]) -> Result<DecodedParts, DataDecodingError> {
 /// This function has some ECI support. Be aware that
 /// latin1 encoding is assumed if no ECI is there.
 pub fn decode_str(data: &[u8]) -> Result<String, DataDecodingError> {
-    let parts = decode_parts(data)?;
+    let parts = decode_parts(data, false)?;
     eci::convert(&parts.output, &parts.eci_spans)
 }
 
@@ -567,5 +572,17 @@ fn test_strict_eot_c40_unlatch() {
             "illegal in ascii",
             UNLATCH
         )),
+    );
+}
+
+#[test]
+fn test_decode_macro_string() {
+    assert_eq!(
+        decode_str(&[MACRO05, b'A' + 1]).unwrap(),
+        "[)>\x1e05\x1dA\x1e\x04",
+    );
+    assert_eq!(
+        decode_str(&[MACRO06, b'A' + 1]).unwrap(),
+        "[)>\x1e06\x1dA\x1e\x04",
     );
 }
