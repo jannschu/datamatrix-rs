@@ -89,6 +89,7 @@ pub use encodation::EncodationType;
 pub use symbol_size::{SymbolList, SymbolSize};
 
 use alloc::vec::Vec;
+use flagset::FlagSet;
 
 use encodation::DataEncodingError;
 use placement::{Bitmap, MatrixMap};
@@ -117,13 +118,12 @@ impl DataMatrix {
     /// The pixels are expected to be given in row-major order, i.e., the top
     /// row of pixels comes first, then the second row and so on.
     pub fn decode(pixels: &[bool], width: usize) -> Result<Vec<u8>, DecodingError> {
-        let (matrix_map, size) = MatrixMap::try_from_bits(pixels, width)
-            .map_err(|e| DecodingError::PixelConversion(e))?;
+        let (matrix_map, size) =
+            MatrixMap::try_from_bits(pixels, width).map_err(DecodingError::PixelConversion)?;
         let mut codewords = matrix_map.codewords();
-        errorcode::decode_error(&mut codewords, size)
-            .map_err(|e| DecodingError::ErrorCorrection(e))?;
+        errorcode::decode_error(&mut codewords, size).map_err(DecodingError::ErrorCorrection)?;
         decodation::decode_data(&codewords[..size.num_data_codewords()])
-            .map_err(|e| DecodingError::DataDecoding(e))
+            .map_err(DecodingError::DataDecoding)
     }
 
     /// Get the data in encoded form.
@@ -160,7 +160,9 @@ impl DataMatrix {
         data: &[u8],
         symbol_list: I,
     ) -> Result<DataMatrix, DataEncodingError> {
-        Self::encode_eci(data, &symbol_list.into(), None)
+        DataMatrixBuilder::new()
+            .with_symbol_list(symbol_list)
+            .encode(data)
     }
 
     /// Encodes a string as a Data Matrix (ECC200).
@@ -172,25 +174,74 @@ impl DataMatrix {
         text: &str,
         symbol_list: I,
     ) -> Result<DataMatrix, DataEncodingError> {
-        let symbol_list = symbol_list.into();
-        if let Some(data) = data::utf8_to_latin1(text) {
-            // string is latin1
-            Self::encode_eci(&data, &symbol_list, None)
-        } else {
-            // encode with UTF8 ECI
-            Self::encode_eci(text.as_bytes(), &symbol_list, Some(26))
+        DataMatrixBuilder::new()
+            .with_symbol_list(symbol_list)
+            .encode_str(text)
+    }
+}
+
+pub struct DataMatrixBuilder {
+    encodation_types: FlagSet<EncodationType>,
+    symbol_list: SymbolList,
+}
+
+impl DataMatrixBuilder {
+    pub fn new() -> Self {
+        Self {
+            encodation_types: EncodationType::all(),
+            symbol_list: SymbolList::default(),
+        }
+    }
+
+    /// Specify which encodation can be used.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use datamatrix::{DataMatrixBuilder, data::EncodationType};
+    /// let datamatrix = DataMatrixBuilder::new()
+    ///     .with_encodation_types(EncodationType::Base256 | EncodationType::Edifact)
+    ///     .encode(b"\xFAaaa")
+    ///     .unwrap();
+    /// ```
+    pub fn with_encodation_types(self, types: impl Into<FlagSet<EncodationType>>) -> Self {
+        Self {
+            encodation_types: types.into(),
+            ..self
+        }
+    }
+
+    pub fn with_symbol_list<I: Into<SymbolList>>(self, symbol_list: I) -> Self {
+        Self {
+            symbol_list: symbol_list.into(),
+            ..self
         }
     }
 
     /// Encode a string as a Data Matrix (ECC200).
+    pub fn encode(self, data: &[u8]) -> Result<DataMatrix, DataEncodingError> {
+        self.encode_eci(data, None)
+    }
+
+    /// Encodes a string as a Data Matrix (ECC200).
+    pub fn encode_str(self, text: &str) -> Result<DataMatrix, DataEncodingError> {
+        if let Some(data) = data::utf8_to_latin1(text) {
+            // string is latin1
+            self.encode_eci(&data, None)
+        } else {
+            // encode with UTF8 ECI
+            self.encode_eci(text.as_bytes(), Some(26))
+        }
+    }
+
     #[doc(hidden)]
     pub fn encode_eci(
+        self,
         data: &[u8],
-        symbol_list: &SymbolList,
         eci: Option<u32>,
     ) -> Result<DataMatrix, DataEncodingError> {
         let (mut codewords, size) =
-            data::encode_data(data, symbol_list, eci, EncodationType::all())?;
+            data::encode_data(data, &self.symbol_list, eci, self.encodation_types)?;
         let ecc = errorcode::encode_error(&codewords, size);
         let num_data_codewords = codewords.len();
         codewords.extend_from_slice(&ecc);
@@ -199,6 +250,12 @@ impl DataMatrix {
             size,
             num_data_codewords,
         })
+    }
+}
+
+impl Default for DataMatrixBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
