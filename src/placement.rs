@@ -531,11 +531,16 @@ impl<B: Bit> Bitmap<B> {
     ///
     /// let code = QrCode::new(b"Hello, World!!").unwrap();
     /// let width = code.width();
-    /// let bits = code.into_colors().into_iter().map(|c| c == Color::Dark).collect();
+    /// let bits = code.into_colors().into_iter().map(|c| c == Color::Dark);
     /// let bitmap = Bitmap::new(bits, width);
     /// print!("{}", bitmap.unicode());
     /// ```
-    pub fn new(bits: Vec<B>, width: usize) -> Self {
+    // pub fn new<T: IntoIterator<Item = I>, I: core::borrow::Borrow<B>>(
+    pub fn new<T>(bits: T, width: usize) -> Self
+    where
+        T: IntoIterator<Item = B>,
+    {
+        let bits = Vec::from_iter(bits);
         assert_eq!(bits.len() % width, 0);
         Self { bits, width }
     }
@@ -713,4 +718,12 @@ fn test_from_bits_all() {
         assert!(map2.padding_ok);
         assert!(map2.alignment_ok);
     }
+}
+
+#[test]
+fn test_bitmap_new() {
+    Bitmap::new(vec![true, false], 2);
+    Bitmap::new([true, false], 2);
+    let data = &[true, false];
+    Bitmap::new(data.iter().cloned(), 2);
 }
