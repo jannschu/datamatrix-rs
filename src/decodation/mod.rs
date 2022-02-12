@@ -380,7 +380,7 @@ fn decode_x12<'a>(
         out.push(dec_x12_val(c2)?);
         out.push(dec_x12_val(c3)?);
     }
-    if data.peek(0) == Some(UNLATCH) {
+    if data.len() == 1 && data.peek(0) == Some(UNLATCH) {
         // single UNLATCH at end of data
         let _ = data.eat().unwrap();
     }
@@ -490,7 +490,7 @@ fn decode_c40_like<'a>(
             }
         }
     }
-    if data.peek(0) == Some(UNLATCH) {
+    if data.len() == 1 && data.peek(0) == Some(UNLATCH) {
         // single UNLATCH at end of data
         let _ = data.eat().unwrap();
     }
@@ -550,4 +550,22 @@ fn test_read_eci() {
     assert_eq!(enc_dec(16382), 16382);
     assert_eq!(enc_dec(16383), 16383);
     assert_eq!(enc_dec(999999), 999999);
+}
+
+#[test]
+fn test_strict_eot_c40_unlatch() {
+    assert_eq!(
+        decode_data(&[ascii::LATCH_TEXT, UNLATCH, UNLATCH, 50]),
+        Err(DataDecodingError::UnexpectedCharacter(
+            "illegal in ascii",
+            UNLATCH
+        )),
+    );
+    assert_eq!(
+        decode_data(&[ascii::LATCH_X12, UNLATCH, UNLATCH, 50]),
+        Err(DataDecodingError::UnexpectedCharacter(
+            "illegal in ascii",
+            UNLATCH
+        )),
+    );
 }
