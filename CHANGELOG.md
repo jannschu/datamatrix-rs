@@ -8,6 +8,7 @@
 - Speed up `Bitmap::pixels()` for large symbols by about factor six. The performance
   should now be linear in the number of pixels.
 - A `DataMatrixBuilder` is now available that allows to specify allowed encodation types.
+- Macro and FNC1 characters can now be decoded.
 
 ### Fixes
 

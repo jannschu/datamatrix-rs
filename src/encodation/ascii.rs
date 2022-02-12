@@ -2,6 +2,7 @@ use super::{DataEncodingError, EncodingContext};
 
 pub(crate) const LATCH_C40: u8 = 230;
 pub(crate) const LATCH_BASE256: u8 = 231;
+pub(crate) const FNC1: u8 = 232;
 pub(crate) const LATCH_X12: u8 = 238;
 pub(crate) const LATCH_TEXT: u8 = 239;
 pub(crate) const LATCH_EDIFACT: u8 = 240;

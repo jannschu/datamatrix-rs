@@ -1,7 +1,10 @@
 //! Data decodation. This comes after error correction and visual detection.
 //!
 //! It performs the inverse of the `encodation` module.
-use super::encodation::{ascii, edifact, EncodationType, UNLATCH};
+use super::encodation::{
+    ascii, edifact, EncodationType, MACRO05, MACRO05_HEAD, MACRO06, MACRO06_HEAD, MACRO_TRAIL,
+    UNLATCH,
+};
 use alloc::{string::String, vec::Vec};
 
 #[cfg(test)]
@@ -11,6 +14,8 @@ use alloc::vec;
 mod tests;
 
 mod eci;
+
+pub(crate) use eci::ECI_UTF8;
 
 #[derive(Debug, PartialEq)]
 pub enum DataDecodingError {
@@ -66,6 +71,8 @@ pub fn decode_data(data: &[u8]) -> Result<Vec<u8>, DataDecodingError> {
 struct DecodedParts {
     output: Vec<u8>,
     eci_spans: Vec<(usize, u32)>,
+    #[allow(unused)]
+    fnc1: bool,
 }
 
 fn decode_parts(data: &[u8]) -> Result<DecodedParts, DataDecodingError> {
@@ -73,6 +80,25 @@ fn decode_parts(data: &[u8]) -> Result<DecodedParts, DataDecodingError> {
     let mut mode = EncodationType::Ascii;
     let mut out = Vec::with_capacity(data.len());
     let mut ecis = Vec::new();
+
+    let add_macro_trail = match data.peek(0) {
+        Some(MACRO05) => {
+            out.extend_from_slice(MACRO05_HEAD);
+            let _ = data.eat().unwrap();
+            true
+        }
+        Some(MACRO06) => {
+            out.extend_from_slice(MACRO06_HEAD);
+            let _ = data.eat().unwrap();
+            true
+        }
+        _ => false,
+    };
+
+    let fnc1 = data.peek(0) == Some(ascii::FNC1);
+    if fnc1 {
+        let _ = data.eat().unwrap();
+    }
 
     while !data.is_empty() {
         let (rest, new_mode) = match mode {
@@ -86,9 +112,18 @@ fn decode_parts(data: &[u8]) -> Result<DecodedParts, DataDecodingError> {
         data = rest;
         mode = new_mode;
     }
+
+    if add_macro_trail {
+        if !ecis.is_empty() {
+            ecis.push((out.len(), ECI_UTF8));
+        }
+        out.extend_from_slice(MACRO_TRAIL);
+    }
+
     Ok(DecodedParts {
         output: out,
         eci_spans: ecis,
+        fnc1,
     })
 }
 
@@ -150,6 +185,12 @@ fn decode_ascii<'a>(
 ) -> Result<(Reader<'a>, EncodationType), DataDecodingError> {
     let mut upper_shift = false;
     while let Ok(ch) = data.eat() {
+        if upper_shift && !matches!(ch, 1..=128) {
+            return Err(DataDecodingError::UnexpectedCharacter(
+                "character after ascii 'Upper Shift' was not in 1 to 128",
+                ch,
+            ));
+        }
         match ch {
             ch @ 1..=128 => {
                 if upper_shift {
@@ -179,14 +220,14 @@ fn decode_ascii<'a>(
             }
             ascii::LATCH_C40 => return Ok((data, EncodationType::C40)),
             ascii::LATCH_BASE256 => return Ok((data, EncodationType::Base256)),
-            232 => return Err(DataDecodingError::NotImplemented("FNC1")),
+            ascii::FNC1 => {
+                out.push(29);
+            }
             233 => return Err(DataDecodingError::NotImplemented("Structured Append")),
             234 => return Err(DataDecodingError::NotImplemented("Reader Programming")),
             ascii::UPPER_SHIFT => {
                 upper_shift = true;
             }
-            236 => return Err(DataDecodingError::NotImplemented("05 Macro")),
-            237 => return Err(DataDecodingError::NotImplemented("06 Macro")),
             ascii::LATCH_X12 => return Ok((data, EncodationType::X12)),
             ascii::LATCH_TEXT => return Ok((data, EncodationType::Text)),
             ascii::LATCH_EDIFACT => return Ok((data, EncodationType::Edifact)),
@@ -202,6 +243,9 @@ fn decode_ascii<'a>(
                 ))
             }
         }
+    }
+    if upper_shift {
+        return Err(DataDecodingError::UnexpectedEnd);
     }
     Ok((data, EncodationType::Ascii))
 }

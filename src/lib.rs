@@ -230,7 +230,7 @@ impl DataMatrixBuilder {
             self.encode_eci(&data, None)
         } else {
             // encode with UTF8 ECI
-            self.encode_eci(text.as_bytes(), Some(26))
+            self.encode_eci(text.as_bytes(), Some(decodation::ECI_UTF8))
         }
     }
 

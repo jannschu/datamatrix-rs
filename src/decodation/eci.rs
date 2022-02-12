@@ -3,6 +3,8 @@ use core::iter::once;
 
 use super::DataDecodingError;
 
+pub(crate) const ECI_UTF8: u32 = 26;
+
 /// Convert supported ECI sections to UTF-8.
 pub fn convert(raw: &[u8], ecis: &[(usize, u32)]) -> Result<String, DataDecodingError> {
     let mut out = String::new();
@@ -21,7 +23,9 @@ fn convert_chunk(bytes: &[u8], eci: u32, out: &mut String) -> Result<(), DataDec
         }
         11 => decode_iso_8859_9(bytes, out)?,
         13 => decode_iso_8859_11(bytes, out)?,
-        26 => out.push_str(core::str::from_utf8(bytes).or(Err(DataDecodingError::CharsetError))?),
+        ECI_UTF8 => {
+            out.push_str(core::str::from_utf8(bytes).or(Err(DataDecodingError::CharsetError))?)
+        }
         27 => {
             if bytes.is_ascii() {
                 out.push_str(core::str::from_utf8(bytes).or(Err(DataDecodingError::CharsetError))?);

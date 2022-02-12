@@ -20,11 +20,13 @@ mod tests;
 
 pub use encodation_type::EncodationType;
 
+pub(crate) const MACRO05: u8 = 236;
+pub(crate) const MACRO06: u8 = 237;
+pub(crate) const MACRO05_HEAD: &[u8] = b"[)>\x1E05\x1D";
+pub(crate) const MACRO06_HEAD: &[u8] = b"[)>\x1E06\x1D";
+pub(crate) const MACRO_TRAIL: &[u8] = b"\x1E\x04";
+
 // The following is not implemented
-// const MACRO05: u8 = 236;
-// const MACRO06: u8 = 237;
-// const ECI: u8 = 241;
-// const FNC1: u8 = 232;
 // const STRUCT_APPEND: u8 = 233;
 // const READER_PROGRAMMING: u8 = 234;
 
