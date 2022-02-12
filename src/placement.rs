@@ -27,6 +27,20 @@ pub struct ConversionReport<B: Bit> {
     pub matrix_map: MatrixMap<B>,
 }
 
+#[derive(Debug)]
+pub enum BitmapConversionError {
+    /// The alignment pattern is not correct.
+    Alignment,
+    /// The padding pattern is not correct.
+    Padding,
+    /// The width was zero.
+    ZeroWidth,
+    /// The provided data does not fit the given width.
+    DataSize,
+    /// No symbol size was found matching the data size.
+    SymbolSize,
+}
+
 /// Abstract "bit" type used in [MatrixMap].
 pub trait Bit: Clone + Copy + PartialEq + core::fmt::Debug {
     const LOW: Self;
@@ -65,18 +79,27 @@ impl<M: Bit> MatrixMap<M> {
     /// from the top left corner in row-major order. The alignment patterns must be included.
     ///
     /// Padding and alignment are checked and the result is reported, see [ConversionReport].
-    pub fn try_from_bits(bits: &[M], width: usize) -> Option<ConversionReport<M>>
+    pub fn try_from_bits(
+        bits: &[M],
+        width: usize,
+    ) -> Result<(Self, SymbolSize), BitmapConversionError>
     where
         M: PartialEq,
     {
+        if width == 0 {
+            return Err(BitmapConversionError::ZeroWidth);
+        }
         if bits.len() % width != 0 {
-            return None;
+            return Err(BitmapConversionError::DataSize);
         }
         let height = bits.len() / width;
-        let size = SymbolList::all().iter().find(|s| {
-            let bs = s.block_setup();
-            bs.width == width && bs.height == height
-        })?;
+        let size = SymbolList::all()
+            .iter()
+            .find(|s| {
+                let bs = s.block_setup();
+                bs.width == width && bs.height == height
+            })
+            .ok_or(BitmapConversionError::SymbolSize)?;
         let setup = size.block_setup();
         let w = setup.content_width();
         let h = setup.content_height();
@@ -85,20 +108,22 @@ impl<M: Bit> MatrixMap<M> {
         let blk_h = h / (setup.extra_horizontal_alignments + 1);
         let blk_w = w / (setup.extra_vertical_alignments + 1);
 
-        let mut alignment_ok = true;
         for row_chunk in bits.chunks((blk_h + 2) * width) {
             debug_assert_eq!(row_chunk.len(), (blk_h + 2) * width);
-            if alignment_ok {
-                // first row must be alternating, the one before all HIGH
-                let first_row = &row_chunk[..width];
-                let last_row = &row_chunk[(blk_h + 1) * width..];
-                debug_assert_eq!(last_row.len(), width);
-                alignment_ok = last_row.iter().all(|b| *b == M::HIGH)
-                    && first_row
-                        .iter()
-                        .zip([M::HIGH, M::LOW].into_iter().cycle())
-                        .all(|(a, b)| *a == b);
+
+            // first row must be alternating, the one before all HIGH
+            let first_row = &row_chunk[..width];
+            let last_row = &row_chunk[(blk_h + 1) * width..];
+            debug_assert_eq!(last_row.len(), width);
+            let alignment_ok = last_row.iter().all(|b| *b == M::HIGH)
+                && first_row
+                    .iter()
+                    .zip([M::HIGH, M::LOW].into_iter().cycle())
+                    .all(|(a, b)| *a == b);
+            if !alignment_ok {
+                return Err(BitmapConversionError::Alignment);
             }
+
             let rows = &row_chunk[width..(blk_h + 1) * width];
             debug_assert_eq!(rows.len(), blk_h * width);
             debug_assert_eq!(width % (blk_w + 2), 0);
@@ -112,19 +137,23 @@ impl<M: Bit> MatrixMap<M> {
                         M::LOW
                     };
                 }
-                alignment_ok = alignment_ok && row[0] == M::HIGH && row[blk_w + 1] == alignment_bit;
+                let alignment_ok = row[0] == M::HIGH && row[blk_w + 1] == alignment_bit;
+                if !alignment_ok {
+                    return Err(BitmapConversionError::Alignment);
+                }
                 entries.extend_from_slice(&row[1..blk_w + 1]);
                 debug_assert_eq!(row[1..blk_w + 1].len(), blk_w);
             }
         }
         debug_assert_eq!(entries.len(), w * h);
 
-        let padding_ok = if size.has_padding_modules() {
-            entries[entries.len() - 2..] == [M::LOW, M::HIGH]
-                && entries[entries.len() - w - 2..entries.len() - w] == [M::HIGH, M::LOW]
-        } else {
-            true
-        };
+        if size.has_padding_modules() {
+            let padding_ok = entries[entries.len() - 2..] == [M::LOW, M::HIGH]
+                && entries[entries.len() - w - 2..entries.len() - w] == [M::HIGH, M::LOW];
+            if !padding_ok {
+                return Err(BitmapConversionError::Padding);
+            }
+        }
 
         let matrix_map = Self {
             entries,
@@ -134,12 +163,7 @@ impl<M: Bit> MatrixMap<M> {
             extra_horizontal_alignments: setup.extra_horizontal_alignments,
             has_padding: size.has_padding_modules(),
         };
-        Some(ConversionReport {
-            size,
-            padding_ok,
-            alignment_ok,
-            matrix_map,
-        })
+        Ok((matrix_map, size))
     }
 
     /// Write a 4x4 padding pattern in the lower right corner if needed.
@@ -713,10 +737,8 @@ fn test_from_bits_all() {
     for size in SymbolList::all() {
         let map = random_map(size);
         let bitmap = map.bitmap();
-        let map2 = MatrixMap::try_from_bits(&bitmap.bits, bitmap.width).unwrap();
-        assert_eq!(map.entries, map2.matrix_map.entries);
-        assert!(map2.padding_ok);
-        assert!(map2.alignment_ok);
+        let (map2, _size) = MatrixMap::try_from_bits(&bitmap.bits, bitmap.width).unwrap();
+        assert_eq!(map.entries, map2.entries);
     }
 }
 

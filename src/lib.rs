@@ -101,6 +101,13 @@ pub struct DataMatrix {
     num_data_codewords: usize,
 }
 
+#[derive(Debug)]
+pub enum DecodingError {
+    PixelConversion(placement::BitmapConversionError),
+    ErrorCorrection(errorcode::ErrorDecodingError),
+    DataDecoding(decodation::DataDecodingError),
+}
+
 impl DataMatrix {
     /// Decode a Data Matrix from its pixels representation.
     ///
@@ -109,14 +116,14 @@ impl DataMatrix {
     ///
     /// The pixels are expected to be given in row-major order, i.e., the top
     /// row of pixels comes first, then the second row and so on.
-    pub fn decode(pixels: &[bool], width: usize) -> Option<Vec<u8>> {
-        let conversion = MatrixMap::try_from_bits(pixels, width)?;
-        if !conversion.padding_ok || !conversion.alignment_ok {
-            return None;
-        }
-        let mut codewords = conversion.matrix_map.codewords();
-        errorcode::decode_error(&mut codewords, conversion.size).ok()?;
-        decodation::decode_data(&codewords[..conversion.size.num_data_codewords()]).ok()
+    pub fn decode(pixels: &[bool], width: usize) -> Result<Vec<u8>, DecodingError> {
+        let (matrix_map, size) = MatrixMap::try_from_bits(pixels, width)
+            .map_err(|e| DecodingError::PixelConversion(e))?;
+        let mut codewords = matrix_map.codewords();
+        errorcode::decode_error(&mut codewords, size)
+            .map_err(|e| DecodingError::ErrorCorrection(e))?;
+        decodation::decode_data(&codewords[..size.num_data_codewords()])
+            .map_err(|e| DecodingError::DataDecoding(e))
     }
 
     /// Get the data in encoded form.
@@ -211,8 +218,8 @@ fn test_tile_placement_forth_and_back() {
         let map = MatrixMap::new_with_codewords(&data, size);
         assert_eq!(map.codewords(), data);
         let bitmap = map.bitmap();
-        let report = MatrixMap::try_from_bits(bitmap.bits(), bitmap.width()).unwrap();
-        assert_eq!(report.matrix_map.codewords(), data);
+        let (matrix_map, _size) = MatrixMap::try_from_bits(bitmap.bits(), bitmap.width()).unwrap();
+        assert_eq!(matrix_map.codewords(), data);
     }
 }
 

@@ -16,6 +16,7 @@
 ### Breaking changes
 
 - Rust 2021 is now used.
+- `DataMatrix::decode` now returns a `Result` instead of `Option`.
 - `DataMatrix::codewords` now also returns the error correction codewords.
   Use `DataMatrix::data_codewords` instead.
 - Any type implementing the `Bit` trait now needs to be `Copy`.
