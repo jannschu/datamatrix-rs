@@ -68,12 +68,6 @@ impl SymbolList {
         Self::with_whitelist(SYMBOL_SIZES.iter().cloned())
     }
 
-    #[deprecated(note = "use with_extended_rectangles()")]
-    #[doc(hidden)]
-    pub fn with_dmre() -> Self {
-        Self::with_extended_rectangles()
-    }
-
     /// Remove all non-square symbols from the current selection.
     pub fn enforce_square(mut self) -> Self {
         self.symbols.retain(|s| s.is_square());
@@ -93,31 +87,11 @@ impl SymbolList {
         self
     }
 
-    #[deprecated(note = "use enforce_width_in")]
-    #[doc(hidden)]
-    pub fn width_range(self, min_width: usize, max_width: usize) -> Self {
-        if min_width <= max_width {
-            self.enforce_width_in(min_width..=max_width)
-        } else {
-            [].into()
-        }
-    }
-
     /// Only keep symbols with height in the given range.
     pub fn enforce_height_in<R: RangeBounds<usize>>(mut self, bounds: R) -> Self {
         self.symbols
             .retain(|s| bounds.contains(&s.block_setup().height));
         self
-    }
-
-    #[deprecated(note = "use enforce_height_in")]
-    #[doc(hidden)]
-    pub fn height_range(self, min_height: usize, max_height: usize) -> Self {
-        if min_height <= max_height {
-            self.enforce_height_in(min_height..=max_height)
-        } else {
-            [].into()
-        }
     }
 
     /// Create a symbol list containing only the given symbols.
