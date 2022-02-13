@@ -181,6 +181,19 @@ impl<'a> GenericDataEncoder<'a> {
         }
     }
 
+    pub fn use_macro_if_possible(&mut self) {
+        if !self.codewords.is_empty() && !self.data.ends_with(MACRO_TRAIL) {
+            return;
+        }
+        for (head, cw) in [(MACRO05_HEAD, MACRO05), (MACRO06_HEAD, MACRO06)] {
+            if self.data.starts_with(head) {
+                self.codewords.push(cw);
+                self.data = &self.data[head.len()..self.data.len() - MACRO_TRAIL.len()];
+                break;
+            }
+        }
+    }
+
     pub fn write_eci(&mut self, mut c: u32) {
         self.codewords.push(ascii::ECI);
         match c {

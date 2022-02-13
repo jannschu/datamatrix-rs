@@ -130,9 +130,15 @@ fn enc(data: &[u8]) -> Vec<u8> {
 
 #[cfg(test)]
 fn enc_mode(data: &[u8], enabled_modes: impl Into<FlagSet<EncodationType>>) -> Vec<u8> {
-    encode_data(data, &SymbolList::default(), None, enabled_modes.into())
-        .unwrap()
-        .0
+    encode_data(
+        data,
+        &SymbolList::default(),
+        None,
+        enabled_modes.into(),
+        false,
+    )
+    .unwrap()
+    .0
 }
 
 #[test]
@@ -234,6 +240,7 @@ fn test_text_encoding_1() {
         &SymbolList::default(),
         None,
         EncodationType::all(),
+        false,
     )
     .unwrap()
     .0;
@@ -638,6 +645,7 @@ fn test_only_edifact_impossible() {
         &SymbolList::default(),
         None,
         EncodationType::Edifact,
+        false,
     );
     assert_eq!(code, Err(DataEncodingError::TooMuchOrIllegalData),);
 }

@@ -183,6 +183,7 @@ impl DataMatrix {
 pub struct DataMatrixBuilder {
     encodation_types: FlagSet<EncodationType>,
     symbol_list: SymbolList,
+    use_macros: bool,
 }
 
 impl DataMatrixBuilder {
@@ -190,6 +191,7 @@ impl DataMatrixBuilder {
         Self {
             encodation_types: EncodationType::all(),
             symbol_list: SymbolList::default(),
+            use_macros: true,
         }
     }
 
@@ -209,6 +211,13 @@ impl DataMatrixBuilder {
             encodation_types: types.into(),
             ..self
         }
+    }
+
+    /// Whether to use macros or not.
+    ///
+    /// This is enabled by default.
+    pub fn with_macros(self, use_macros: bool) -> Self {
+        Self { use_macros, ..self }
     }
 
     pub fn with_symbol_list<I: Into<SymbolList>>(self, symbol_list: I) -> Self {
@@ -240,8 +249,13 @@ impl DataMatrixBuilder {
         data: &[u8],
         eci: Option<u32>,
     ) -> Result<DataMatrix, DataEncodingError> {
-        let (mut codewords, size) =
-            data::encode_data(data, &self.symbol_list, eci, self.encodation_types)?;
+        let (mut codewords, size) = data::encode_data(
+            data,
+            &self.symbol_list,
+            eci,
+            self.encodation_types,
+            self.use_macros,
+        )?;
         let ecc = errorcode::encode_error(&codewords, size);
         let num_data_codewords = codewords.len();
         codewords.extend_from_slice(&ecc);
@@ -278,6 +292,31 @@ fn test_tile_placement_forth_and_back() {
         let (matrix_map, _size) = MatrixMap::try_from_bits(bitmap.bits(), bitmap.width()).unwrap();
         assert_eq!(matrix_map.codewords(), data);
     }
+}
+
+#[test]
+fn test_macro_str() {
+    let data = "[)>\x1E05\x1D🤘\x1E\x04";
+    let map = DataMatrix::encode_str(data, SymbolList::default()).unwrap();
+    let codewords = map.data_codewords();
+    assert_eq!(
+        codewords,
+        &[
+            encodation::MACRO05,
+            encodation::ascii::ECI,
+            decodation::ECI_UTF8 as u8 + 1,
+            // Base256 encoding of the four byte utf8 character plus padding
+            231,
+            240,
+            114,
+            183,
+            81,
+            219,
+            129,
+        ]
+    );
+    let out = data::decode_str(codewords).unwrap();
+    assert_eq!(data, out);
 }
 
 #[cfg(test)]

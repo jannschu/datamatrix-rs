@@ -24,8 +24,12 @@ pub fn encode_data(
     symbol_list: &SymbolList,
     eci: Option<u32>,
     enabled_modes: impl Into<FlagSet<EncodationType>>,
+    use_macros: bool,
 ) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
     let mut encoder = GenericDataEncoder::with_size(data, symbol_list, enabled_modes.into());
+    if use_macros {
+        encoder.use_macro_if_possible();
+    }
     if let Some(eci) = eci {
         encoder.write_eci(eci);
     }
@@ -290,4 +294,35 @@ pub(crate) fn latin1_to_utf8_mut(latin1: &[u8], out: &mut String) -> Option<()> 
         out.push(utf_ch);
     }
     Some(())
+}
+
+#[test]
+fn test_macro() {
+    use crate::encodation::{ascii::PAD, MACRO05, MACRO06};
+    use alloc::vec;
+
+    assert_eq!(
+        encode_data(
+            b"[)>\x1E05\x1D01\x1E\x04",
+            &SymbolList::default(),
+            None,
+            EncodationType::all(),
+            true,
+        )
+        .unwrap()
+        .0,
+        vec![MACRO05, 130 + 1, PAD],
+    );
+    assert_eq!(
+        encode_data(
+            b"[)>\x1E06\x1D11\x1E\x04",
+            &SymbolList::default(),
+            None,
+            EncodationType::all(),
+            true,
+        )
+        .unwrap()
+        .0,
+        vec![MACRO06, 130 + 11, PAD],
+    );
 }

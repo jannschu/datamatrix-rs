@@ -7,7 +7,13 @@ use crate::{EncodationType, SymbolList, SymbolSize};
 use alloc::vec;
 
 fn forth_and_back(data: &[u8]) -> Option<SymbolSize> {
-    let encoded = encode_data(data, &SymbolList::default(), None, EncodationType::all());
+    let encoded = encode_data(
+        data,
+        &SymbolList::default(),
+        None,
+        EncodationType::all(),
+        false,
+    );
     if let Ok(encoded) = encoded {
         let decoded = decode_data(&encoded.0);
         assert!(
