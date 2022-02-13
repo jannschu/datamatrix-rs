@@ -32,7 +32,11 @@ pub(crate) const MACRO_TRAIL: &[u8] = b"\x1E\x04";
 
 pub(crate) const UNLATCH: u8 = 254;
 
-#[derive(Debug, PartialEq)]
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// Error when encoding the data part.
 pub enum DataEncodingError {
     TooMuchOrIllegalData,
     SymbolListEmpty,

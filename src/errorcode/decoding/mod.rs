@@ -4,10 +4,13 @@ use super::galois::GF;
 
 use alloc::{vec, vec::Vec};
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 /// Signals a failure when correcting errors.
 ///
 /// The specific variant is not relevant for practice.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorDecodingError {
     TooManyErrors,
     /// Error locations were found outside of the codeword.

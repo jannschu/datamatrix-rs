@@ -12,11 +12,14 @@ use alloc::{string::String, vec, vec::Vec};
 
 use crate::symbol_size::{SymbolList, SymbolSize};
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 mod path;
 
 pub use path::PathSegment;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BitmapConversionError {
     /// The alignment pattern is not correct.
     Alignment,
@@ -37,6 +40,7 @@ pub trait Bit: Clone + Copy + PartialEq + core::fmt::Debug {
 }
 
 /// Representation of the bits in a Data Matrix symbol without alignment patterns.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatrixMap<B: Bit> {
     entries: Vec<B>,
     width: usize,

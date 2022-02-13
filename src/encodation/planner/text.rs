@@ -1,6 +1,9 @@
 use super::c40::{C40LikePlan, CharsetInfo};
 use crate::encodation::text;
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct TextCharset;
 

@@ -3,6 +3,9 @@ use super::{frac::C, Frac, Plan, StepResult};
 use crate::encodation::ascii;
 use crate::encodation::x12::is_native_x12;
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 #[derive(Debug, PartialEq, Clone)]
 pub(super) struct X12Plan<T: ContextInformation> {
     /// Number of values not yet written

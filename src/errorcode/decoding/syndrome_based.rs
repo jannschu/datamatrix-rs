@@ -7,6 +7,9 @@ use crate::SymbolSize;
 
 use alloc::{vec, vec::Vec};
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 /// Decode the Reed-Solomon code using a syndrome based decoder.
 ///
 /// See the [module documentation](crate::errorcode) for some implementation details.

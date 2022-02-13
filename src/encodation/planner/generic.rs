@@ -10,6 +10,9 @@ use super::{
     text::TextPlan, x12::X12Plan, ContextInformation, Plan, StepResult,
 };
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 #[derive(Clone, PartialEq)]
 pub(super) struct GenericPlan<'a> {
     extra: Frac,

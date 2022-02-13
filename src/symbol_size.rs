@@ -1,3 +1,4 @@
+use core::cmp::{Ordering, PartialOrd};
 use core::fmt::Debug;
 use core::iter::IntoIterator;
 use core::ops::RangeBounds;
@@ -7,9 +8,15 @@ use arrayvec::ArrayVec;
 #[cfg(test)]
 use alloc::{vec, vec::Vec};
 
+#[cfg(test)]
+use enum_iterator::IntoEnumIterator;
+
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 type SymbolVec = ArrayVec<SymbolSize, 48>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 /// Set of [symbol sizes](SymbolSize) the encoder is allowed to use.
 ///
 /// Specifies a list of symbol sizes the encoder will pick from. The smallest
@@ -134,7 +141,7 @@ impl SymbolList {
     /// sizes exist.
     pub fn with_whitelist(whitelist: &[SymbolSize]) -> Self {
         let mut symbols: SymbolVec = whitelist.iter().cloned().collect();
-        symbols.sort_by_cached_key(|s| s.num_data_codewords());
+        symbols.sort_unstable();
         Self { symbols }
     }
 
@@ -263,7 +270,8 @@ impl BlockSetup {
 /// The number behind a variant, e.g., [Square10](SymbolSize::Square10),
 /// describes the number of modules (the tiny black squares) the symbol is
 /// tall/wide.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(IntoEnumIterator))]
 pub enum SymbolSize {
     Square10,
     Square12,
@@ -336,23 +344,18 @@ pub enum SymbolSize {
 
 #[rustfmt::skip]
 const SYMBOL_SIZES: &[SymbolSize] = &[
-    SymbolSize::Square10, SymbolSize::Square12, SymbolSize::Rect8x18,
-    SymbolSize::Square14, SymbolSize::Rect8x32, SymbolSize::Square16,
-    SymbolSize::Rect12x26, SymbolSize::Square18, SymbolSize::Square20,
-    SymbolSize::Rect12x36, SymbolSize::Square22, SymbolSize::Rect16x36,
-    SymbolSize::Square24, SymbolSize::Square26, SymbolSize::Rect16x48,
-    SymbolSize::Square32, SymbolSize::Square36, SymbolSize::Square40,
-    SymbolSize::Square44, SymbolSize::Square48, SymbolSize::Square52,
-    SymbolSize::Square64, SymbolSize::Square72, SymbolSize::Square80,
-    SymbolSize::Square88, SymbolSize::Square96, SymbolSize::Square104,
-    SymbolSize::Square120, SymbolSize::Square132, SymbolSize::Square144,
-    // DMRE
-    SymbolSize::Rect8x48, SymbolSize::Rect8x64, SymbolSize::Rect8x80,
-    SymbolSize::Rect8x96, SymbolSize::Rect8x120, SymbolSize::Rect8x144,
-    SymbolSize::Rect12x64, SymbolSize::Rect12x88, SymbolSize::Rect16x64,
-    SymbolSize::Rect20x36, SymbolSize::Rect20x44, SymbolSize::Rect20x64,
-    SymbolSize::Rect22x48, SymbolSize::Rect24x48, SymbolSize::Rect24x64,
-    SymbolSize::Rect26x40, SymbolSize::Rect26x48, SymbolSize::Rect26x64,
+    SymbolSize::Square10, SymbolSize::Square12, SymbolSize::Rect8x18, SymbolSize::Square14,
+    SymbolSize::Rect8x32, SymbolSize::Square16, SymbolSize::Rect12x26, SymbolSize::Square18,
+    SymbolSize::Rect8x48, SymbolSize::Square20, SymbolSize::Rect12x36, SymbolSize::Rect8x64,
+    SymbolSize::Square22, SymbolSize::Rect16x36, SymbolSize::Rect8x80, SymbolSize::Square24,
+    SymbolSize::Rect8x96, SymbolSize::Rect12x64, SymbolSize::Square26, SymbolSize::Rect20x36,
+    SymbolSize::Rect16x48, SymbolSize::Rect8x120, SymbolSize::Rect20x44, SymbolSize::Square32,
+    SymbolSize::Rect16x64, SymbolSize::Rect8x144, SymbolSize::Rect12x88, SymbolSize::Rect26x40,
+    SymbolSize::Rect22x48, SymbolSize::Rect24x48, SymbolSize::Rect20x64, SymbolSize::Square36,
+    SymbolSize::Rect26x48, SymbolSize::Rect24x64, SymbolSize::Square40, SymbolSize::Rect26x64,
+    SymbolSize::Square44, SymbolSize::Square48, SymbolSize::Square52, SymbolSize::Square64,
+    SymbolSize::Square72, SymbolSize::Square80, SymbolSize::Square88, SymbolSize::Square96,
+    SymbolSize::Square104, SymbolSize::Square120, SymbolSize::Square132, SymbolSize::Square144,
 ];
 
 impl SymbolSize {
@@ -924,6 +927,52 @@ impl SymbolSize {
             Self::Square12 | Self::Square16 | Self::Square20 | Self::Square24
         )
     }
+}
+
+impl PartialOrd for SymbolSize {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for SymbolSize {
+    fn cmp(&self, other: &Self) -> Ordering {
+        fn key(obj: &SymbolSize) -> (usize, usize) {
+            let bs = obj.block_setup();
+            (obj.num_data_codewords(), bs.width.pow(2) + bs.height.pow(2))
+        }
+        key(self).cmp(&key(other))
+    }
+}
+
+#[test]
+fn test_partial_ord_symbol_size() {
+    for a in SYMBOL_SIZES {
+        for b in SYMBOL_SIZES {
+            assert_eq!(
+                a.partial_cmp(b) == Some(core::cmp::Ordering::Equal),
+                a == b,
+                "a = {:?}, b = {:?}",
+                a,
+                b,
+            );
+        }
+    }
+}
+
+#[test]
+fn test_symbol_size_order() {
+    let mut all: Vec<SymbolSize> = SYMBOL_SIZES.into();
+    all.sort_unstable();
+    let all2: Vec<SymbolSize> = SymbolList::all().iter().collect();
+    assert_eq!(&all, &all2,);
+}
+
+#[test]
+fn test_iter_all_symbols() {
+    let mut all: Vec<SymbolSize> = SymbolSize::into_enum_iter().collect();
+    all.sort_unstable();
+    assert_eq!(&all, SYMBOL_SIZES,);
 }
 
 #[test]

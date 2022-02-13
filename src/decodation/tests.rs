@@ -6,6 +6,9 @@ use crate::{EncodationType, SymbolList, SymbolSize};
 
 use alloc::vec;
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 fn forth_and_back(data: &[u8]) -> Option<SymbolSize> {
     let encoded = encode_data(
         data,

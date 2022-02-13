@@ -9,6 +9,9 @@ use super::generic::GenericPlan;
 use alloc::vec;
 use alloc::vec::Vec;
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 /// Find an optimal encodation plan.
 ///
 /// # Arguments

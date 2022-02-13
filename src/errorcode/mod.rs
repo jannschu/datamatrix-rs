@@ -44,6 +44,9 @@ use galois::GF;
 pub use decoding::decode as decode_error;
 pub use decoding::ErrorDecodingError;
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 /// The coefficients of the generator polynomicals used
 /// by the Reed-Solomon code specified for Data Matrix.
 ///

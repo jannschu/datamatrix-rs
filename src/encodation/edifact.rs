@@ -7,6 +7,9 @@ pub(crate) const UNLATCH: u8 = 0b011111;
 #[cfg(test)]
 use alloc::vec;
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 #[inline]
 pub(crate) fn is_encodable(ch: u8) -> bool {
     matches!(ch, 32..=94)

@@ -3,6 +3,9 @@ use arrayvec::ArrayVec;
 #[cfg(test)]
 use alloc::{vec, vec::Vec};
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 use super::{ascii, DataEncodingError, EncodingContext};
 
 const SHIFT1: u8 = 0;

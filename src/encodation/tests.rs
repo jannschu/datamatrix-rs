@@ -6,6 +6,9 @@ use super::{encodation_type::EncodationType, DataEncodingError, EncodingContext}
 use crate::data::encode_data;
 use crate::symbol_size::SymbolList;
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 pub(super) trait TestEncoderLogic: Sized {
     type State;
 

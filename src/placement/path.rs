@@ -1,6 +1,9 @@
 use alloc::{vec, vec::Vec};
 use core::cell::RefCell;
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 use super::Bitmap;
 type N = i16;
 

@@ -18,6 +18,9 @@ pub use crate::encodation::{DataEncodingError, EncodationType};
 
 use super::{SymbolList, SymbolSize};
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 /// Encode input to data codewords for Data Matrix.
 pub fn encode_data(
     data: &[u8],

@@ -3,6 +3,9 @@ use core::convert::From;
 use core::fmt::{Debug, Error, Formatter};
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 pub(super) type C = u32;
 
 const DENUM: C = 12;

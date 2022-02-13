@@ -13,11 +13,15 @@ use alloc::vec;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 mod eci;
 
 pub(crate) use eci::ECI_UTF8;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// Error when decoding the data part.
 pub enum DataDecodingError {
     UnexpectedCharacter(&'static str, u8),
     NotImplemented(&'static str),

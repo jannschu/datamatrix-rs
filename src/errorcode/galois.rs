@@ -35,6 +35,9 @@ use core::{iter::Sum, ops::AddAssign};
 #[cfg(test)]
 use alloc::vec::Vec;
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 /// Compute two lookup tables for GF(256).
 const fn compute_alog_log() -> ([u8; 255], [u8; 256]) {
     let mut alog = [0u8; 255];

@@ -94,7 +94,11 @@ use flagset::FlagSet;
 use encodation::DataEncodingError;
 use placement::{Bitmap, MatrixMap};
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 /// Encoded Data Matrix.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DataMatrix {
     /// Size of the encoded Data Matrix
     pub size: SymbolSize,
@@ -102,7 +106,8 @@ pub struct DataMatrix {
     num_data_codewords: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// Errors when decoding a Data Matrix.
 pub enum DecodingError {
     PixelConversion(placement::BitmapConversionError),
     ErrorCorrection(errorcode::ErrorDecodingError),
@@ -180,6 +185,8 @@ impl DataMatrix {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+/// Builder for encoding a Data Matrix with more control.
 pub struct DataMatrixBuilder {
     encodation_types: FlagSet<EncodationType>,
     symbol_list: SymbolList,
