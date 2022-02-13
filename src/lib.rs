@@ -68,11 +68,11 @@
 //! is done and exposed in the API. All that is missing is a detector to extract a matrix of true and false values
 //! from an image. A general purpose detector is planned for the future, though.
 //!
-//! Other limitations: Currently there is no support for GS1, FCN1 characters,
-//! macro characters, ECI, structured append, and
+//! Other limitations: Currently there is no support for GS1/FCN1 character encoding,
+//! full ECI, structured append, and
 //! reader programming. The decoding output format specified in ISO/IEC 15424 is
 //! also not implemented (metadata, ECI, etc.), if you have a use case for this
-//! let us know.
+//! please open an issue.
 
 #![no_std]
 extern crate alloc;
@@ -153,14 +153,7 @@ impl DataMatrix {
 
     /// Encode data as a Data Matrix (ECC200).
     ///
-    /// Please read the [module documentation](crate) for some charset notes. If you
-    /// did that and your input can be represented with the Latin 1 charset you may
-    /// use the conversion function in the [data module](crate::data). If you only
-    /// use printable ASCII you can just pass the data as is.
-    ///
-    /// If the data does not fit into the given size encoding will fail. The encoder
-    /// can automatically pick the smallest size which fits the data (see [SymbolList])
-    /// but there is an upper limit.
+    /// This is wrapper for [DataMatrixBuilder::encode].
     pub fn encode<I: Into<SymbolList>>(
         data: &[u8],
         symbol_list: I,
@@ -172,9 +165,7 @@ impl DataMatrix {
 
     /// Encodes a string as a Data Matrix (ECC200).
     ///
-    /// If the string can be converted to Latin-1, no ECI is used, otherwise
-    /// an initial UTF8 ECI is inserted. Please check if your decoder has support
-    /// for that. See the notes on the [module documentation](crate) for more details.
+    /// This is wrapper for [DataMatrixBuilder::encode_str].
     pub fn encode_str<I: Into<SymbolList>>(
         text: &str,
         symbol_list: I,
@@ -204,6 +195,8 @@ impl DataMatrixBuilder {
 
     /// Specify which encodation can be used.
     ///
+    /// By default all encodation types are enabled.
+    ///
     /// # Example
     ///
     /// ```rust
@@ -227,6 +220,9 @@ impl DataMatrixBuilder {
         Self { use_macros, ..self }
     }
 
+    /// Specify the list of allowed symbols sizes.
+    ///
+    /// Uses [SymbolList::default()] by default.
     pub fn with_symbol_list<I: Into<SymbolList>>(self, symbol_list: I) -> Self {
         Self {
             symbol_list: symbol_list.into(),
@@ -234,12 +230,25 @@ impl DataMatrixBuilder {
         }
     }
 
-    /// Encode a string as a Data Matrix (ECC200).
+    /// Encode data as a Data Matrix (ECC200).
+    ///
+    /// Please read the [module documentation](crate) for some charset notes. If you
+    /// did that and your input can be represented with the Latin 1 charset you may
+    /// use the conversion function in the [data module](crate::data). If you only
+    /// use printable ASCII you can just pass the data as is.
+    ///
+    /// If the data does not fit into the given size encoding will fail. The encoder
+    /// can automatically pick the smallest size which fits the data (see [SymbolList])
+    /// but there is an upper limit.
     pub fn encode(self, data: &[u8]) -> Result<DataMatrix, DataEncodingError> {
         self.encode_eci(data, None)
     }
 
     /// Encodes a string as a Data Matrix (ECC200).
+    ///
+    /// If the string can be converted to Latin-1, no ECI is used, otherwise
+    /// an initial UTF8 ECI is inserted. Please check if your decoder has support
+    /// for that. See the notes on the [module documentation](crate) for more details.
     pub fn encode_str(self, text: &str) -> Result<DataMatrix, DataEncodingError> {
         if let Some(data) = data::utf8_to_latin1(text) {
             // string is latin1

@@ -212,6 +212,7 @@ impl Extend<SymbolSize> for SymbolList {
 }
 
 impl Default for SymbolList {
+    /// Create a symbol list with all but the DMRE symbol sizes.
     fn default() -> Self {
         let symbols = SYMBOL_SIZES.iter().cloned().filter(|s| !s.is_dmre());
         Self::with_whitelist(symbols)
