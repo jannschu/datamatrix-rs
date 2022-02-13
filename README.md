@@ -53,15 +53,15 @@ this approach allows high flexibility.
 - [x] Implement [Extended Rectangular Data Matrix (DMRE)](https://e-d-c.info/projekte/dmre.html)
   defined in ISO 21471 which adds more rectangular symbol sizes
 - [x] Tile placement decoding.
+- [ ] Visual detection in images.
+- [ ] More detailed decoder output.
 - [ ] ECI support. This has progressed as far as I could get without buying the
       standards for this (several hundred dollars).
-- [ ] Visual detection in images
 
 Things in consideration for after that:
 
 - "Structured Append"
 - "Reader Programming"
-- FCN1 and GS1
 
 ## Disclaimer
 
