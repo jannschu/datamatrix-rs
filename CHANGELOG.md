@@ -26,3 +26,4 @@
 - Any type implementing the `Bit` trait now needs to be `Copy`.
 - `traverse` is now called `traverse_mut` and no longer writes the padding pattern.
   Use `write_padding` to do that.
+- `SymbolList::with_whitelist` now takes an iterator.

@@ -1,9 +1,9 @@
 use core::cmp::{Ordering, PartialOrd};
 use core::fmt::Debug;
-use core::iter::IntoIterator;
+use core::iter::{Extend, FromIterator, IntoIterator};
 use core::ops::RangeBounds;
 
-use arrayvec::ArrayVec;
+use alloc::collections::BTreeSet;
 
 #[cfg(test)]
 use alloc::{vec, vec::Vec};
@@ -14,7 +14,7 @@ use enum_iterator::IntoEnumIterator;
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 
-type SymbolVec = ArrayVec<SymbolSize, 48>;
+type SymbolCollection = BTreeSet<SymbolSize>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Set of [symbol sizes](SymbolSize) the encoder is allowed to use.
@@ -54,7 +54,7 @@ type SymbolVec = ArrayVec<SymbolSize, 48>;
 /// );
 /// ```
 pub struct SymbolList {
-    symbols: SymbolVec,
+    symbols: SymbolCollection,
 }
 
 impl SymbolList {
@@ -65,8 +65,7 @@ impl SymbolList {
     ///
     /// DMRE stands for Data Matrix Rectangular Extensions.
     pub fn with_extended_rectangles() -> Self {
-        let symbols: SymbolVec = SYMBOL_SIZES.iter().cloned().collect();
-        Self::with_whitelist(&symbols)
+        Self::with_whitelist(SYMBOL_SIZES.iter().cloned())
     }
 
     #[deprecated(note = "use with_extended_rectangles()")]
@@ -77,27 +76,20 @@ impl SymbolList {
 
     /// Remove all non-square symbols from the current selection.
     pub fn enforce_square(mut self) -> Self {
-        self.symbols = self.symbols.into_iter().filter(|s| s.is_square()).collect();
+        self.symbols.retain(|s| s.is_square());
         self
     }
 
     /// Remove all square symbols from the current selection.
     pub fn enforce_rectangular(mut self) -> Self {
-        self.symbols = self
-            .symbols
-            .into_iter()
-            .filter(|s| !s.is_square())
-            .collect();
+        self.symbols.retain(|s| !s.is_square());
         self
     }
 
     /// Only keep symbols with width in the given range.
     pub fn enforce_width_in<R: RangeBounds<usize>>(mut self, bounds: R) -> Self {
-        self.symbols = self
-            .symbols
-            .into_iter()
-            .filter(|s| bounds.contains(&s.block_setup().width))
-            .collect();
+        self.symbols
+            .retain(|s| bounds.contains(&s.block_setup().width));
         self
     }
 
@@ -113,11 +105,8 @@ impl SymbolList {
 
     /// Only keep symbols with height in the given range.
     pub fn enforce_height_in<R: RangeBounds<usize>>(mut self, bounds: R) -> Self {
-        self.symbols = self
-            .symbols
-            .into_iter()
-            .filter(|s| bounds.contains(&s.block_setup().height))
-            .collect();
+        self.symbols
+            .retain(|s| bounds.contains(&s.block_setup().height));
         self
     }
 
@@ -139,10 +128,11 @@ impl SymbolList {
     ///
     /// The call panics if the slice contains more elements than symbol
     /// sizes exist.
-    pub fn with_whitelist(whitelist: &[SymbolSize]) -> Self {
-        let mut symbols: SymbolVec = whitelist.iter().cloned().collect();
-        symbols.sort_unstable();
-        Self { symbols }
+    pub fn with_whitelist<I>(whitelist: I) -> Self
+    where
+        I: IntoIterator<Item = SymbolSize>,
+    {
+        Self::from_iter(whitelist.into_iter())
     }
 
     pub fn iter(&self) -> impl Iterator<Item = SymbolSize> + '_ {
@@ -180,7 +170,7 @@ impl SymbolList {
 
     pub(crate) fn upper_limit_for_number_of_codewords(&self, input_len: usize) -> Option<usize> {
         if self.symbols.len() == 1 {
-            Some(self.symbols[0].num_data_codewords())
+            self.symbols.iter().next().map(|s| s.num_data_codewords())
         } else {
             // Min case, try to find a good upper limit
             self.symbols
@@ -197,33 +187,46 @@ impl SymbolList {
 
 impl IntoIterator for SymbolList {
     type Item = SymbolSize;
-    type IntoIter = <SymbolVec as IntoIterator>::IntoIter;
+    type IntoIter = <SymbolCollection as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.symbols.into_iter()
     }
 }
 
+impl FromIterator<SymbolSize> for SymbolList {
+    fn from_iter<T: IntoIterator<Item = SymbolSize>>(iter: T) -> Self {
+        Self {
+            symbols: SymbolCollection::from_iter(iter),
+        }
+    }
+}
+
+impl Extend<SymbolSize> for SymbolList {
+    fn extend<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = SymbolSize>,
+    {
+        self.symbols.extend(iter);
+    }
+}
+
 impl Default for SymbolList {
     fn default() -> Self {
-        let symbols: SymbolVec = SYMBOL_SIZES
-            .iter()
-            .cloned()
-            .filter(|s| !s.is_dmre())
-            .collect();
-        Self::with_whitelist(&symbols)
+        let symbols = SYMBOL_SIZES.iter().cloned().filter(|s| !s.is_dmre());
+        Self::with_whitelist(symbols)
     }
 }
 
 impl From<SymbolSize> for SymbolList {
     fn from(size: SymbolSize) -> SymbolList {
-        SymbolList::with_whitelist(&[size])
+        SymbolList::with_whitelist([size])
     }
 }
 
 impl<const N: usize> From<[SymbolSize; N]> for SymbolList {
     fn from(other: [SymbolSize; N]) -> SymbolList {
-        SymbolList::with_whitelist(&other)
+        SymbolList::with_whitelist(other)
     }
 }
 
