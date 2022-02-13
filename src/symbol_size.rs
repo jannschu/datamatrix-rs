@@ -106,7 +106,7 @@ impl SymbolList {
     where
         I: IntoIterator<Item = SymbolSize>,
     {
-        Self::from_iter(whitelist.into_iter())
+        Self::from_iter(whitelist)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = SymbolSize> + '_ {
