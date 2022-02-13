@@ -9,6 +9,7 @@
   should now be linear in the number of pixels.
 - A `DataMatrixBuilder` is now available that allows to specify allowed encodation types.
 - Macro and FNC1 characters can now be decoded.
+- Macro characters are now used for encoding.
 
 ### Fixes
 
@@ -18,6 +19,7 @@
 ### Breaking changes
 
 - Rust 2021 is now used.
+- `data::encode_data` now takes an additional `use_macros` argument.
 - `DataMatrix::decode` now returns a `Result` instead of `Option`.
 - `DataMatrix::codewords` now also returns the error correction codewords.
   Use `DataMatrix::data_codewords` instead.
