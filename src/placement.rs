@@ -550,7 +550,11 @@ impl<B: Bit> Bitmap<B> {
     /// let bitmap = Bitmap::new(bits, width);
     /// print!("{}", bitmap.unicode());
     /// ```
-    // pub fn new<T: IntoIterator<Item = I>, I: core::borrow::Borrow<B>>(
+    ///
+    /// # Panics
+    ///
+    /// Panics if `width` is zero or does not evenly divide the number of bits
+    /// returned by `bits`.
     pub fn new<T>(bits: T, width: usize) -> Self
     where
         T: IntoIterator<Item = B>,
