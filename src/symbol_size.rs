@@ -97,11 +97,6 @@ impl SymbolList {
     /// Create a symbol list containing only the given symbols.
     ///
     /// The list does not need to be sorted.
-    ///
-    /// # Panics
-    ///
-    /// The call panics if the slice contains more elements than symbol
-    /// sizes exist.
     pub fn with_whitelist<I>(whitelist: I) -> Self
     where
         I: IntoIterator<Item = SymbolSize>,
