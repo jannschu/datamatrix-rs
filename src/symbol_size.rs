@@ -119,7 +119,7 @@ impl SymbolList {
 
     /// Check if a symbol size is in this symbol list.
     pub fn contains(&self, symbol_size: &SymbolSize) -> bool {
-        self.iter().any(|s| s == *symbol_size)
+        self.symbols.contains(symbol_size)
     }
 
     pub(crate) fn max_capacity(&self) -> usize {
