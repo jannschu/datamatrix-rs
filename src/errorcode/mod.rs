@@ -185,6 +185,11 @@ fn generator(len: usize) -> &'static [u8] {
 /// Depending on the symbol size, the data is first split up into
 /// interleaved blocks. For each block an error code is computed.
 /// The resulting blocks of error codes are returned interleaved.
+///
+/// # Panics
+///
+/// Panics if the size of `data` dooes not match the number of data
+/// codewords needed for the symbol size.
 pub fn encode_error(data: &[u8], size: SymbolSize) -> Vec<u8> {
     let setup = size.block_setup();
     let num_codewords = size.num_data_codewords();

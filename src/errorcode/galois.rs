@@ -23,7 +23,7 @@
 //! of GF(256), except for 0, with a power i of x. If we now want to multiply,
 //! say, a and b we first lookup their powers, say, i and j. Then
 //! a * b = x^i * x^j = x^(i + j). Doing the inverse lookup of x^(i + j)
-//! gives us the result. These two lookup tables are called LOG and ANTI_LOG
+//! gives us the result. These two lookup tables are called `LOG` and `ANTI_LOG`
 //! in this module.
 use core::ops::{Add, Div, Mul, Sub};
 use core::{

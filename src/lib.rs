@@ -276,8 +276,8 @@ impl DataMatrixBuilder {
         let num_data_codewords = codewords.len();
         codewords.extend_from_slice(&ecc);
         Ok(DataMatrix {
-            codewords,
             size,
+            codewords,
             num_data_codewords,
         })
     }

@@ -65,12 +65,12 @@ impl SymbolList {
     ///
     /// DMRE stands for Data Matrix Rectangular Extensions.
     pub fn with_extended_rectangles() -> Self {
-        Self::with_whitelist(SYMBOL_SIZES.iter().cloned())
+        Self::with_whitelist(SYMBOL_SIZES.iter().copied())
     }
 
     /// Remove all non-square symbols from the current selection.
     pub fn enforce_square(mut self) -> Self {
-        self.symbols.retain(|s| s.is_square());
+        self.symbols.retain(SymbolSize::is_square);
         self
     }
 
@@ -105,7 +105,7 @@ impl SymbolList {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = SymbolSize> + '_ {
-        self.symbols.iter().cloned()
+        self.symbols.iter().copied()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -134,12 +134,15 @@ impl SymbolList {
         self.symbols
             .iter()
             .find(|s| s.num_data_codewords() >= size_needed)
-            .cloned()
+            .copied()
     }
 
     pub(crate) fn upper_limit_for_number_of_codewords(&self, input_len: usize) -> Option<usize> {
         if self.symbols.len() == 1 {
-            self.symbols.iter().next().map(|s| s.num_data_codewords())
+            self.symbols
+                .iter()
+                .next()
+                .map(SymbolSize::num_data_codewords)
         } else {
             // Min case, try to find a good upper limit
             self.symbols
@@ -149,7 +152,7 @@ impl SymbolList {
                     // findest smallest symbol size to hold data with base256
                     s.capacity().min >= input_len
                 })
-                .map(|s| s.num_data_codewords())
+                .map(SymbolSize::num_data_codewords)
         }
     }
 }
@@ -183,7 +186,7 @@ impl Extend<SymbolSize> for SymbolList {
 impl Default for SymbolList {
     /// Create a symbol list with all but the DMRE symbol sizes.
     fn default() -> Self {
-        let symbols = SYMBOL_SIZES.iter().cloned().filter(|s| !s.is_dmre());
+        let symbols = SYMBOL_SIZES.iter().copied().filter(|s| !s.is_dmre());
         Self::with_whitelist(symbols)
     }
 }
@@ -495,7 +498,7 @@ impl SymbolSize {
         }
     }
 
-    pub(crate) fn block_setup(&self) -> BlockSetup {
+    pub(crate) fn block_setup(self) -> BlockSetup {
         match self {
             Self::Square10 => BlockSetup {
                 num_ecc_blocks: 1,
@@ -894,7 +897,7 @@ impl SymbolSize {
         num_data + num_error
     }
 
-    pub(crate) fn has_padding_modules(&self) -> bool {
+    pub(crate) fn has_padding_modules(self) -> bool {
         matches!(
             self,
             Self::Square12 | Self::Square16 | Self::Square20 | Self::Square24

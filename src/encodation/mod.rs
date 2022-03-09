@@ -252,9 +252,7 @@ impl<'a> GenericDataEncoder<'a> {
             if words_written <= 1 {
                 // no mode can do something useful in 1 word (at EOD, but that is fine)
                 no_write_run += 1;
-                if no_write_run > 5 {
-                    panic!("no progress in encoder, this is a bug");
-                }
+                assert!(no_write_run <= 5, "no progress in encoder, this is a bug");
             } else {
                 no_write_run = 0;
             }

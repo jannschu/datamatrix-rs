@@ -6,6 +6,9 @@ use super::ContextInformation;
 use super::{Frac, Plan, StepResult};
 use crate::encodation::{ascii, c40};
 
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
 pub(super) trait CharsetInfo: Clone + Debug + PartialEq {
     fn val_size(ch: u8) -> u8;
 

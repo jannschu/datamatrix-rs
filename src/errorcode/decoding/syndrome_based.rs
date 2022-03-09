@@ -73,9 +73,9 @@ where
     let mut syndromes = vec![GF(0); err_len];
     let received = data
         .iter()
-        .cloned()
+        .copied()
         .step_by(stride)
-        .chain(error.iter().cloned().step_by(stride));
+        .chain(error.iter().copied().step_by(stride));
     let have_non_zero = super::primitive_element_evaluation(received, &mut syndromes);
     if !have_non_zero {
         return Ok(());
@@ -197,16 +197,14 @@ fn find_inv_error_locations_levinson_durbin(syn: &[GF]) -> Result<Vec<GF>, Error
             // "The Singular Case", statistically rare
 
             // find m, eq. (7), usually m = 1
-            let m = (1..t - v)
-                .filter_map(|i| {
-                    let sigma_i = dot(&syn[v + i..=2 * v + i], &tmp);
-                    if sigma_i != GF(0) {
-                        Some((i, sigma_i))
-                    } else {
-                        None
-                    }
-                })
-                .next();
+            let m = (1..t - v).find_map(|i| {
+                let sigma_i = dot(&syn[v + i..=2 * v + i], &tmp);
+                if sigma_i == GF(0) {
+                    None
+                } else {
+                    Some((i, sigma_i))
+                }
+            });
             let (m, sigma_m) = if let Some((m, sigma_m)) = m {
                 (m, sigma_m)
             } else {
@@ -260,10 +258,10 @@ fn find_inv_error_locations_levinson_durbin(syn: &[GF]) -> Result<Vec<GF>, Error
                 for i in 0..=m {
                     let mut row = GF(0);
                     for j in 0..=i {
-                        row += sigma[i - j] * gamma[j]
+                        row += sigma[i - j] * gamma[j];
                     }
                     let target = syn[n + v + 1 + i] - dot(&syn[v + i..=2 * v - 1 + i], &tmp);
-                    debug_assert_eq!(row, target, "gamma, row {}", i)
+                    debug_assert_eq!(row, target, "gamma, row {}", i);
                 }
             }
 
@@ -288,16 +286,16 @@ fn find_inv_error_locations_levinson_durbin(syn: &[GF]) -> Result<Vec<GF>, Error
             for i in 0..v {
                 let mut row = GF(0);
                 for j in 0..v {
-                    row += syn[i + j] * y[j]
+                    row += syn[i + j] * y[j];
                 }
                 let target = if i == v - 1 { GF(1) } else { GF(0) };
-                debug_assert_eq!(row, target, "y_{}, row {}", v, i)
+                debug_assert_eq!(row, target, "y_{}, row {}", v, i);
             }
             // check eq. (4)
             for i in 0..v {
                 let mut row = GF(0);
                 for j in 0..v {
-                    row += syn[i + j] * w[j]
+                    row += syn[i + j] * w[j];
                 }
                 debug_assert_eq!(row, syn[v + i], "w_{}, row {}", v, i);
             }
@@ -440,21 +438,21 @@ fn find_error_values_forney(inv_x_locs: &mut [GF], lambda: &[GF], syn: &mut [GF]
     let n = syn.len();
     // compute Lambda(x) * S(x) mod x^n
     let mut omega = vec![GF(0); n];
-    for (i, si) in syn.iter().cloned().enumerate() {
+    for (i, si) in syn.iter().copied().enumerate() {
         // si is coefficient for x with power i
-        for (j, lj) in lambda.iter().rev().take(n - i).cloned().enumerate() {
+        for (j, lj) in lambda.iter().rev().take(n - i).copied().enumerate() {
             omega[n - 1 - (j + i)] += lj * si;
         }
     }
 
-    for (x_inv, out) in inv_x_locs.iter().cloned().zip(syn.iter_mut()) {
+    for (x_inv, out) in inv_x_locs.iter().copied().zip(syn.iter_mut()) {
         let mut omega_x = GF(0);
-        for o in omega.iter().cloned() {
+        for o in omega.iter().copied() {
             omega_x = omega_x * x_inv + o;
         }
 
         let mut lambda_der_x = GF(0);
-        for (k, lk) in lambda[..lambda.len() - 1].iter().cloned().enumerate() {
+        for (k, lk) in lambda[..lambda.len() - 1].iter().copied().enumerate() {
             // notice that lk is multiplied with usize, this is NOT multiplication
             // in GF, see Mul<usize> implementation for GF.
             lambda_der_x = lambda_der_x * x_inv + lk * (lambda.len() - k - 1);

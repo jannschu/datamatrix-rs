@@ -58,7 +58,7 @@ impl<'a> Reader<'a> {
     }
 
     fn peek(&self, i: usize) -> Option<u8> {
-        self.0.get(i).cloned()
+        self.0.get(i).copied()
     }
 }
 
@@ -418,7 +418,7 @@ fn decode_c40_like<'a>(
             break;
         }
         let (c1, c2, c3) = decode_c40_tuple(first, data.eat().unwrap());
-        for ch in [c1, c2, c3].iter().cloned() {
+        for ch in [c1, c2, c3].iter().copied() {
             if shift == 0 {
                 match ch {
                     ch @ 0..=2 => shift = ch + 1,

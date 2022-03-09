@@ -2,7 +2,7 @@ use arrayvec::ArrayVec;
 
 use super::{ascii, DataEncodingError, EncodingContext};
 
-pub(crate) const UNLATCH: u8 = 0b011111;
+pub(crate) const UNLATCH: u8 = 0b01_1111;
 
 #[cfg(test)]
 use alloc::vec;
@@ -17,15 +17,15 @@ pub(crate) fn is_encodable(ch: u8) -> bool {
 
 /// Encode 1 to 4 characters using EDIFACT and write it to the context.
 fn write4<T: EncodingContext>(ctx: &mut T, s: &ArrayVec<u8, 4>) {
-    let s1 = s.get(1).cloned().unwrap_or(0) & 0b11_1111;
+    let s1 = s.get(1).copied().unwrap_or(0) & 0b11_1111;
     ctx.push((s[0] << 2) | (s1 >> 4));
 
     if s.len() >= 2 {
-        let s2 = s.get(2).cloned().unwrap_or(0) & 0b11_1111;
+        let s2 = s.get(2).copied().unwrap_or(0) & 0b11_1111;
         ctx.push((s1 << 4) | (s2 >> 2));
 
         if s.len() >= 3 {
-            let s3 = s.get(3).cloned().unwrap_or(0) & 0b11_1111;
+            let s3 = s.get(3).copied().unwrap_or(0) & 0b11_1111;
             ctx.push((s2 << 6) | s3);
         }
     }
@@ -43,8 +43,8 @@ fn handle_end<T: EncodingContext>(
         // we can encode the rest with ASCII in this space.
         let rest: ArrayVec<u8, 4> = symbols
             .iter()
-            .cloned()
-            .chain(ctx.rest().iter().cloned())
+            .copied()
+            .chain(ctx.rest().iter().copied())
             .collect();
         let ascii_size = ascii::encoding_size(&rest);
         if ascii_size <= 2 {

@@ -193,7 +193,7 @@ pub fn latin1_to_utf8(latin1: &[u8]) -> Option<String> {
 }
 
 pub(crate) fn latin1_to_utf8_mut(latin1: &[u8], out: &mut String) -> Option<()> {
-    for ch in latin1.iter().cloned() {
+    for ch in latin1.iter().copied() {
         let utf_ch = match ch {
             ch @ b' '..=b'~' => ch as char,
             160 => '\u{00a0}',

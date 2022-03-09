@@ -19,12 +19,12 @@ pub fn convert(raw: &[u8], ecis: &[(usize, u32)]) -> Result<String, DataDecoding
 fn convert_chunk(bytes: &[u8], eci: u32, out: &mut String) -> Result<(), DataDecodingError> {
     match eci {
         0 | 3 => {
-            crate::data::latin1_to_utf8_mut(bytes, out).ok_or(DataDecodingError::CharsetError)?
+            crate::data::latin1_to_utf8_mut(bytes, out).ok_or(DataDecodingError::CharsetError)?;
         }
         11 => decode_iso_8859_9(bytes, out)?,
         13 => decode_iso_8859_11(bytes, out)?,
         ECI_UTF8 => {
-            out.push_str(core::str::from_utf8(bytes).or(Err(DataDecodingError::CharsetError))?)
+            out.push_str(core::str::from_utf8(bytes).or(Err(DataDecodingError::CharsetError))?);
         }
         27 => {
             if bytes.is_ascii() {
@@ -110,7 +110,7 @@ const ISO_8859_11: [char; 88] = [
 ];
 
 fn decode_iso_8859_11(bytes: &[u8], out: &mut String) -> Result<(), DataDecodingError> {
-    for ch in bytes.iter().cloned() {
+    for ch in bytes.iter().copied() {
         match ch {
             0x20..=0x7E => out.push(ch as char),
             0xA0..=251 => out.push(ISO_8859_11[(ch - 128) as usize]),
@@ -137,7 +137,7 @@ const ISO_8859_9: [char; 96] = [
 ];
 
 fn decode_iso_8859_9(bytes: &[u8], out: &mut String) -> Result<(), DataDecodingError> {
-    for ch in bytes.iter().cloned() {
+    for ch in bytes.iter().copied() {
         match ch {
             0x20..=0x7E => out.push(ch as char),
             0xA0..=255 => out.push(ISO_8859_9[(ch - 128) as usize]),

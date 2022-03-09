@@ -133,7 +133,7 @@ impl<M: Bit> MatrixMap<M> {
                     return Err(BitmapConversionError::Alignment);
                 }
                 entries.extend_from_slice(&row[1..blk_w + 1]);
-                debug_assert_eq!(row[1..blk_w + 1].len(), blk_w);
+                debug_assert_eq!(row[1..=blk_w].len(), blk_w);
             }
         }
         debug_assert_eq!(entries.len(), w * h);
@@ -284,7 +284,7 @@ impl<M: Bit> MatrixMap<M> {
 
         let mut prev = 0;
         let mut rest: &mut [M] = &mut self.entries;
-        for perm_idx in perm.iter() {
+        for perm_idx in &perm {
             let idx = indices[*perm_idx as usize];
             let (e, new_rest) = rest[(idx - prev)..].split_first_mut().unwrap();
             refs[*perm_idx as usize] = Some(e);
@@ -363,7 +363,7 @@ impl IndexTraversal {
             i += 1;
             j += 3;
 
-            // sweep downard diagonally
+            // sweep downward diagonally
             loop {
                 if i >= 0 && j < ncol && !visited[(i * ncol + j) as usize] {
                     visit!(self.utah(i, j));
@@ -400,6 +400,8 @@ impl IndexTraversal {
         if i >= h {
             i -= h;
         }
+        debug_assert!(i >= 0 && i < h);
+        debug_assert!(j >= 0 && j < w);
         (i * w + j) as usize
     }
 
@@ -561,7 +563,7 @@ impl<B: Bit> Bitmap<B> {
     {
         let bits = Vec::from_iter(bits);
         assert_eq!(bits.len() % width, 0);
-        Self { bits, width }
+        Self { width, bits }
     }
 
     /// Return the width of the bitmap (no quiet zone included).

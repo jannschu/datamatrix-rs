@@ -23,7 +23,7 @@ fn write_length<T: EncodingContext>(ctx: &mut T, start: usize) -> Result<(), Dat
     if ctx.has_more_characters() || space_left > 0 {
         let data_count = data_written - 1;
         if data_count <= 249 {
-            ctx.replace(start, data_count as u8)
+            ctx.replace(start, data_count as u8);
         } else if data_count <= 1555 {
             ctx.replace(start, ((data_count / 250) + 249) as u8);
             ctx.insert(start + 1, (data_count % 250) as u8);

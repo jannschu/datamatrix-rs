@@ -26,7 +26,7 @@ trait ContextInformation: Clone {
     fn write(&mut self, bytes: usize);
 
     fn peek(&self, n: usize) -> Option<u8> {
-        self.rest().get(n).cloned()
+        self.rest().get(n).copied()
     }
 
     fn characters_left(&self) -> usize {

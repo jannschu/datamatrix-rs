@@ -113,7 +113,7 @@ pub(crate) fn optimize(
 
 // Only keep one minimizer for every start mode.
 fn remove_hopeless_cases(list: &mut Vec<GenericPlan>) {
-    list.sort_unstable_by_key(|a| a.cost());
+    list.sort_unstable_by_key(Plan::cost);
 
     // only keep min among all plans with tuple (start mode, current mode)
     let mut seen = [false; 6 * 6];

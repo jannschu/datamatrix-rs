@@ -32,13 +32,13 @@ where
     if out.is_empty() {
         return false;
     }
-    let mut gamma: Vec<GF> = c.rev().map(|x| x.into()).collect();
+    let mut gamma: Vec<GF> = c.rev().map(Into::into).collect();
     let mut errors = false;
     for o in out.iter_mut() {
         for (g, alpha) in gamma.iter_mut().zip(GF::primitive_powers()) {
             *g *= alpha;
         }
-        *o = gamma.iter().cloned().sum();
+        *o = gamma.iter().copied().sum();
         errors = errors || (*o != GF(0));
     }
     errors
@@ -50,7 +50,7 @@ fn chien_search<T: Into<GF> + Copy>(c: &[T]) -> Vec<GF> {
     if c.is_empty() {
         return out;
     }
-    if c.last().cloned().unwrap().into() == GF(0) {
+    if c.last().copied().unwrap().into() == GF(0) {
         out.push(GF(0));
     }
     if c.len() == 2 {
@@ -61,7 +61,7 @@ fn chien_search<T: Into<GF> + Copy>(c: &[T]) -> Vec<GF> {
     }
     let mut gamma: Vec<GF> = c.iter().rev().map(|x| (*x).into()).collect();
     for i in 0..=254 {
-        let val: GF = gamma.iter().cloned().sum();
+        let val: GF = gamma.iter().copied().sum();
         if val == GF(0) {
             out.push(GF::primitive_power(i));
         }
