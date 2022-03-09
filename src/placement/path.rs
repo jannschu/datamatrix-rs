@@ -41,8 +41,8 @@ pub enum PathSegment {
 
 #[derive(Debug)]
 enum MicroStep {
-    Jump(N),
-    Step(N),
+    Jump((N, N)),
+    Step((N, N)),
 }
 
 impl Bitmap<bool> {
@@ -70,7 +70,7 @@ impl Bitmap<bool> {
     /// The outline is modeled as a graph which is then decomposed into
     /// Eulerian circuits.
     pub fn path(&self) -> Vec<PathSegment> {
-        let mut graph = bits_to_edge_graph(&self.bits, self.width() as N, self.height() as N);
+        let mut graph = bits_to_edge_graph(&self.bits, self.width(), self.height());
         let mut elements = Vec::new();
 
         let mut alternatives = Vec::new();
@@ -122,22 +122,19 @@ impl Bitmap<bool> {
             }
             break;
         }
-        compress_path(elements.into_iter(), self.width() as N)
+        compress_path(elements.into_iter())
     }
 }
 
-fn compress_path(micro_steps: impl Iterator<Item = MicroStep>, width: N) -> Vec<PathSegment> {
+fn compress_path(micro_steps: impl Iterator<Item = MicroStep>) -> Vec<PathSegment> {
     let mut steps = Vec::new();
     let mut pos = (0, 0);
-
-    let ij = |n: N| (n / (width + 1), n % (width + 1));
 
     // step, "work in progress"
     let mut step_wip = None;
     for micro_step in micro_steps {
         match micro_step {
-            MicroStep::Step(n) => {
-                let (i, j) = ij(n);
+            MicroStep::Step((i, j)) => {
                 match step_wip {
                     // check if we can combine step with step_wip
                     Some(PathSegment::Horizontal(m)) if i == pos.0 => {
@@ -160,11 +157,10 @@ fn compress_path(micro_steps: impl Iterator<Item = MicroStep>, width: N) -> Vec<
                 }
                 pos = (i, j);
             }
-            MicroStep::Jump(n) => {
+            MicroStep::Jump((i, j)) => {
                 // drop content of step_wip, just add close
                 step_wip = None;
                 steps.push(PathSegment::Close);
-                let (i, j) = ij(n);
                 steps.push(PathSegment::Move(j - pos.1, i - pos.0));
                 pos = (i, j);
             }
@@ -193,31 +189,28 @@ impl Direction {
     }
 }
 
-/// Oriented position in the graph (on  an edge)
+/// Oriented position in the graph on an edge.
 #[derive(Debug, Clone, PartialEq)]
 struct Position {
     i: N,
     j: N,
-    width: N,
-    height: N,
     dir: Direction,
 }
 
 impl Position {
-    /// Get node id of node the position points to.
-    fn end_node(&self) -> N {
-        let w = self.width + 1;
+    /// Get node coordinate of the node the position points to.
+    fn end_node(&self) -> (N, N) {
         let i = self.i;
         let j = self.j;
         match self.dir {
-            Direction::Up | Direction::Left => i * w + j,
-            Direction::Down => (i + 1) * w + j,
-            Direction::Right => i * w + j + 1,
+            Direction::Up | Direction::Left => (i, j),
+            Direction::Down => (i + 1, j),
+            Direction::Right => (i, j + 1),
         }
     }
 
-    /// Get node if of node the position comes from.
-    fn start_node(&self) -> N {
+    /// Get node coordinate of the node the position comes from.
+    fn start_node(&self) -> (N, N) {
         self.flip().end_node()
     }
 
@@ -228,98 +221,95 @@ impl Position {
         }
     }
 
-    fn straight(&self) -> Option<Self> {
-        let i = self.i;
-        let j = self.j;
-        let (i2, j2) = match self.dir {
-            Direction::Up => (i - 1, j),
-            Direction::Down => (i + 1, j),
-            Direction::Right => (i, j + 1),
-            Direction::Left => (i, j - 1),
+    fn straight(&self) -> Self {
+        let (i, j) = match self.dir {
+            Direction::Up => (self.i - 1, self.j),
+            Direction::Down => (self.i + 1, self.j),
+            Direction::Right => (self.i, self.j + 1),
+            Direction::Left => (self.i, self.j - 1),
         };
-        self.check(i2, j2, self.dir)
-    }
-
-    fn left(&self) -> Option<Self> {
-        let i = self.i;
-        let j = self.j;
-        let (i2, j2, dir) = match self.dir {
-            Direction::Up => (i, j - 1, Direction::Left),
-            Direction::Down => (i + 1, j, Direction::Right),
-            Direction::Right => (i - 1, j + 1, Direction::Up),
-            Direction::Left => (i, j, Direction::Down),
-        };
-        self.check(i2, j2, dir)
-    }
-
-    fn right(&self) -> Option<Self> {
-        let i = self.i;
-        let j = self.j;
-        let (i2, j2, dir) = match self.dir {
-            Direction::Up => (i, j, Direction::Right),
-            Direction::Down => (i + 1, j - 1, Direction::Left),
-            Direction::Right => (i, j + 1, Direction::Down),
-            Direction::Left => (i - 1, j, Direction::Up),
-        };
-        self.check(i2, j2, dir)
-    }
-
-    fn check(&self, i: N, j: N, dir: Direction) -> Option<Self> {
-        if 0 <= i && i <= self.height && 0 <= j && j <= self.width {
-            Some(Self {
-                i,
-                j,
-                width: self.width,
-                height: self.height,
-                dir,
-            })
-        } else {
-            None
+        Self {
+            i,
+            j,
+            dir: self.dir,
         }
     }
+
+    fn left(&self) -> Self {
+        let (i, j, dir) = match self.dir {
+            Direction::Up => (self.i, self.j - 1, Direction::Left),
+            Direction::Down => (self.i + 1, self.j, Direction::Right),
+            Direction::Right => (self.i - 1, self.j + 1, Direction::Up),
+            Direction::Left => (self.i, self.j, Direction::Down),
+        };
+        Self { i, j, dir }
+    }
+
+    fn right(&self) -> Self {
+        let (i, j, dir) = match self.dir {
+            Direction::Up => (self.i, self.j, Direction::Right),
+            Direction::Down => (self.i + 1, self.j - 1, Direction::Left),
+            Direction::Right => (self.i, self.j + 1, Direction::Down),
+            Direction::Left => (self.i - 1, self.j, Direction::Up),
+        };
+        Self { i, j, dir }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+struct Edge {
+    left: bool,
+    top: bool,
 }
 
 #[derive(Debug, PartialEq)]
 struct Graph {
-    /// Two marker for each grid cell, (edge left, edge top)
-    edges: Vec<(bool, bool)>,
+    edges: Vec<Edge>,
     pos: Position,
+    width: usize,
+    height: usize,
     edge_hint: RefCell<usize>,
 }
 
 impl Graph {
     fn left(&self, i: N, j: N) -> bool {
-        let i = i as usize;
-        let j = j as usize;
-        self.edges[i * (self.pos.width as usize + 1) + j].0
+        self.has_cell(i, j) && {
+            let i = i as usize;
+            let j = j as usize;
+            self.edges[i * (self.width + 1) + j].left
+        }
     }
 
     fn top(&self, i: N, j: N) -> bool {
-        let i = i as usize;
-        let j = j as usize;
-        self.edges[i * (self.pos.width as usize + 1) + j].1
+        self.has_cell(i, j) && {
+            let i = i as usize;
+            let j = j as usize;
+            self.edges[i * (self.width + 1) + j].top
+        }
+    }
+
+    fn has_cell(&self, i: N, j: N) -> bool {
+        (0..=self.height as N).contains(&i) && (0..=self.width as N).contains(&j)
     }
 
     fn can_step(&self, pos: &Position) -> Option<Position> {
-        None.or_else(|| pos.straight().filter(|p| self.has_edge(p)))
-            .or_else(|| pos.left().filter(|p| self.has_edge(p)))
-            .or_else(|| pos.right().filter(|p| self.has_edge(p)))
+        None.or_else(|| Some(pos.straight()).filter(|p| self.has_edge(p)))
+            .or_else(|| Some(pos.left()).filter(|p| self.has_edge(p)))
+            .or_else(|| Some(pos.right()).filter(|p| self.has_edge(p)))
     }
 
     fn step_and_had_alternatives(&mut self) -> bool {
-        fn free(s: &mut Graph, p: Option<Position>, remove: bool) -> Option<Position> {
-            p.and_then(move |p: Position| {
-                let found = if remove {
-                    s.remove_edge(&p)
-                } else {
-                    s.has_edge(&p)
-                };
-                if found {
-                    Some(p)
-                } else {
-                    None
-                }
-            })
+        fn free(s: &mut Graph, p: Position, remove: bool) -> Option<Position> {
+            let found = if remove {
+                s.remove_edge(&p)
+            } else {
+                s.has_edge(&p)
+            };
+            if found {
+                Some(p)
+            } else {
+                None
+            }
         }
 
         let mut found = free(self, self.pos.straight(), true);
@@ -353,19 +343,17 @@ impl Graph {
     }
 
     fn remove_top(&mut self, i: N, j: N) -> bool {
-        let i = i as usize;
-        let j = j as usize;
-        let found = self.edges[i * (self.pos.width as usize + 1) + j].1;
-        self.edges[i * (self.pos.width as usize + 1) + j].1 = false;
-        found
+        self.has_cell(i, j) && {
+            let idx = i as usize * (self.width + 1) + j as usize;
+            core::mem::replace(&mut self.edges[idx].top, false)
+        }
     }
 
     fn remove_left(&mut self, i: N, j: N) -> bool {
-        let i = i as usize;
-        let j = j as usize;
-        let found = self.edges[i * (self.pos.width as usize + 1) + j].0;
-        self.edges[i * (self.pos.width as usize + 1) + j].0 = false;
-        found
+        self.has_cell(i, j) && {
+            let idx = i as usize * (self.width + 1) + j as usize;
+            core::mem::replace(&mut self.edges[idx].left, false)
+        }
     }
 
     fn remove_edge(&mut self, pos: &Position) -> bool {
@@ -378,17 +366,15 @@ impl Graph {
     fn edge_left(&self) -> Option<Position> {
         let hint = *self.edge_hint.borrow();
         for (idx, edge) in self.edges[hint..].iter().enumerate() {
-            if edge.0 || edge.1 {
+            if edge.left || edge.top {
                 let idx = idx + hint;
-                let i = (idx / (self.pos.width + 1) as usize) as N;
-                let j = (idx % (self.pos.width + 1) as usize) as N;
+                let i = (idx / (self.width + 1)) as N;
+                let j = (idx % (self.width + 1)) as N;
                 self.edge_hint.replace_with(|_| idx + 1);
                 return Some(Position {
                     i,
                     j,
-                    width: self.pos.width,
-                    height: self.pos.height,
-                    dir: if edge.1 {
+                    dir: if edge.top {
                         Direction::Right
                     } else {
                         Direction::Up
@@ -401,40 +387,49 @@ impl Graph {
     }
 }
 
-fn bits_to_edge_graph(bits: &[bool], width: N, height: N) -> Graph {
+fn bits_to_edge_graph(bits: &[bool], width: usize, height: usize) -> Graph {
     let mut graph = Graph {
-        edges: vec![(false, false); (width as usize + 1) * (height as usize + 1)],
+        edges: vec![
+            Edge {
+                left: false,
+                top: false
+            };
+            (width + 1) * (height + 1)
+        ],
         edge_hint: RefCell::new(0),
+        width,
+        height,
         pos: Position {
             i: 0,
             j: 0,
-            width,
-            height,
             dir: Direction::Right,
         },
     };
 
+    let _: N = (graph.width + 1).try_into().expect("width overflow");
+    let _: N = (graph.height + 1).try_into().expect("height overflow");
+
     for i in 0..height {
         for j in 0..width {
             let idx = i * width + j;
-            if !bits[idx as usize] {
+            if !bits[idx] {
                 continue;
             }
-            if j == 0 || !bits[(idx - 1) as usize] {
+            if j == 0 || !bits[idx - 1] {
                 // left
-                graph.edges[i as usize * (width as usize + 1) + j as usize].0 = true;
+                graph.edges[i * (width + 1) + j].left = true;
             }
-            if j == width - 1 || !bits[(idx + 1) as usize] {
+            if j == width - 1 || !bits[idx + 1] {
                 // right
-                graph.edges[i as usize * (width as usize + 1) + (j as usize + 1)].0 = true;
+                graph.edges[i * (width + 1) + (j + 1)].left = true;
             }
-            if i == 0 || !bits[(idx - width) as usize] {
+            if i == 0 || !bits[idx - width] {
                 // top
-                graph.edges[i as usize * (width as usize + 1) + j as usize].1 = true;
+                graph.edges[i * (width + 1) + j].top = true;
             }
-            if i == height - 1 || !bits[(idx + width) as usize] {
+            if i == height - 1 || !bits[idx + width] {
                 // bottom
-                graph.edges[(i as usize + 1) * (width as usize + 1) + j as usize].1 = true;
+                graph.edges[(i + 1) * (width + 1) + j].top = true;
             }
         }
     }
@@ -451,22 +446,49 @@ fn mini_2x2_one_euler() {
         bits_to_edge_graph(&bm.bits, 2, 2),
         Graph {
             edges: vec![
-                (true, true),
-                (true, false),
-                (false, false),
-                (true, false),
-                (false, true),
-                (true, false),
-                (false, true),
-                (false, true),
-                (false, false),
+                Edge {
+                    left: true,
+                    top: true
+                },
+                Edge {
+                    left: true,
+                    top: false
+                },
+                Edge {
+                    left: false,
+                    top: false
+                },
+                Edge {
+                    left: true,
+                    top: false
+                },
+                Edge {
+                    left: false,
+                    top: true
+                },
+                Edge {
+                    left: true,
+                    top: false
+                },
+                Edge {
+                    left: false,
+                    top: true
+                },
+                Edge {
+                    left: false,
+                    top: true
+                },
+                Edge {
+                    left: false,
+                    top: false
+                },
             ],
             edge_hint: RefCell::new(0),
+            width: 2,
+            height: 2,
             pos: Position {
                 i: 0,
                 j: 0,
-                width: 2,
-                height: 2,
                 dir: Direction::Right,
             },
         }

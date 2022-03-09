@@ -315,8 +315,8 @@ impl IndexTraversal {
     where
         F: FnMut(usize, [usize; 8]),
     {
-        let nrow = self.height as i16;
-        let ncol = self.width as i16;
+        let nrow = self.height as isize;
+        let ncol = self.width as isize;
         let mut visited = vec![false; (nrow * ncol) as usize];
 
         // starting in the correct location for first character, bit 8
@@ -385,9 +385,9 @@ impl IndexTraversal {
     }
 
     /// Compute index with wrapping
-    fn idx(&self, mut i: i16, mut j: i16) -> usize {
-        let h = self.height as i16;
-        let w = self.width as i16;
+    fn idx(&self, mut i: isize, mut j: isize) -> usize {
+        let h = self.height as isize;
+        let w = self.width as isize;
         if i < 0 {
             i += h;
             j += 4 - ((h + 4) % 8);
@@ -406,7 +406,7 @@ impl IndexTraversal {
     }
 
     /// Compute indices for utah-shaped symbol (the standard symbol)
-    fn utah(&self, i: i16, j: i16) -> [usize; 8] {
+    fn utah(&self, i: isize, j: isize) -> [usize; 8] {
         [
             self.idx(i - 2, j - 2),
             self.idx(i - 2, j - 1),
@@ -420,8 +420,8 @@ impl IndexTraversal {
     }
 
     fn corner1(&self) -> [usize; 8] {
-        let h = self.height as i16;
-        let w = self.width as i16;
+        let h = self.height as isize;
+        let w = self.width as isize;
         [
             self.idx(h - 1, 0),
             self.idx(h - 1, 1),
@@ -435,8 +435,8 @@ impl IndexTraversal {
     }
 
     fn corner2(&self) -> [usize; 8] {
-        let h = self.height as i16;
-        let w = self.width as i16;
+        let h = self.height as isize;
+        let w = self.width as isize;
         [
             self.idx(h - 3, 0),
             self.idx(h - 2, 0),
@@ -450,8 +450,8 @@ impl IndexTraversal {
     }
 
     fn corner3(&self) -> [usize; 8] {
-        let h = self.height as i16;
-        let w = self.width as i16;
+        let h = self.height as isize;
+        let w = self.width as isize;
         [
             self.idx(h - 3, 0),
             self.idx(h - 2, 0),
@@ -465,8 +465,8 @@ impl IndexTraversal {
     }
 
     fn corner4(&self) -> [usize; 8] {
-        let h = self.height as i16;
-        let w = self.width as i16;
+        let h = self.height as isize;
+        let w = self.width as isize;
         [
             self.idx(h - 1, 0),
             self.idx(h - 1, w - 1),
