@@ -396,30 +396,35 @@ fn bits_to_edge_graph(bits: &[bool], width: usize, height: usize) -> Graph {
     let _: N = (graph.width + 1).try_into().expect("width overflow");
     let _: N = (graph.height + 1).try_into().expect("height overflow");
 
+    let mut edge_hint = None;
+
     for i in 0..height {
         for j in 0..width {
             let idx = i * width + j;
             if !bits[idx] {
                 continue;
             }
+            let cell = i * (width + 1) + j;
+            edge_hint.get_or_insert(cell);
             if j == 0 || !bits[idx - 1] {
                 // left
-                graph.edges[i * (width + 1) + j].left = true;
-            }
-            if j == width - 1 || !bits[idx + 1] {
-                // right
-                graph.edges[i * (width + 1) + (j + 1)].left = true;
+                graph.edges[cell].left = true;
             }
             if i == 0 || !bits[idx - width] {
                 // top
-                graph.edges[i * (width + 1) + j].top = true;
+                graph.edges[cell].top = true;
+            }
+            if j == width - 1 || !bits[idx + 1] {
+                // right
+                graph.edges[cell + 1].left = true;
             }
             if i == height - 1 || !bits[idx + width] {
                 // bottom
-                graph.edges[(i + 1) * (width + 1) + j].top = true;
+                graph.edges[cell + (width + 1)].top = true;
             }
         }
     }
+    *graph.edge_hint.get_mut() = edge_hint.unwrap_or_else(|| graph.edges.len());
     graph
 }
 
@@ -534,5 +539,15 @@ fn mini_3x2_two_euler() {
 #[test]
 fn empty() {
     let bm = Bitmap::new(vec![false; 6], 2);
-    assert_eq!(bm.path(), vec![],);
+    assert_eq!(bm.path(), vec![]);
+}
+
+#[test]
+fn edge_hint() {
+    let bm = Bitmap {
+        bits: vec![false, false, true, true, true, true],
+        width: 3,
+    };
+    let graph = bits_to_edge_graph(&bm.bits, bm.width(), bm.height());
+    assert_eq!(*graph.edge_hint.borrow(), 2);
 }
