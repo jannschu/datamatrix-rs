@@ -71,6 +71,11 @@ impl Bitmap<bool> {
     /// Eulerian circuits.
     pub fn path(&self) -> Vec<PathSegment> {
         let mut graph = bits_to_edge_graph(&self.bits, self.width(), self.height());
+        let mut pos = if let Some(pos) = graph.edge_left() {
+            pos
+        } else {
+            return vec![];
+        };
         let mut elements = Vec::new();
 
         let mut alternatives = Vec::new();
@@ -82,30 +87,32 @@ impl Bitmap<bool> {
                 let mut local_loop = Vec::new();
                 let insert_pos = insert;
 
-                graph.remove_edge(&graph.pos.clone());
-                let start = graph.pos.start_node();
-                local_loop.push(MicroStep::Step(graph.pos.end_node()));
+                graph.remove_edge(&pos);
+                let start = pos.start_node();
+                local_loop.push(MicroStep::Step(pos.end_node()));
                 insert += 1;
 
                 // walk until we find start node again
                 loop {
-                    let pos = graph.pos.clone();
-                    if graph.step_and_had_alternatives() {
+                    let (new_pos, had_alternatives) = graph.follow(&pos);
+                    if had_alternatives {
                         alternatives.push((insert, pos));
                     }
-                    let end = graph.pos.end_node();
+                    pos = new_pos.expect("must exist because `pos` was valid");
+                    graph.remove_edge(&pos);
+                    let end = pos.end_node();
                     local_loop.push(MicroStep::Step(end));
                     if end == start {
                         break;
                     }
                     insert += 1;
                 }
-                elements.splice(insert_pos..insert_pos, local_loop.drain(0..));
+                elements.splice(insert_pos..insert_pos, local_loop.drain(..));
 
                 // are there remaining edges for this euler walk?
-                for (idx, pos) in alternatives.drain(0..) {
-                    if let Some(new_pos) = graph.can_step(&pos) {
-                        graph.pos = new_pos;
+                for (idx, pos_alt) in alternatives.drain(..) {
+                    if let Some(new_pos) = graph.can_step(&pos_alt) {
+                        pos = new_pos;
                         insert = idx;
                         continue 'euler;
                     }
@@ -114,9 +121,9 @@ impl Bitmap<bool> {
             }
 
             // are there edges remaining in the graph, then start a new Eulerian tour
-            if let Some(pos) = graph.edge_left() {
-                elements.push(MicroStep::Jump(pos.start_node()));
-                graph.pos = pos;
+            if let Some(new_pos) = graph.edge_left() {
+                elements.push(MicroStep::Jump(new_pos.start_node()));
+                pos = new_pos;
                 insert = elements.len();
                 continue;
             }
@@ -265,7 +272,6 @@ struct Edge {
 #[derive(Debug, PartialEq)]
 struct Graph {
     edges: Vec<Edge>,
-    pos: Position,
     width: usize,
     height: usize,
     edge_hint: RefCell<usize>,
@@ -298,41 +304,27 @@ impl Graph {
             .or_else(|| Some(pos.right()).filter(|p| self.has_edge(p)))
     }
 
-    fn step_and_had_alternatives(&mut self) -> bool {
-        fn free(s: &mut Graph, p: Position, remove: bool) -> Option<Position> {
-            let found = if remove {
-                s.remove_edge(&p)
-            } else {
-                s.has_edge(&p)
-            };
-            if found {
-                Some(p)
-            } else {
-                None
-            }
-        }
-
-        let mut found = free(self, self.pos.straight(), true);
+    fn follow(&self, pos: &Position) -> (Option<Position>, bool) {
+        let mut found = None;
         let mut alternatives = false;
 
-        if let Some(pos) = free(self, self.pos.left(), found.is_none()) {
-            if found.is_none() {
-                found = Some(pos);
-            } else {
-                alternatives = true;
-            }
+        macro_rules! try_step {
+            ($pos:expr) => {
+                if let Some(pos) = Some($pos).filter(|p| self.has_edge(p)) {
+                    if found.is_none() {
+                        found = Some(pos);
+                    } else {
+                        alternatives = true;
+                    }
+                }
+            };
         }
 
-        if let Some(pos) = free(self, self.pos.right(), found.is_none()) {
-            if found.is_none() {
-                found = Some(pos);
-            } else {
-                alternatives = true;
-            }
-        }
+        try_step!(pos.straight());
+        try_step!(pos.left());
+        try_step!(pos.right());
 
-        self.pos = found.unwrap();
-        alternatives
+        (found, alternatives)
     }
 
     fn has_edge(&self, pos: &Position) -> bool {
@@ -370,7 +362,7 @@ impl Graph {
                 let idx = idx + hint;
                 let i = (idx / (self.width + 1)) as N;
                 let j = (idx % (self.width + 1)) as N;
-                self.edge_hint.replace_with(|_| idx + 1);
+                self.edge_hint.replace_with(|_| idx);
                 return Some(Position {
                     i,
                     j,
@@ -399,11 +391,6 @@ fn bits_to_edge_graph(bits: &[bool], width: usize, height: usize) -> Graph {
         edge_hint: RefCell::new(0),
         width,
         height,
-        pos: Position {
-            i: 0,
-            j: 0,
-            dir: Direction::Right,
-        },
     };
 
     let _: N = (graph.width + 1).try_into().expect("width overflow");
@@ -486,11 +473,6 @@ fn mini_2x2_one_euler() {
             edge_hint: RefCell::new(0),
             width: 2,
             height: 2,
-            pos: Position {
-                i: 0,
-                j: 0,
-                dir: Direction::Right,
-            },
         }
     );
     assert_eq!(
@@ -547,4 +529,10 @@ fn mini_3x2_two_euler() {
             PathSegment::Close,
         ],
     );
+}
+
+#[test]
+fn empty() {
+    let bm = Bitmap::new(vec![false; 6], 2);
+    assert_eq!(bm.path(), vec![],);
 }
