@@ -44,14 +44,14 @@ impl<T: ContextInformation> Plan for AsciiPlan<T> {
         // already done
         if self.digits_ahead == 0 {
             // count number digits coming
-            for ch in self.ctx.rest().iter() {
-                if ch.is_ascii_digit() {
-                    self.digits_ahead += 1;
-                } else {
-                    break;
-                }
-            }
-            self.digits_ahead = (self.digits_ahead / 2) * 2;
+            let ascii_digits = self
+                .ctx
+                .rest()
+                .iter()
+                .cloned()
+                .take_while(u8::is_ascii_digit)
+                .count();
+            self.digits_ahead = (ascii_digits / 2) * 2;
             self.ctx.write(self.digits_ahead / 2);
         }
         let unbeatable = self.digits_ahead > 0;

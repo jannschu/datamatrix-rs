@@ -278,32 +278,33 @@ struct Graph {
 }
 
 impl Graph {
+    /// Check if the left edge of cell `(i, j)` is part of the graph.
     fn left(&self, i: N, j: N) -> bool {
-        self.has_cell(i, j) && {
-            let i = i as usize;
-            let j = j as usize;
-            self.edges[i * (self.width + 1) + j].left
-        }
+        self.has_cell(i, j) && { self.edges[i as usize * (self.width + 1) + j as usize].left }
     }
 
+    /// Check if the top edge of cell `(i, j)` is part of the graph.
     fn top(&self, i: N, j: N) -> bool {
-        self.has_cell(i, j) && {
-            let i = i as usize;
-            let j = j as usize;
-            self.edges[i * (self.width + 1) + j].top
-        }
+        self.has_cell(i, j) && { self.edges[i as usize * (self.width + 1) + j as usize].top }
     }
 
     fn has_cell(&self, i: N, j: N) -> bool {
         (0..=self.height as N).contains(&i) && (0..=self.width as N).contains(&j)
     }
 
+    /// Check if there is any edge in the graph that could be reached from the position.
+    ///
+    /// See also [Self::follow()].
     fn can_step(&self, pos: &Position) -> Option<Position> {
         None.or_else(|| Some(pos.straight()).filter(|p| self.has_edge(p)))
             .or_else(|| Some(pos.left()).filter(|p| self.has_edge(p)))
             .or_else(|| Some(pos.right()).filter(|p| self.has_edge(p)))
     }
 
+    /// Return a new position that can be reached from a given position.
+    ///
+    /// Returns the new position and and a boolean that indicates whether
+    /// there was more than one possibility.
     fn follow(&self, pos: &Position) -> (Option<Position>, bool) {
         let mut found = None;
         let mut alternatives = false;
@@ -355,6 +356,9 @@ impl Graph {
         }
     }
 
+    /// Find a remaining position for the graph.
+    ///
+    /// If no edges are left `None` is returned.
     fn edge_left(&self) -> Option<Position> {
         let hint = *self.edge_hint.borrow();
         for (idx, edge) in self.edges[hint..].iter().enumerate() {

@@ -335,6 +335,14 @@ fn test_macro_str() {
     assert_eq!(data, out);
 }
 
+#[test]
+fn test_too_much_data() {
+    let mut rnd_data = test::random_data();
+    let data = rnd_data(5000);
+    let result = DataMatrix::encode(&data, SymbolList::default());
+    assert_eq!(result, Err(DataEncodingError::TooMuchOrIllegalData));
+}
+
 #[cfg(test)]
 mod test {
     use crate::placement::MatrixMap;

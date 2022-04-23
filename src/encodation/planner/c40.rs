@@ -12,7 +12,7 @@ use pretty_assertions::assert_eq;
 pub(super) trait CharsetInfo: Clone + Debug + PartialEq {
     fn val_size(ch: u8) -> u8;
 
-    fn in_base_set(ch: u8) -> bool;
+    fn in_base_set(ch: &u8) -> bool;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -23,8 +23,8 @@ impl CharsetInfo for C40Charset {
         c40::val_size(ch)
     }
 
-    fn in_base_set(ch: u8) -> bool {
-        c40::in_base_set(ch)
+    fn in_base_set(ch: &u8) -> bool {
+        c40::in_base_set(*ch)
     }
 }
 
@@ -60,14 +60,11 @@ impl<T: ContextInformation, U: CharsetInfo> C40LikePlan<T, U> {
 
 pub(super) fn unbeatable_strike<F>(rest: &[u8], nice_char: F) -> usize
 where
-    F: Fn(u8) -> bool,
+    F: Fn(&u8) -> bool,
 {
     let mut consecutive_digits = 0;
     let mut unbeatable_reads = 0;
-    for ch in rest.iter() {
-        if !nice_char(*ch) {
-            break;
-        }
+    for ch in rest.iter().cloned().take_while(nice_char) {
         unbeatable_reads += 1;
         // now only enough digits with ASCII can beat this
         if ch.is_ascii_digit() {

@@ -12,8 +12,8 @@ impl CharsetInfo for TextCharset {
         text::val_size(ch)
     }
 
-    fn in_base_set(ch: u8) -> bool {
-        text::in_base_set(ch)
+    fn in_base_set(ch: &u8) -> bool {
+        text::in_base_set(*ch)
     }
 }
 

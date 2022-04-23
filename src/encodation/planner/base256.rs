@@ -3,7 +3,6 @@ use super::{Frac, Plan, StepResult};
 
 #[derive(Debug, PartialEq, Clone)]
 pub(super) struct Base256Plan<T: ContextInformation> {
-    /// Number of values not yet written
     ctx: T,
     written: usize,
     cost: Frac,
@@ -48,8 +47,8 @@ impl<T: ContextInformation> Plan for Base256Plan<T> {
     fn cost(&self) -> Frac {
         if !self.ctx.has_more_characters() {
             let left = self.ctx.symbol_size_left(0).unwrap_or(1);
-            if left > 0 && self.written > 249 {
-                // we can must use 1 extra byte for the length
+            if left > 0 && self.written >= 250 {
+                // we must use 1 extra byte for the length
                 return self.cost + 1;
             }
         }
