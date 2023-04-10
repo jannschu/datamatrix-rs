@@ -143,7 +143,7 @@ impl<T: ContextInformation, U: CharsetInfo> Plan for C40LikePlan<T, U> {
         // compute optimal chars, only do this when we are at a boundary and if not
         // already done
         if self.values == 0 && self.unbeatable_reads == 0 {
-            // are the only remaining charactes two ascii digits?
+            // are the only remaining characters two ascii digits?
             if matches!(self.ctx.rest(), [a, b] if a.is_ascii_digit() && b.is_ascii_digit()) {
                 let space_left = self.ctx.symbol_size_left(1)?;
                 self.two_digit_ascii_end = space_left <= 1;

@@ -6,7 +6,7 @@ flags! {
     /// List of data encodation types
     ///
     /// Data Matrix can switch between different "codecs" in a symbol. Each one
-    /// has its strenghts and weaknesses.
+    /// has its strengths and weaknesses.
     pub enum EncodationType: u8 {
         Ascii   = 0b000001,
         C40     = 0b000010,

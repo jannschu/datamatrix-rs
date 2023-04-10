@@ -71,7 +71,7 @@ compared to an optimizer based on the heuristic defined in the specification.
 What it achieves however in any case is a linear encoding time, and it avoids
 some of the bugs which can be attributed to using the heuristic (see open
 bugs in zxing and OkapiBarcode). And, of course, there _are_ cases where it will
-return a smaller symbol altough admittedly no thorough study of this has been
+return a smaller symbol although admittedly no thorough study of this has been
 done.
 
 ## Related projects

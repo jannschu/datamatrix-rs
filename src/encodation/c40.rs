@@ -114,8 +114,8 @@ where
             buf.push(UPPER_SHIFT);
         }
         write_three_values(ctx, buf[0], buf[1], buf[2]);
-        // if we were at a "end of data" situtation but there was too
-        // much space for one of the cases a) - d) above, we need to explicitely
+        // if we were at a "end of data" situation but there was too
+        // much space for one of the cases a) - d) above, we need to explicitly
         // set the new mode, otherwise infinite loop
         if !mode_switch {
             ctx.set_ascii_until_end();

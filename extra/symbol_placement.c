@@ -5,7 +5,7 @@
 
 int nrow, ncol, *array;
 
-/* "module" places "chr+bit" with appropiate wrapping within array[] */
+/* "module" places "chr+bit" with appropriate wrapping within array[] */
 void module(int row, int col, int chr, int bit) {
   if (row < 0) {
     row += nrow;
@@ -79,7 +79,7 @@ void corner4(int chr) {
   module(1, ncol - 1, chr, 8);
 }
 
-/* "ECC200" fill an nrow x ncol array with appropiate values for ECC200 */
+/* "ECC200" fill an nrow x ncol array with appropriate values for ECC200 */
 void ECC200(void) {
   int row, col, chr;
 

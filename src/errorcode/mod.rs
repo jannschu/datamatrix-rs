@@ -31,7 +31,7 @@
 //! is used to determine the error values. It was faster than Forney's algorithm
 //! and also faster than a naive LU decomposition in our tests.
 //!
-//! The other possibilites mentionend for step 2 and 4
+//! The other possibilities mentionend for step 2 and 4
 //! are still in the source code in case someone is interested in them.
 mod decoding;
 mod galois;

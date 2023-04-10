@@ -217,7 +217,7 @@ impl<'a> GenericPlan<'a> {
 
     /// Get the total cost after switching to the given mode.
     pub(super) fn cost_for_switching_to(&self, other: EncodationType) -> Option<Frac> {
-        // switchting to the mode itself is free
+        // switching to the mode itself is free
         if self.current() == other {
             return Some(self.cost());
         }

@@ -1056,7 +1056,7 @@ fn test_minimal_example_every_symbol() {
 }
 
 #[test]
-fn test_distinquishable_by_size() {
+fn test_distinguishable_by_size() {
     use alloc::collections::btree_set::BTreeSet;
     use core::iter::FromIterator;
 

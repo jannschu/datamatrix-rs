@@ -42,7 +42,7 @@ trait ContextInformation: Clone {
 struct StepResult {
     /// Signals that nothing was done, planer is at the end of input.
     end: bool,
-    /// Signals that this step can not be beaten by a prior mode swithc
+    /// Signals that this step can not be beaten by a prior mode switch
     unbeatable: bool,
 }
 

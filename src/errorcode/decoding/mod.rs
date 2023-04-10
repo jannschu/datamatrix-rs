@@ -44,7 +44,7 @@ where
     errors
 }
 
-/// Find the zeros of a polynomial givven by the coefficients in `c`.
+/// Find the zeros of a polynomial given by the coefficients in `c`.
 fn chien_search<T: Into<GF> + Copy>(c: &[T]) -> Vec<GF> {
     let mut out = vec![];
     if c.is_empty() {

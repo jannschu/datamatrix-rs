@@ -37,7 +37,7 @@
 //!
 //! The Data Matrix specification defines ISO 8859-1 (Latin-1) as the standard
 //! charset. Our tests indicate that some decoders (smartphone scanner apps) are
-//! reluctant to follow this and return binary output if there are charactes in
+//! reluctant to follow this and return binary output if there are characters in
 //! the upper range, which is a safe choice. Unfortunately, some decoders try to guess the charset
 //! or just always assume UTF-8.
 //!
@@ -109,7 +109,13 @@ pub struct DataMatrix {
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Errors when decoding a Data Matrix.
 pub enum DecodingError {
+    /// Signals that the pixels could not be mapped to a [symbol size](SymbolSize),
+    /// either because no symbol with matching dimensions was found or because the 
+    /// alignment pattern was not correct.
     PixelConversion(placement::BitmapConversionError),
+    /// Signals that the [error correction](errorcode) was either not done correctly when the
+    /// Data Matrix was encoded or there are too many detection errors, i.e.,
+    /// black or white squares that are wrong.
     ErrorCorrection(errorcode::ErrorDecodingError),
     DataDecoding(decodation::DataDecodingError),
 }
@@ -163,7 +169,7 @@ impl DataMatrix {
             .encode(data)
     }
 
-    /// Encodes a string as a Data Matrix (ECC200).
+    /// Encode a string as a Data Matrix (ECC200).
     ///
     /// This is wrapper for [DataMatrixBuilder::encode_str].
     pub fn encode_str<I: Into<SymbolList>>(
