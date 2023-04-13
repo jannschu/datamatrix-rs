@@ -110,7 +110,7 @@ pub struct DataMatrix {
 /// Errors when decoding a Data Matrix.
 pub enum DecodingError {
     /// Signals that the pixels could not be mapped to a [symbol size](SymbolSize),
-    /// either because no symbol with matching dimensions was found or because the 
+    /// either because no symbol with matching dimensions was found or because the
     /// alignment pattern was not correct.
     PixelConversion(placement::BitmapConversionError),
     /// Signals that the [error correction](errorcode) was either not done correctly when the
