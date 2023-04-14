@@ -216,13 +216,13 @@ fn vals(data: &[u8]) -> Vec<u8> {
 #[test]
 fn test_enc_basic_set() {
     let vals = vals(b" 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-    let out: Vec<u8> = (3..=39).into_iter().collect();
+    let out: Vec<u8> = (3..=39).collect();
     assert_eq!(vals, out);
 }
 
 #[test]
 fn test_enc_shift1_set() {
-    let input: Vec<u8> = (0..=31).into_iter().collect();
+    let input: Vec<u8> = (0..=31).collect();
     let vals = vals(&input);
     assert_eq!(
         vals,

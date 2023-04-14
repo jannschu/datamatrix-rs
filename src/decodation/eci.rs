@@ -39,11 +39,7 @@ fn convert_chunk(bytes: &[u8], eci: u32, out: &mut String) -> Result<(), DataDec
 }
 
 #[cfg(feature = "extended_eci")]
-fn convert_chunk_extended(
-    bytes: &[u8],
-    eci: u32,
-    out: &mut String,
-) -> Result<(), DataDecodingError> {
+fn convert_chunk_extended(bytes: &[u8], eci: u32, out: &mut str) -> Result<(), DataDecodingError> {
     use encoding_rs::*;
 
     let encoder = match eci {
@@ -84,7 +80,7 @@ fn convert_chunk_extended(
 fn convert_chunk_extended(
     _bytes: &[u8],
     eci: u32,
-    _out: &mut String,
+    _out: &mut str,
 ) -> Result<(), DataDecodingError> {
     match eci {
         0..=13 | 15..=18 | 20..=30 => Err(DataDecodingError::NotImplemented(

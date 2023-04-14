@@ -428,7 +428,7 @@ fn bits_to_edge_graph(bits: &[bool], width: usize, height: usize) -> Graph {
             }
         }
     }
-    *graph.edge_hint.get_mut() = edge_hint.unwrap_or_else(|| graph.edges.len());
+    *graph.edge_hint.get_mut() = edge_hint.unwrap_or(graph.edges.len());
     graph
 }
 
