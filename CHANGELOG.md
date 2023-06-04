@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.1
+
+### Fixes
+
+- Some typos in the documentation were fixed.
+- Clippy lints were fixed.
+- A bug was fixed if `Bitmap::path` was called with an empty image.
+  This is never the case for a Data Matrix code.
+
+### Features
+
+- Dev dependencies were updated.
+
 ## 0.3.0
 
 ### Features
