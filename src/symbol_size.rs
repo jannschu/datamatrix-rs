@@ -9,7 +9,7 @@ use alloc::collections::BTreeSet;
 use alloc::{vec, vec::Vec};
 
 #[cfg(test)]
-use enum_iterator::IntoEnumIterator;
+use enum_iterator::{all, Sequence};
 
 #[cfg(test)]
 use pretty_assertions::assert_eq;
@@ -247,7 +247,7 @@ impl BlockSetup {
 /// describes the number of modules (the tiny black squares) the symbol is
 /// tall/wide.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(test, derive(IntoEnumIterator))]
+#[cfg_attr(test, derive(Sequence))]
 pub enum SymbolSize {
     Square10,
     Square12,
@@ -946,7 +946,7 @@ fn test_symbol_size_order() {
 
 #[test]
 fn test_iter_all_symbols() {
-    let mut all: Vec<SymbolSize> = SymbolSize::into_enum_iter().collect();
+    let mut all: Vec<SymbolSize> = all::<SymbolSize>().collect();
     all.sort_unstable();
     assert_eq!(&all, SYMBOL_SIZES,);
 }
