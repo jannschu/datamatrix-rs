@@ -9,6 +9,7 @@ description = "Data Matrix (ECC 200) decoding and encoding with an optimizing en
 repository = "https://github.com/jannschu/datamatrix-rs/"
 categories = ["encoding"]
 keywords = ["codematrix", "datamatrix", "semacode", "no_std"]
+resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
