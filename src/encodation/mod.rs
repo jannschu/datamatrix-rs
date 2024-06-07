@@ -72,10 +72,6 @@ trait EncodingContext {
 
     fn set_ascii_until_end(&mut self);
 
-    fn peek(&self, n: usize) -> Option<u8> {
-        self.rest().get(n).cloned()
-    }
-
     /// Number of characters yet to be encoded.
     fn characters_left(&self) -> usize {
         self.rest().len()
