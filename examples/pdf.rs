@@ -32,8 +32,8 @@ fn main() {
     // Create PDF for only the Data Matrix and the minimal quiet zone around it
     let (doc, page1, layer1) = PdfDocument::new(
         "datamatrix example",
-        SIZE * (bitmap.width() + 2) as f64,
-        SIZE * (bitmap.height() + 2) as f64,
+        SIZE * (bitmap.width() + 2) as f32,
+        SIZE * (bitmap.height() + 2) as f32,
         "Layer1",
     );
     let layer = doc.get_page(page1).get_layer(layer1);
@@ -42,7 +42,7 @@ fn main() {
 
     // Construct a path starting from the top left corner.
     let mut x: Pt = SIZE.into();
-    let mut y: Pt = (SIZE * (bitmap.height() + 1) as f64).into();
+    let mut y: Pt = (SIZE * (bitmap.height() + 1) as f32).into();
     layer.add_operation(Operation::new("m", vec![x.into(), y.into()]));
 
     // Remember last starting point
@@ -53,17 +53,17 @@ fn main() {
     for (i, segment) in path.iter().enumerate() {
         match segment {
             PathSegment::Move(dx, dy) => {
-                x += (SIZE * (*dx as f64)).into();
-                y -= (SIZE * (*dy as f64)).into();
+                x += (SIZE * (*dx as f32)).into();
+                y -= (SIZE * (*dy as f32)).into();
                 start = (x, y);
                 layer.add_operation(Operation::new("m", vec![x.into(), y.into()]));
             }
             PathSegment::Horizontal(dx) => {
-                x += (SIZE * (*dx as f64)).into();
+                x += (SIZE * (*dx as f32)).into();
                 layer.add_operation(Operation::new("l", vec![x.into(), y.into()]));
             }
             PathSegment::Vertical(dy) => {
-                y -= (SIZE * (*dy as f64)).into();
+                y -= (SIZE * (*dy as f32)).into();
                 layer.add_operation(Operation::new("l", vec![x.into(), y.into()]));
             }
             PathSegment::Close => {
