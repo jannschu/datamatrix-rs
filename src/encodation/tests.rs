@@ -9,80 +9,45 @@ use crate::symbol_size::SymbolList;
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 
-pub(super) trait TestEncoderLogic: Sized {
-    type State;
-
-    fn maybe_switch_mode(enc: &mut TestEncodingContext<Self>) -> bool;
-
-    fn symbol_size_left(
-        enc: &mut TestEncodingContext<Self>,
-        extra_codewords: usize,
-    ) -> Option<usize>;
-}
-
-pub(super) struct DummyLogic(Option<usize>, isize);
-
-impl DummyLogic {
-    pub fn new(
-        data: Vec<u8>,
-        // The size of the symbol
-        size: usize,
-        // countdown in maybe_switch_mode, decremented each call,
-        // if zero return true
-        count: isize,
-    ) -> TestEncodingContext<Self> {
-        TestEncodingContext::new(data, (size, count))
-    }
-}
-
-impl TestEncoderLogic for DummyLogic {
-    type State = (usize, isize);
-
-    fn maybe_switch_mode(enc: &mut TestEncodingContext<Self>) -> bool {
-        enc.state.1 -= 1;
-        enc.state.1 == 0
-    }
-
-    fn symbol_size_left(
-        enc: &mut TestEncodingContext<Self>,
-        extra_codewords: usize,
-    ) -> Option<usize> {
-        let needed = enc.codewords().len() + extra_codewords;
-        if needed > enc.state.0 {
-            None
-        } else {
-            Some(enc.state.0 - needed)
-        }
-    }
-}
-
-pub(super) struct TestEncodingContext<T: TestEncoderLogic> {
+/// Encodation context that is only used in tests.
+pub(super) struct TestEncodingContext {
+    /// Contains bytes that were consumed by the parser.
     pub(super) removed: Vec<u8>,
     pub(super) data: Vec<u8>,
     pub(super) codewords: Vec<u8>,
     pub(super) mode: EncodationType,
-    state: T::State,
+    /// Available size in the symbol.
+    size: usize,
+    /// Number times `maybe_switch_mode` is called until it returns true.
+    count: isize,
 }
 
-impl<T: TestEncoderLogic> TestEncodingContext<T> {
-    pub fn new(data: Vec<u8>, state: T::State) -> Self {
+impl TestEncodingContext {
+    pub fn new(data: Vec<u8>, size: usize, count: isize) -> Self {
         Self {
             data,
             codewords: Vec::new(),
-            state,
+            size,
+            count,
             mode: EncodationType::Ascii,
             removed: Vec::new(),
         }
     }
 }
 
-impl<T: TestEncoderLogic> EncodingContext for TestEncodingContext<T> {
+impl EncodingContext for TestEncodingContext {
     fn maybe_switch_mode(&mut self) -> Result<bool, DataEncodingError> {
-        Ok(T::maybe_switch_mode(self))
+        self.count -= 1;
+        Ok(self.count == 0)
     }
 
     fn symbol_size_left(&mut self, extra_codewords: usize) -> Option<usize> {
-        T::symbol_size_left(self, extra_codewords)
+        let needed = self.codewords().len() + extra_codewords;
+        if needed > self.size {
+            None
+        } else {
+            Some(self.size - needed)
+        }
     }
 
     fn eat(&mut self) -> Option<u8> {

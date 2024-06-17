@@ -115,8 +115,8 @@ pub(super) fn encode<T: EncodingContext>(ctx: &mut T) -> Result<(), DataEncoding
 
 #[test]
 fn test_write4_four() {
-    use super::tests::DummyLogic;
-    let mut enc = DummyLogic::new(vec![], 3, -1);
+    use super::tests::TestEncodingContext;
+    let mut enc = TestEncodingContext::new(vec![], 3, -1);
     write4(&mut enc, &[0b10_01_00, 0b11_01_10, 0b011010, 1].into());
     assert_eq!(
         enc.codewords,
@@ -126,8 +126,8 @@ fn test_write4_four() {
 
 #[test]
 fn test_write4_three() {
-    use super::tests::DummyLogic;
-    let mut enc = DummyLogic::new(vec![], 3, -1);
+    use super::tests::TestEncodingContext;
+    let mut enc = TestEncodingContext::new(vec![], 3, -1);
     let mut s = ArrayVec::<u8, 4>::new();
     s.try_extend_from_slice(&[0b10_01_00, 0b11_01_10, 0b011010])
         .unwrap();
@@ -140,8 +140,8 @@ fn test_write4_three() {
 
 #[test]
 fn test_write4_two() {
-    use super::tests::DummyLogic;
-    let mut enc = DummyLogic::new(vec![], 2, -1);
+    use super::tests::TestEncodingContext;
+    let mut enc = TestEncodingContext::new(vec![], 2, -1);
     let mut s = ArrayVec::<u8, 4>::new();
     s.try_extend_from_slice(&[0b10_01_00, 0b11_01_10]).unwrap();
     write4(&mut enc, &s);
@@ -150,8 +150,8 @@ fn test_write4_two() {
 
 #[test]
 fn test_write4_one() {
-    use super::tests::DummyLogic;
-    let mut enc = DummyLogic::new(vec![], 1, -1);
+    use super::tests::TestEncodingContext;
+    let mut enc = TestEncodingContext::new(vec![], 1, -1);
     let mut s = ArrayVec::<u8, 4>::new();
     s.try_extend_from_slice(&[0b10_01_00]).unwrap();
     write4(&mut enc, &s);
