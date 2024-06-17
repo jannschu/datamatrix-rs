@@ -3,7 +3,7 @@ use std::io::{self, Read};
 use datamatrix::{placement::MatrixMap, DataMatrix};
 
 fn main() {
-    // Frist read a bitmap image as ASCII encoded 0s and 1s from stdin.
+    // First read a bitmap image as ASCII encoded 0s and 1s from stdin.
     // For example the following input encodes a Data Matrix:
     //
     //    1010101010
