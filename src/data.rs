@@ -22,7 +22,7 @@ use super::{SymbolList, SymbolSize};
 use pretty_assertions::assert_eq;
 
 /// Encode input to data codewords for Data Matrix.
-pub(crate) fn encode_data(
+pub fn encode_data(
     data: &[u8],
     symbol_list: &SymbolList,
     eci: Option<u32>,

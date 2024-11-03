@@ -68,10 +68,9 @@
 //! is done and exposed in the API. All that is missing is a detector to extract a matrix of true and false values
 //! from an image. A general purpose detector is planned for the future, though.
 //!
-//! Other limitations: Currently there is no support for GS1/FCN1 character encoding,
-//! full ECI, structured append, and
-//! reader programming. The decoding output format specified in ISO/IEC 15424 is
-//! also not implemented (metadata, ECI, etc.), if you have a use case for this
+//! Other limitations: Currently there is only [limited support for GS1](DataMatrix::encode_gs1)/FCN1 character encoding,
+//! [limited ECI encoding](DataMatrix::encode_str), no structured append, and no reader programming. The decoding output
+//! format specified in ISO/IEC 15424 is also not implemented (metadata, ECI, etc.), if you have a use case for this
 //! please open an issue.
 
 #![no_std]
