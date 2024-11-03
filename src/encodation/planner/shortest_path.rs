@@ -163,10 +163,10 @@ fn test_hopeless_remove_duplicates() {
     let symbols = crate::SymbolList::default();
     let mut a = GenericPlan::for_mode(EncodationType::Ascii, &[1, 2, 3], 0, &symbols);
     a.step(); // cost = 1
-    let mut b = GenericPlan::for_mode(EncodationType::C40, &[b'A', b'C', b'D'], 0, &symbols);
+    let mut b = GenericPlan::for_mode(EncodationType::C40, b"ACD", 0, &symbols);
     b.step();
     b.step(); // cost = 4/3
-    let mut c = GenericPlan::for_mode(EncodationType::X12, &[b'A', b'C', b'D'], 0, &symbols);
+    let mut c = GenericPlan::for_mode(EncodationType::X12, b"ACD", 0, &symbols);
     c.step();
     c.step(); // cost = 4/3
     let mut list = vec![a.clone(), b.clone(), c.clone()];
@@ -178,7 +178,7 @@ fn test_hopeless_remove_duplicates() {
 fn test_hopeless_remove_1() {
     let symbols = crate::SymbolList::default();
     let a = GenericPlan::for_mode(EncodationType::Ascii, &[1, 2, 3], 0, &symbols);
-    let mut b = GenericPlan::for_mode(EncodationType::C40, &[b'A', b'C', b'D'], 0, &symbols);
+    let mut b = GenericPlan::for_mode(EncodationType::C40, b"ACD", 0, &symbols);
     b.step();
     b.step();
     b.step();

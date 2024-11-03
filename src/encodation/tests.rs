@@ -498,9 +498,12 @@ fn test_base256_10() {
 
 #[test]
 fn test_c40_unlatching() {
+    let codewords = enc(b"AIMAIMAIMAIMaimaimaim");
+    // can be either C40 or X12 encoded
+    assert!(matches!(codewords[0], 230 | 238));
     assert_eq!(
-        enc(b"AIMAIMAIMAIMaimaimaim"),
-        vec![230, 91, 11, 91, 11, 91, 11, 91, 11, 254, 239, 91, 11, 91, 11, 91, 11, 254]
+        &codewords[1..],
+        &[91, 11, 91, 11, 91, 11, 91, 11, 254, 239, 91, 11, 91, 11, 91, 11, 254]
     );
 }
 
