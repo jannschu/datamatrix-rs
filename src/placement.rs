@@ -636,10 +636,11 @@ impl<B: Bit> Bitmap<B> {
     ///
     /// ```rust
     /// # use datamatrix::{DataMatrix, SymbolSize};
-    /// let code = DataMatrix::encode(b"Foo", SymbolSize::Square10).unwrap();
+    /// let code = DataMatrix::encode(b"Foo", SymbolSize::Square10)?;
     /// for (x, y) in code.bitmap().pixels() {
     ///     // place square/circle at (x, y) to render this Data Matrix
     /// }
+    /// # Ok::<(), datamatrix::data::DataEncodingError>(())
     /// ```
     pub fn pixels(&self) -> impl Iterator<Item = (usize, usize)> + '_ {
         let w = self.width();

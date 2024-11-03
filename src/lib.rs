@@ -7,8 +7,9 @@
 //! let code = DataMatrix::encode(
 //!     b"Hello, World!",
 //!     SymbolList::default(),
-//! ).unwrap();
+//! )?;
 //! print!("{}", code.bitmap().unicode());
+//! # Ok::<(), datamatrix::data::DataEncodingError>(())
 //! ```
 //!
 //! This toy example will print a Data Matrix using Unicode block characters.
@@ -58,8 +59,9 @@
 //! # let pixels: Vec<bool> = map.bitmap().bits().into();
 //! // let pixels: Vec<bool> = …
 //! let width = 16;
-//! let data = DataMatrix::decode(&pixels, width).unwrap();
+//! let data = DataMatrix::decode(&pixels, width)?;
 //! assert_eq!(&data, b"Hello, World!");
+//! # Ok::<(), datamatrix::DecodingError>(())
 //! ```
 //!
 //! # Current limitations
@@ -130,8 +132,8 @@ impl DataMatrix {
     ///
     /// The Data Matrix may start with a `FNC1` codeword marking it as a GS1 Data Matrix. The ISO standard
     /// demands from a scanner to prepend the symbology identifier `]d2` in this case. This is _not_ implemented
-    /// here, the decoder currently only ignores the `FNC1` codeword at the beginning. There are some ideas to 
-    /// implement more detailed decoder output if there is demand. 
+    /// here, the decoder currently only ignores the `FNC1` codeword at the beginning. There are some ideas to
+    /// implement more detailed decoder output if there is demand.
     pub fn decode(pixels: &[bool], width: usize) -> Result<Vec<u8>, DecodingError> {
         let (matrix_map, size) =
             MatrixMap::try_from_bits(pixels, width).map_err(DecodingError::PixelConversion)?;
@@ -187,9 +189,20 @@ impl DataMatrix {
 
     /// Encode data as a GS1 Data Matrix.
     ///
-    /// The difference to [encode()](Self::encode) is that
-    /// the `FNC1` codeword is encoded in the first
+    /// The only difference to [encode()](Self::encode) is that
+    /// the `FNC1` codeword is added in the first
     /// position.
+    ///
+    /// Encoding `FNC1` in later positions is not implemented as of now.
+    ///
+    /// ```rust
+    /// # use datamatrix::{DataMatrix, SymbolList, data::DataEncodingError};
+    /// // use "\x1D" (ASCII GS control sequence) to separate element strings
+    /// let data = b"01034531200000111719112510ABCD1234\x1D2110";
+    /// let data_matrix = DataMatrix::encode_gs1(data, SymbolList::default())?;
+    /// let bitmap = data_matrix.bitmap();
+    /// # Ok::<(), DataEncodingError>(())
+    /// ```
     pub fn encode_gs1<I: Into<SymbolList>>(
         data: &[u8],
         symbol_list: I,
@@ -230,8 +243,8 @@ impl DataMatrixBuilder {
     /// # use datamatrix::{DataMatrixBuilder, data::EncodationType};
     /// let datamatrix = DataMatrixBuilder::new()
     ///     .with_encodation_types(EncodationType::Base256 | EncodationType::Edifact)
-    ///     .encode(b"\xFAaaa")
-    ///     .unwrap();
+    ///     .encode(b"\xFAaaa")?;
+    /// Ok::<(), datamatrix::data::DataEncodingError>(())
     /// ```
     pub fn with_encodation_types(self, types: impl Into<FlagSet<EncodationType>>) -> Self {
         Self {
