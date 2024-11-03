@@ -104,6 +104,7 @@ fn enc_mode(data: &[u8], enabled_modes: impl Into<FlagSet<EncodationType>>) -> V
         None,
         enabled_modes.into(),
         false,
+        false,
     )
     .unwrap()
     .0
@@ -208,6 +209,7 @@ fn test_text_encoding_1() {
         &SymbolList::default(),
         None,
         EncodationType::all(),
+        false,
         false,
     )
     .unwrap()
@@ -613,6 +615,7 @@ fn test_only_edifact_impossible() {
         &SymbolList::default(),
         None,
         EncodationType::Edifact,
+        false,
         false,
     );
     assert_eq!(code, Err(DataEncodingError::TooMuchOrIllegalData),);

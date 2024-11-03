@@ -128,6 +128,9 @@ impl DataMatrix {
     ///
     /// The pixels are expected to be given in row-major order, i.e., the top
     /// row of pixels comes first, then the second row and so on.
+    ///
+    /// The Data Matrix may start with `FNC1`, marking it as a GS1 Data Matrix. In this case
+    /// the symbology identifier `]d2` is _not_ added to the returned data.
     pub fn decode(pixels: &[bool], width: usize) -> Result<Vec<u8>, DecodingError> {
         let (matrix_map, size) =
             MatrixMap::try_from_bits(pixels, width).map_err(DecodingError::PixelConversion)?;
@@ -180,6 +183,21 @@ impl DataMatrix {
             .with_symbol_list(symbol_list)
             .encode_str(text)
     }
+
+    /// Encode data as a GS1 Data Matrix.
+    ///
+    /// The difference to [encode()](Self::encode) is that
+    /// the `FNC1` codeword is encoded in the first
+    /// position.
+    pub fn encode_gs1<I: Into<SymbolList>>(
+        data: &[u8],
+        symbol_list: I,
+    ) -> Result<DataMatrix, DataEncodingError> {
+        DataMatrixBuilder::new()
+            .with_symbol_list(symbol_list)
+            .with_fnc1_start(true)
+            .encode(data)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -188,6 +206,7 @@ pub struct DataMatrixBuilder {
     encodation_types: FlagSet<EncodationType>,
     symbol_list: SymbolList,
     use_macros: bool,
+    fnc1_start: bool,
 }
 
 impl DataMatrixBuilder {
@@ -196,6 +215,7 @@ impl DataMatrixBuilder {
             encodation_types: EncodationType::all(),
             symbol_list: SymbolList::default(),
             use_macros: true,
+            fnc1_start: false,
         }
     }
 
@@ -217,6 +237,12 @@ impl DataMatrixBuilder {
             encodation_types: types.into(),
             ..self
         }
+    }
+
+    /// Specify whether the Data Matrix shall start with a `FNC1` codeword marking
+    /// it as a GS1 Data Matrix.
+    pub fn with_fnc1_start(self, fnc1_start: bool) -> Self {
+        Self { fnc1_start, ..self }
     }
 
     /// Whether to use macros or not.
@@ -277,6 +303,7 @@ impl DataMatrixBuilder {
             eci,
             self.encodation_types,
             self.use_macros,
+            self.fnc1_start,
         )?;
         let ecc = errorcode::encode_error(&codewords, size);
         let num_data_codewords = codewords.len();
@@ -391,4 +418,15 @@ mod test {
             v
         }
     }
+}
+
+#[test]
+fn test_simple_gs1() {
+    let data = b"01034531200000111719112510ABCD1234\x1D2110";
+    let result = DataMatrix::encode_gs1(data, SymbolList::default()).unwrap();
+    let codewords = result.codewords();
+    assert_eq!(codewords[0], crate::encodation::ascii::FNC1);
+
+    let decoded = data::decode_data(result.data_codewords()).unwrap();
+    assert_eq!(decoded, data);
 }

@@ -22,14 +22,16 @@ use super::{SymbolList, SymbolSize};
 use pretty_assertions::assert_eq;
 
 /// Encode input to data codewords for Data Matrix.
-pub fn encode_data(
+pub(crate) fn encode_data(
     data: &[u8],
     symbol_list: &SymbolList,
     eci: Option<u32>,
     enabled_modes: impl Into<FlagSet<EncodationType>>,
     use_macros: bool,
+    fnc1_start: bool,
 ) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
-    let mut encoder = GenericDataEncoder::with_size(data, symbol_list, enabled_modes.into());
+    let mut encoder =
+        GenericDataEncoder::with_size(data, symbol_list, enabled_modes.into(), fnc1_start);
     if use_macros {
         encoder.use_macro_if_possible();
     }
@@ -311,6 +313,7 @@ fn test_macro() {
             None,
             EncodationType::all(),
             true,
+            false,
         )
         .unwrap()
         .0,
@@ -323,6 +326,7 @@ fn test_macro() {
             None,
             EncodationType::all(),
             true,
+            false,
         )
         .unwrap()
         .0,
