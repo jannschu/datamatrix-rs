@@ -128,8 +128,10 @@ impl DataMatrix {
     /// The pixels are expected to be given in row-major order, i.e., the top
     /// row of pixels comes first, then the second row and so on.
     ///
-    /// The Data Matrix may start with `FNC1`, marking it as a GS1 Data Matrix. In this case
-    /// the symbology identifier `]d2` is _not_ added to the returned data.
+    /// The Data Matrix may start with a `FNC1` codeword marking it as a GS1 Data Matrix. The ISO standard
+    /// demands from a scanner to prepend the symbology identifier `]d2` in this case. This is _not_ implemented
+    /// here, the decoder currently only ignores the `FNC1` codeword at the beginning. There are some ideas to 
+    /// implement more detailed decoder output if there is demand. 
     pub fn decode(pixels: &[bool], width: usize) -> Result<Vec<u8>, DecodingError> {
         let (matrix_map, size) =
             MatrixMap::try_from_bits(pixels, width).map_err(DecodingError::PixelConversion)?;
