@@ -197,7 +197,7 @@ impl DataMatrix {
     ///
     /// ```rust
     /// # use datamatrix::{DataMatrix, SymbolList, data::DataEncodingError};
-    /// // use "\x1D" (ASCII GS control sequence) to separate element strings
+    /// // use "\x1D" (ASCII GS control sequence) to concatenate element strings
     /// let data = b"01034531200000111719112510ABCD1234\x1D2110";
     /// let data_matrix = DataMatrix::encode_gs1(data, SymbolList::default())?;
     /// let bitmap = data_matrix.bitmap();
