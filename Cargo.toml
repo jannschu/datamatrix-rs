@@ -1,6 +1,6 @@
 [package]
 name = "datamatrix"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Jannik Schürg <jannik.schuerg+crates@posteo.de>"]
 edition = "2021"
 readme = "README.md"
