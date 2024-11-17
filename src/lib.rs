@@ -311,7 +311,7 @@ impl DataMatrixBuilder {
         data: &[u8],
         eci: Option<u32>,
     ) -> Result<DataMatrix, DataEncodingError> {
-        let (mut codewords, size) = data::encode_data(
+        let (mut codewords, size) = data::encode_data_internal(
             data,
             &self.symbol_list,
             eci,

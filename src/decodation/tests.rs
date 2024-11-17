@@ -16,7 +16,6 @@ fn forth_and_back(data: &[u8]) -> Option<SymbolSize> {
         None,
         EncodationType::all(),
         false,
-        false,
     );
     if let Ok(encoded) = encoded {
         let decoded = decode_data(&encoded.0);

@@ -28,6 +28,16 @@ pub fn encode_data(
     eci: Option<u32>,
     enabled_modes: impl Into<FlagSet<EncodationType>>,
     use_macros: bool,
+) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
+    encode_data_internal(data, symbol_list, eci, enabled_modes, use_macros, false)
+}
+
+pub(crate) fn encode_data_internal(
+    data: &[u8],
+    symbol_list: &SymbolList,
+    eci: Option<u32>,
+    enabled_modes: impl Into<FlagSet<EncodationType>>,
+    use_macros: bool,
     fnc1_start: bool,
 ) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
     let mut encoder =
@@ -313,7 +323,6 @@ fn test_macro() {
             None,
             EncodationType::all(),
             true,
-            false,
         )
         .unwrap()
         .0,
@@ -326,7 +335,6 @@ fn test_macro() {
             None,
             EncodationType::all(),
             true,
-            false,
         )
         .unwrap()
         .0,
