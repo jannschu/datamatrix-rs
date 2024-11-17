@@ -7,8 +7,9 @@
 //! let code = DataMatrix::encode(
 //!     b"Hello, World!",
 //!     SymbolList::default(),
-//! ).unwrap();
+//! )?;
 //! print!("{}", code.bitmap().unicode());
+//! # Ok::<(), datamatrix::data::DataEncodingError>(())
 //! ```
 //!
 //! This toy example will print a Data Matrix using Unicode block characters.
@@ -58,8 +59,9 @@
 //! # let pixels: Vec<bool> = map.bitmap().bits().into();
 //! // let pixels: Vec<bool> = …
 //! let width = 16;
-//! let data = DataMatrix::decode(&pixels, width).unwrap();
+//! let data = DataMatrix::decode(&pixels, width)?;
 //! assert_eq!(&data, b"Hello, World!");
+//! # Ok::<(), datamatrix::DecodingError>(())
 //! ```
 //!
 //! # Current limitations
@@ -68,10 +70,9 @@
 //! is done and exposed in the API. All that is missing is a detector to extract a matrix of true and false values
 //! from an image. A general purpose detector is planned for the future, though.
 //!
-//! Other limitations: Currently there is no support for GS1/FCN1 character encoding,
-//! full ECI, structured append, and
-//! reader programming. The decoding output format specified in ISO/IEC 15424 is
-//! also not implemented (metadata, ECI, etc.), if you have a use case for this
+//! Other limitations: Currently there is only [limited support for GS1](DataMatrix::encode_gs1)/FNC1 character encoding,
+//! [limited ECI encoding](DataMatrix::encode_str), no structured append, and no reader programming. The decoding output
+//! format specified in ISO/IEC 15424 is also not implemented (metadata, ECI, etc.), if you have a use case for this
 //! please open an issue.
 
 #![no_std]
@@ -128,6 +129,11 @@ impl DataMatrix {
     ///
     /// The pixels are expected to be given in row-major order, i.e., the top
     /// row of pixels comes first, then the second row and so on.
+    ///
+    /// The Data Matrix may start with a `FNC1` codeword marking it as a GS1 Data Matrix. The ISO standard
+    /// demands from a scanner to prepend the symbology identifier `]d2` in this case. This is _not_ implemented
+    /// here, the decoder currently only ignores the `FNC1` codeword at the beginning. There are some ideas to
+    /// implement more detailed decoder output if there is demand.
     pub fn decode(pixels: &[bool], width: usize) -> Result<Vec<u8>, DecodingError> {
         let (matrix_map, size) =
             MatrixMap::try_from_bits(pixels, width).map_err(DecodingError::PixelConversion)?;
@@ -180,6 +186,32 @@ impl DataMatrix {
             .with_symbol_list(symbol_list)
             .encode_str(text)
     }
+
+    /// Encode data as a GS1 Data Matrix.
+    ///
+    /// The only difference to [encode()](Self::encode) is that
+    /// the `FNC1` codeword is added in the first
+    /// position.
+    ///
+    /// Encoding `FNC1` in later positions is not implemented as of now.
+    ///
+    /// ```rust
+    /// # use datamatrix::{DataMatrix, SymbolList, data::DataEncodingError};
+    /// // use "\x1D" (ASCII GS control sequence) to concatenate element strings
+    /// let data = b"01034531200000111719112510ABCD1234\x1D2110";
+    /// let data_matrix = DataMatrix::encode_gs1(data, SymbolList::default())?;
+    /// let bitmap = data_matrix.bitmap();
+    /// # Ok::<(), DataEncodingError>(())
+    /// ```
+    pub fn encode_gs1<I: Into<SymbolList>>(
+        data: &[u8],
+        symbol_list: I,
+    ) -> Result<DataMatrix, DataEncodingError> {
+        DataMatrixBuilder::new()
+            .with_symbol_list(symbol_list)
+            .with_fnc1_start(true)
+            .encode(data)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -188,6 +220,7 @@ pub struct DataMatrixBuilder {
     encodation_types: FlagSet<EncodationType>,
     symbol_list: SymbolList,
     use_macros: bool,
+    fnc1_start: bool,
 }
 
 impl DataMatrixBuilder {
@@ -196,6 +229,7 @@ impl DataMatrixBuilder {
             encodation_types: EncodationType::all(),
             symbol_list: SymbolList::default(),
             use_macros: true,
+            fnc1_start: false,
         }
     }
 
@@ -209,14 +243,20 @@ impl DataMatrixBuilder {
     /// # use datamatrix::{DataMatrixBuilder, data::EncodationType};
     /// let datamatrix = DataMatrixBuilder::new()
     ///     .with_encodation_types(EncodationType::Base256 | EncodationType::Edifact)
-    ///     .encode(b"\xFAaaa")
-    ///     .unwrap();
+    ///     .encode(b"\xFAaaa")?;
+    /// Ok::<(), datamatrix::data::DataEncodingError>(())
     /// ```
     pub fn with_encodation_types(self, types: impl Into<FlagSet<EncodationType>>) -> Self {
         Self {
             encodation_types: types.into(),
             ..self
         }
+    }
+
+    /// Specify whether the Data Matrix shall start with a `FNC1` codeword marking
+    /// it as a GS1 Data Matrix.
+    pub fn with_fnc1_start(self, fnc1_start: bool) -> Self {
+        Self { fnc1_start, ..self }
     }
 
     /// Whether to use macros or not.
@@ -271,12 +311,13 @@ impl DataMatrixBuilder {
         data: &[u8],
         eci: Option<u32>,
     ) -> Result<DataMatrix, DataEncodingError> {
-        let (mut codewords, size) = data::encode_data(
+        let (mut codewords, size) = data::encode_data_internal(
             data,
             &self.symbol_list,
             eci,
             self.encodation_types,
             self.use_macros,
+            self.fnc1_start,
         )?;
         let ecc = errorcode::encode_error(&codewords, size);
         let num_data_codewords = codewords.len();
@@ -391,4 +432,15 @@ mod test {
             v
         }
     }
+}
+
+#[test]
+fn test_simple_gs1() {
+    let data = b"01034531200000111719112510ABCD1234\x1D2110";
+    let result = DataMatrix::encode_gs1(data, SymbolList::default()).unwrap();
+    let codewords = result.codewords();
+    assert_eq!(codewords[0], crate::encodation::ascii::FNC1);
+
+    let decoded = data::decode_data(result.data_codewords()).unwrap();
+    assert_eq!(decoded, data);
 }

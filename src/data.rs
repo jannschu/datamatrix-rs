@@ -29,7 +29,19 @@ pub fn encode_data(
     enabled_modes: impl Into<FlagSet<EncodationType>>,
     use_macros: bool,
 ) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
-    let mut encoder = GenericDataEncoder::with_size(data, symbol_list, enabled_modes.into());
+    encode_data_internal(data, symbol_list, eci, enabled_modes, use_macros, false)
+}
+
+pub(crate) fn encode_data_internal(
+    data: &[u8],
+    symbol_list: &SymbolList,
+    eci: Option<u32>,
+    enabled_modes: impl Into<FlagSet<EncodationType>>,
+    use_macros: bool,
+    fnc1_start: bool,
+) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
+    let mut encoder =
+        GenericDataEncoder::with_size(data, symbol_list, enabled_modes.into(), fnc1_start);
     if use_macros {
         encoder.use_macro_if_possible();
     }

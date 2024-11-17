@@ -2,6 +2,7 @@
 use crate::symbol_size::{SymbolList, SymbolSize};
 
 use alloc::{vec, vec::Vec};
+use ascii::FNC1;
 use flagset::FlagSet;
 
 pub(crate) mod ascii;
@@ -168,14 +169,16 @@ impl<'a> GenericDataEncoder<'a> {
         data: &'a [u8],
         symbol_list: &'a SymbolList,
         enabled_modes: FlagSet<EncodationType>,
+        start_with_fnc1: bool,
     ) -> Self {
+        let codewords = if start_with_fnc1 { vec![FNC1] } else { vec![] };
         Self {
             data,
             input: data,
             symbol_list,
             new_mode: None,
             encodation: EncodationType::Ascii,
-            codewords: Vec::new(),
+            codewords,
             planned_switches: vec![],
             enabled_modes,
         }
@@ -308,7 +311,7 @@ impl<'a> GenericDataEncoder<'a> {
 #[test]
 fn test_empty() {
     let symbols = crate::SymbolList::default();
-    let mut enc = GenericDataEncoder::with_size(&[], &symbols, EncodationType::all());
+    let mut enc = GenericDataEncoder::with_size(&[], &symbols, EncodationType::all(), false);
     let (cw, _) = GenericDataEncoder::codewords(&mut enc).unwrap();
     assert_eq!(cw, vec![ascii::PAD, 175, 70]);
 }
