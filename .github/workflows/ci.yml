@@ -50,3 +50,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+      - name: Check semver
+        if: matrix.os == 'ubuntu-latest'
+        uses: obi1kenobi/cargo-semver-checks-action@v2
