@@ -527,6 +527,7 @@ impl MatrixMap<bool> {
 /// Contains helpers for rendering the content. For rendering targets which
 /// use something similar to pixels try [pixels()](Self::pixels), while
 /// vector formats might profit from [path()][Self::path].
+#[derive(Clone)]
 pub struct Bitmap<M> {
     width: usize,
     bits: Vec<M>,
