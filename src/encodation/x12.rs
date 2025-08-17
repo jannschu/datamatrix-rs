@@ -1,4 +1,4 @@
-use super::{ascii, c40, DataEncodingError, EncodingContext};
+use super::{DataEncodingError, EncodingContext, ascii, c40};
 
 pub(crate) fn is_native_x12(ch: u8) -> bool {
     matches!(ch, 13 | 42 | 62 | 32 | b'0'..=b'9' | b'A'..=b'Z')

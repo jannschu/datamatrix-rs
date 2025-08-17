@@ -1,4 +1,4 @@
-use super::{c40, DataEncodingError, EncodingContext};
+use super::{DataEncodingError, EncodingContext, c40};
 use arrayvec::ArrayVec;
 
 fn low_ascii_to_text_symbols(ctx: &mut ArrayVec<u8, 6>, ch: u8) {

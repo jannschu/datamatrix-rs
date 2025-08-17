@@ -1,8 +1,8 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
 
-use super::frac::C;
 use super::ContextInformation;
+use super::frac::C;
 use super::{Frac, Plan, StepResult};
 use crate::encodation::{ascii, c40};
 

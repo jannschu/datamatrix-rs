@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 
-use super::{ascii, DataEncodingError, EncodingContext};
+use super::{DataEncodingError, EncodingContext, ascii};
 
 pub(crate) const UNLATCH: u8 = 0b01_1111;
 

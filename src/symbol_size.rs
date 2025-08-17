@@ -9,7 +9,7 @@ use alloc::collections::BTreeSet;
 use alloc::{vec, vec::Vec};
 
 #[cfg(test)]
-use enum_iterator::{all, Sequence};
+use enum_iterator::{Sequence, all};
 
 #[cfg(test)]
 use pretty_assertions::assert_eq;
@@ -1076,7 +1076,7 @@ fn test_list_all() {
     assert_eq!(SymbolList::all().iter().count(), SYMBOL_SIZES.len());
 
     for size in SymbolList::all() {
-        assert!(SYMBOL_SIZES.iter().any(|s| *s == size));
+        assert!(SYMBOL_SIZES.contains(&size));
     }
 }
 

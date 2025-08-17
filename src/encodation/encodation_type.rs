@@ -1,6 +1,6 @@
-use flagset::{flags, FlagSet};
+use flagset::{FlagSet, flags};
 
-use super::{ascii, base256, c40, edifact, text, x12, DataEncodingError, GenericDataEncoder};
+use super::{DataEncodingError, GenericDataEncoder, ascii, base256, c40, edifact, text, x12};
 
 flags! {
     /// List of data encodation types

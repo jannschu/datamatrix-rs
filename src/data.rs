@@ -12,9 +12,9 @@
 use alloc::{string::String, vec::Vec};
 use flagset::FlagSet;
 
-pub use crate::decodation::{decode_data, decode_str, DataDecodingError};
-use crate::encodation::{planner::optimize, GenericDataEncoder};
+pub use crate::decodation::{DataDecodingError, decode_data, decode_str};
 pub use crate::encodation::{DataEncodingError, EncodationType};
+use crate::encodation::{GenericDataEncoder, planner::optimize};
 
 use super::{SymbolList, SymbolSize};
 
@@ -313,7 +313,7 @@ pub(crate) fn latin1_to_utf8_mut(latin1: &[u8], out: &mut String) -> Option<()> 
 
 #[test]
 fn test_macro() {
-    use crate::encodation::{ascii::PAD, MACRO05, MACRO06};
+    use crate::encodation::{MACRO05, MACRO06, ascii::PAD};
     use alloc::vec;
 
     assert_eq!(

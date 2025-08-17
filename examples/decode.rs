@@ -1,6 +1,6 @@
 use std::io::{self, Read};
 
-use datamatrix::{placement::MatrixMap, DataMatrix};
+use datamatrix::{DataMatrix, placement::MatrixMap};
 
 fn main() {
     // First read a bitmap image as ASCII encoded 0s and 1s from stdin.

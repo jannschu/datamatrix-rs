@@ -41,8 +41,8 @@ use alloc::{vec, vec::Vec};
 use super::symbol_size::SymbolSize;
 use galois::GF;
 
-pub use decoding::decode as decode_error;
 pub use decoding::ErrorDecodingError;
+pub use decoding::decode as decode_error;
 
 #[cfg(test)]
 use pretty_assertions::assert_eq;
@@ -194,7 +194,7 @@ pub fn encode_error(data: &[u8], size: SymbolSize) -> Vec<u8> {
     let setup = size.block_setup();
     let num_codewords = size.num_data_codewords();
     assert!(data.len() == num_codewords);
-    let gen = generator(setup.num_ecc_per_block);
+    let r#gen = generator(setup.num_ecc_per_block);
     // For bigger symbol sizes the data is split up into interleaved blocks
     // for which an error code is computed individually. we store
     // the error blocks interleaved in the returned result.
@@ -202,12 +202,9 @@ pub fn encode_error(data: &[u8], size: SymbolSize) -> Vec<u8> {
     let mut ecc = vec![0; setup.num_ecc_per_block + 1];
     let mut full_ecc = vec![0; setup.num_ecc_per_block * setup.num_ecc_blocks];
     for block in 0..setup.num_ecc_blocks {
-        for item in &mut ecc {
-            // reset ecc for new block
-            *item = 0;
-        }
+        ecc.fill(0);
         let strided_data_input = (block..data.len()).step_by(stride).map(|i| data[i]);
-        ecc_block(strided_data_input, gen, &mut ecc);
+        ecc_block(strided_data_input, r#gen, &mut ecc);
 
         // copy block interleaved to result vector
         for (result, ecc_i) in full_ecc

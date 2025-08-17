@@ -2,7 +2,7 @@ use alloc::{vec, vec::Vec};
 
 use flagset::FlagSet;
 
-use super::{encodation_type::EncodationType, DataEncodingError, EncodingContext};
+use super::{DataEncodingError, EncodingContext, encodation_type::EncodationType};
 use crate::data::encode_data;
 use crate::symbol_size::SymbolList;
 
@@ -144,7 +144,9 @@ fn test_c40_basic2_3() {
 fn test_c40_spec_example() {
     assert_eq!(
         enc(b"A_2_D_5_G7H_9J_1L2"),
-        vec![230, 87, 195, 37, 195, 106, 131, 56, 131, 126, 206, 10, 94, 144, 3, 35, 47, 254],
+        vec![
+            230, 87, 195, 37, 195, 106, 131, 56, 131, 126, 206, 10, 94, 144, 3, 35, 47, 254
+        ],
         // Alternatives:
         // vec![66, 96, 51, 96, 69, 96, 230, 56, 131, 126, 206, 10, 94, 144, 3, 35, 47, 254],
         // vec![66, 96, 51, 96, 69, 96, 54, 96, 230, 126, 206, 10, 94, 144, 3, 35, 47, 254],
@@ -172,7 +174,9 @@ fn test_c40_special_case_c() {
     //case "c": Unlatch and write last character in ASCII
     assert_eq!(
         enc(b"?      T        \xda  \x10"),
-        vec![64, 230, 19, 60, 19, 60, 206, 188, 19, 60, 19, 60, 11, 24, 19, 57, 254, 17],
+        vec![
+            64, 230, 19, 60, 19, 60, 206, 188, 19, 60, 19, 60, 11, 24, 19, 57, 254, 17
+        ],
     );
 }
 
@@ -196,7 +200,9 @@ fn test_c40_special_cases2() {
     // available > 2, rest = 2 --> unlatch and encode as ASCII
     assert_eq!(
         enc(b"aimaimaimaimaimaimai"),
-        vec![239, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 90, 242, 254]
+        vec![
+            239, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 91, 11, 90, 242, 254
+        ]
     );
 }
 
@@ -242,7 +248,9 @@ fn test_text_encoding_4() {
 fn test_text_encoding_5() {
     assert_eq!(
         enc(b"aimaimaim{txt}\x04"),
-        vec![239, 91, 11, 91, 11, 91, 11, 16, 218, 236, 107, 181, 69, 254, 129, 237]
+        vec![
+            239, 91, 11, 91, 11, 91, 11, 16, 218, 236, 107, 181, 69, 254, 129, 237
+        ]
     );
 }
 
@@ -303,7 +311,9 @@ fn test_x12_4() {
 fn test_x12_5() {
     assert_eq!(
         enc(b"ABC>ABC123>ABCDEF"),
-        vec![240, 4, 32, 254, 4, 32, 241, 203, 63, 129, 8, 49, 5, 25, 240, 129],
+        vec![
+            240, 4, 32, 254, 4, 32, 241, 203, 63, 129, 8, 49, 5, 25, 240, 129
+        ],
         // Alternative:
         // vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 96, 82, 254, 70, 71, 129, 237],
         // vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 254, 230, 96, 82, 254, 70, 71]
@@ -501,7 +511,9 @@ fn test_c40_unlatching() {
     assert!(matches!(codewords[0], 230 | 238));
     assert_eq!(
         &codewords[1..],
-        &[91, 11, 91, 11, 91, 11, 91, 11, 254, 239, 91, 11, 91, 11, 91, 11, 254]
+        &[
+            91, 11, 91, 11, 91, 11, 91, 11, 254, 239, 91, 11, 91, 11, 91, 11, 254
+        ]
     );
 }
 
@@ -509,7 +521,9 @@ fn test_c40_unlatching() {
 fn test_unlatching_from_text() {
     assert_eq!(
         enc(b"aimaimaimaim12345678"),
-        vec![239, 91, 11, 91, 11, 91, 11, 91, 11, 254, 142, 164, 186, 208, 129, 237]
+        vec![
+            239, 91, 11, 91, 11, 91, 11, 91, 11, 254, 142, 164, 186, 208, 129, 237
+        ]
     );
 }
 
@@ -589,7 +603,9 @@ fn test_bug_3048549() {
     // of an encoding problem of the character 0x0060 in Java source code.
     assert_eq!(
         enc(b"fiykmj*Rh2`,e6"),
-        vec![239, 122, 87, 154, 40, 7, 171, 115, 207, 12, 130, 71, 155, 254, 129, 237]
+        vec![
+            239, 122, 87, 154, 40, 7, 171, 115, 207, 12, 130, 71, 155, 254, 129, 237
+        ]
     );
 }
 

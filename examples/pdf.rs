@@ -1,6 +1,6 @@
 use std::io::BufWriter;
 
-use datamatrix::{placement::PathSegment, DataMatrix, SymbolList};
+use datamatrix::{DataMatrix, SymbolList, placement::PathSegment};
 use lopdf::content::Operation;
 use printpdf::*;
 

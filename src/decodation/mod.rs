@@ -2,8 +2,8 @@
 //!
 //! It performs the inverse of the `encodation` module.
 use super::encodation::{
-    ascii, edifact, EncodationType, MACRO05, MACRO05_HEAD, MACRO06, MACRO06_HEAD, MACRO_TRAIL,
-    UNLATCH,
+    EncodationType, MACRO_TRAIL, MACRO05, MACRO05_HEAD, MACRO06, MACRO06_HEAD, UNLATCH, ascii,
+    edifact,
 };
 use alloc::{string::String, vec::Vec};
 
@@ -249,7 +249,7 @@ fn decode_ascii<'a>(
                 return Err(DataDecodingError::UnexpectedCharacter(
                     "illegal in ascii",
                     ch,
-                ))
+                ));
             }
         }
     }
@@ -435,7 +435,7 @@ fn decode_c40_like<'a>(
                         return Err(DataDecodingError::UnexpectedCharacter(
                             "not in base c40/text",
                             ch,
-                        ))
+                        ));
                     }
                 }
             } else if shift == 1 {
@@ -452,7 +452,7 @@ fn decode_c40_like<'a>(
                         return Err(DataDecodingError::UnexpectedCharacter(
                             "not in shift1 c40/text",
                             ch,
-                        ))
+                        ));
                     }
                 }
                 shift = 0;
@@ -473,7 +473,7 @@ fn decode_c40_like<'a>(
                         return Err(DataDecodingError::UnexpectedCharacter(
                             "not in shift2 c40/text",
                             ch,
-                        ))
+                        ));
                     }
                 }
                 shift = 0;
@@ -492,7 +492,7 @@ fn decode_c40_like<'a>(
                         return Err(DataDecodingError::UnexpectedCharacter(
                             "not in shift3 c40/text",
                             ch,
-                        ))
+                        ));
                     }
                 }
                 shift = 0;

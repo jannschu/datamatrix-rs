@@ -1,5 +1,5 @@
 use super::ContextInformation;
-use super::{frac::C, Frac, Plan, StepResult};
+use super::{Frac, Plan, StepResult, frac::C};
 use crate::encodation::ascii;
 use crate::encodation::edifact::is_encodable;
 

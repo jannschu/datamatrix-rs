@@ -2,8 +2,8 @@
 //! for decoding Reed-Solomon codes.
 
 use super::ErrorDecodingError;
-use crate::errorcode::GF;
 use crate::SymbolSize;
+use crate::errorcode::GF;
 
 use alloc::{vec, vec::Vec};
 
@@ -57,8 +57,8 @@ where
     F: Fn(&[GF]) -> Result<Vec<GF>, ErrorDecodingError>,
     G: Fn(&mut [GF], &[GF], &mut [GF]),
 {
-    let n_data = (data.len() + stride - 1) / stride;
-    let n_error = (error.len() + stride - 1) / stride;
+    let n_data = data.len().div_ceil(stride);
+    let n_error = error.len().div_ceil(stride);
     let n = n_data + n_error;
     // generator polynomial has degree d = err_len
     assert!(err_len >= 1, "degree of generator polynomial must be >= 1");
@@ -139,7 +139,7 @@ fn find_inv_error_locations_levinson_durbin(syn: &[GF]) -> Result<Vec<GF>, Error
     // initialize y = [1/b_v, 0, ..., 0]
     let mut y = Vec::with_capacity(t);
     y.push(GF(1) / syn[v - 1]);
-    y.extend(core::iter::repeat(GF(0)).take(v - 1));
+    y.extend(core::iter::repeat_n(GF(0), v - 1));
 
     // initialize w, solve lower right triangular system H_v w = h_v
     let mut w = Vec::<GF>::with_capacity(t);

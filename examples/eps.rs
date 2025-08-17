@@ -1,8 +1,8 @@
 use std::fmt::Write;
 
 use datamatrix::{
-    placement::{Bitmap, PathSegment},
     DataMatrix, SymbolList,
+    placement::{Bitmap, PathSegment},
 };
 
 fn bitmap_to_eps(bitmap: Bitmap<bool>) -> String {
@@ -29,10 +29,10 @@ fn bitmap_to_eps(bitmap: Bitmap<bool>) -> String {
     );
     for part in bitmap.path() {
         match part {
-            PathSegment::Horizontal(n) => write!(eps, "{} h\n", n),
-            PathSegment::Vertical(n) => write!(eps, "{} v\n", -n),
-            PathSegment::Move(dx, dy) => write!(eps, "{} {} m\n", dx, -dy),
-            PathSegment::Close => write!(eps, "z\n"),
+            PathSegment::Horizontal(n) => writeln!(eps, "{} h", n),
+            PathSegment::Vertical(n) => writeln!(eps, "{} v", -n),
+            PathSegment::Move(dx, dy) => writeln!(eps, "{} {} m", dx, -dy),
+            PathSegment::Close => writeln!(eps, "z"),
         }
         .unwrap();
     }

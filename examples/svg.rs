@@ -1,8 +1,8 @@
 use std::fmt::Write;
 
 use datamatrix::{
-    placement::{Bitmap, PathSegment},
     DataMatrix, SymbolList,
+    placement::{Bitmap, PathSegment},
 };
 
 fn bitmap_to_svg(bitmap: Bitmap<bool>) -> String {

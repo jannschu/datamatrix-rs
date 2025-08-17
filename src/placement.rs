@@ -595,11 +595,7 @@ impl<B: Bit> Bitmap<B> {
                 } else {
                     B::LOW
                 };
-            if res == B::HIGH {
-                1
-            } else {
-                0
-            }
+            if res == B::HIGH { 1 } else { 0 }
         };
         let mut out =
             String::with_capacity((height + 2 * BORDER) * (self.width + 1 + 2 * BORDER) * 3 / 2);

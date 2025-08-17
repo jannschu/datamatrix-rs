@@ -6,7 +6,7 @@ use alloc::{vec, vec::Vec};
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 
-use super::{ascii, DataEncodingError, EncodingContext};
+use super::{DataEncodingError, EncodingContext, ascii};
 
 const SHIFT1: u8 = 0;
 const SHIFT2: u8 = 1;

@@ -6,8 +6,8 @@ use flagset::FlagSet;
 use crate::{encodation::encodation_type::EncodationType, symbol_size::SymbolList};
 
 use super::{
-    ascii::AsciiPlan, base256::Base256Plan, c40::C40Plan, edifact::EdifactPlan, frac::Frac,
-    text::TextPlan, x12::X12Plan, ContextInformation, Plan, StepResult,
+    ContextInformation, Plan, StepResult, ascii::AsciiPlan, base256::Base256Plan, c40::C40Plan,
+    edifact::EdifactPlan, frac::Frac, text::TextPlan, x12::X12Plan,
 };
 
 #[cfg(test)]
