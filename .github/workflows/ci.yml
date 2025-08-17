@@ -2,54 +2,59 @@ name: CI
 
 on:
   push:
-    branches:    
+    branches:
       - main
   pull_request:
-  
+
 jobs:
+  lint:
+    name: Code lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Clippy
+        run: cargo clippy --all
+
+  format:
+    name: Code format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Rustfmt
+        run: cargo fmt --all -- --check
+
   tests:
-    name: ${{ matrix.make.name }} (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        rust: [stable]
+    name: Documentation
+    runs-on: ubuntu-latest
     env:
-      RUST_BACKTRACE: full
       RUSTDOCFLAGS: -Dwarnings
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust ${{ matrix.rust }}
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          profile: minimal
-          components: clippy, rustfmt
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - name: Code format
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-      - name: Clippy
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --tests -- -D warnings
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Check rustdoc
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps --document-private-items
-      - name: Tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run: cargo doc --no-deps --document-private-items
+
+  unit-test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test
+
+  semantic-versioning:
+    name: Check semantic versioning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Check semver
-        if: matrix.os == 'ubuntu-latest'
         uses: obi1kenobi/cargo-semver-checks-action@v2
