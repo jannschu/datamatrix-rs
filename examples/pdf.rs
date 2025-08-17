@@ -1,7 +1,6 @@
 use std::io::BufWriter;
 
 use datamatrix::{DataMatrix, SymbolList, placement::PathSegment};
-use lopdf::content::Operation;
 use printpdf::*;
 
 fn main() {
@@ -29,54 +28,65 @@ fn main() {
     // bitmap.height() and the available space.
     const SIZE: Mm = Mm(1.);
 
-    // Create PDF for only the Data Matrix and the minimal quiet zone around it
-    let (doc, page1, layer1) = PdfDocument::new(
-        "datamatrix example",
-        SIZE * (bitmap.width() + 2) as f32,
-        SIZE * (bitmap.height() + 2) as f32,
-        "Layer1",
-    );
-    let layer = doc.get_page(page1).get_layer(layer1);
-    let black = Rgb::new(0., 0., 0., None);
-    layer.set_fill_color(Color::Rgb(black));
-
     // Construct a path starting from the top left corner.
-    let mut x: Pt = SIZE.into();
-    let mut y: Pt = (SIZE * (bitmap.height() + 1) as f32).into();
-    layer.add_operation(Operation::new("m", vec![x.into(), y.into()]));
+    let mut x: Mm = SIZE;
+    let mut y: Mm = SIZE * (bitmap.height() + 1) as f32;
+    let black = Color::Rgb(Rgb::new(0., 0., 0., None));
+    let mut ops = vec![Op::SetFillColor { col: black }];
 
     // Remember last starting point
     let mut start = (x, y);
     // The PDF coordinate system is centered in the bottom left, so we
     // have to invert the relative y steps.
-    let path = bitmap.path();
-    for (i, segment) in path.iter().enumerate() {
+    let mut ring_points = vec![];
+    let mut rings = vec![];
+    for segment in bitmap.path() {
         match segment {
             PathSegment::Move(dx, dy) => {
-                x += (SIZE * (*dx as f32)).into();
-                y -= (SIZE * (*dy as f32)).into();
+                x += SIZE * (dx as f32);
+                y -= SIZE * (dy as f32);
                 start = (x, y);
-                layer.add_operation(Operation::new("m", vec![x.into(), y.into()]));
             }
             PathSegment::Horizontal(dx) => {
-                x += (SIZE * (*dx as f32)).into();
-                layer.add_operation(Operation::new("l", vec![x.into(), y.into()]));
+                x += SIZE * (dx as f32);
             }
             PathSegment::Vertical(dy) => {
-                y -= (SIZE * (*dy as f32)).into();
-                layer.add_operation(Operation::new("l", vec![x.into(), y.into()]));
+                y -= SIZE * (dy as f32);
             }
             PathSegment::Close => {
-                if i != path.len() - 1 {
-                    x = start.0;
-                    y = start.1;
-                    layer.add_operation(Operation::new("h", vec![]));
-                }
+                x = start.0;
+                y = start.1;
             }
+        };
+        ring_points.push(LinePoint {
+            p: Point::new(x, y),
+            bezier: false,
+        });
+        if matches!(segment, PathSegment::Close) {
+            let mut points = vec![];
+            std::mem::swap(&mut ring_points, &mut points);
+            rings.push(PolygonRing { points });
         }
     }
-    // Fill with "evenodd"
-    layer.add_operation(Operation::new("f*", vec![]));
+    let polygon = Polygon {
+        rings,
+        mode: PaintMode::Fill,
+        winding_order: WindingOrder::EvenOdd,
+    };
+    ops.push(Op::DrawPolygon { polygon });
 
-    doc.save(&mut BufWriter::new(std::io::stdout())).unwrap();
+    // Create PDF for only the Data Matrix and the minimal quiet zone around it
+    let page = PdfPage::new(
+        SIZE * (bitmap.width() + 2) as f32,
+        SIZE * (bitmap.height() + 2) as f32,
+        ops,
+    );
+    let mut doc = PdfDocument::new("datamatrix example");
+    doc.pages.push(page);
+
+    doc.save_writer(
+        &mut BufWriter::new(std::io::stdout()),
+        &PdfSaveOptions::default(),
+        &mut vec![],
+    );
 }

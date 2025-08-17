@@ -21,7 +21,7 @@ encoding_rs = { version = "0.8", optional = true }
 
 [dev-dependencies]
 image = "0.25"
-printpdf = "0.7"
+printpdf = "0.8"
 qrcode = "0.14.0"
 enum-iterator = "2"
 pretty_assertions = "1.1"
