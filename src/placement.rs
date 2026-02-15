@@ -80,7 +80,7 @@ impl<M: Bit> MatrixMap<M> {
         if width == 0 {
             return Err(BitmapConversionError::ZeroWidth);
         }
-        if bits.len() % width != 0 {
+        if !bits.len().is_multiple_of(width) {
             return Err(BitmapConversionError::DataSize);
         }
         let height = bits.len() / width;
