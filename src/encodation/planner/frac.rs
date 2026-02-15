@@ -30,13 +30,13 @@ impl Frac {
 
     #[inline]
     fn add_mut(&mut self, num: C, denum: C) {
-        debug_assert!(denum > 0 && DENUM % denum == 0);
+        debug_assert!(denum > 0 && DENUM.is_multiple_of(denum));
         self.0 += num * (DENUM / denum);
     }
 
     #[inline]
     fn sub_mut(&mut self, num: C, denum: C) {
-        debug_assert!(denum > 0 && DENUM % denum == 0);
+        debug_assert!(denum > 0 && DENUM.is_multiple_of(denum));
         self.0 -= num * (DENUM / denum);
     }
 
