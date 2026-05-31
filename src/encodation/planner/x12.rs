@@ -42,7 +42,19 @@ impl<T: ContextInformation> Plan for X12Plan<T> {
     }
 
     fn cost(&self) -> Frac {
-        self.cost
+        let mut cost = self.cost;
+        // X12 only emits complete triples. At end of data on a triple boundary
+        // the encoder returns to ASCII with a trailing UNLATCH before padding,
+        // unless the data fills the symbol exactly. A trailing ASCII tail is
+        // tracked by `ascii_end` and accounts for itself.
+        if !self.ctx.has_more_characters()
+            && self.ascii_end.is_none()
+            && self.values == 0
+            && self.ctx.symbol_size_left(0).unwrap_or(0) > 0
+        {
+            cost += 1;
+        }
+        cost
     }
 
     fn write_unlatch(&self) -> Self::Context {

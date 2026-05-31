@@ -130,7 +130,7 @@ fn test_ascii_encodation_example1() {
 #[test]
 fn test_c40_basic2_3() {
     assert_eq!(
-        enc(b"AIMAIMAIM\xcb"),
+        enc_mode(b"AIMAIMAIM\xcb", EncodationType::C40),
         vec![230, 91, 11, 91, 11, 91, 11, 11, 9, 254],
     );
     // Alternative solution:
@@ -143,7 +143,7 @@ fn test_c40_basic2_3() {
 #[test]
 fn test_c40_spec_example() {
     assert_eq!(
-        enc(b"A_2_D_5_G7H_9J_1L2"),
+        enc_mode(b"A_2_D_5_G7H_9J_1L2", EncodationType::C40),
         vec![
             230, 87, 195, 37, 195, 106, 131, 56, 131, 126, 206, 10, 94, 144, 3, 35, 47, 254
         ],
@@ -310,13 +310,13 @@ fn test_x12_4() {
 #[test]
 fn test_x12_5() {
     assert_eq!(
-        enc(b"ABC>ABC123>ABCDEF"),
+        enc_mode(b"ABC>ABC123>ABCDEF", EncodationType::X12),
         vec![
-            240, 4, 32, 254, 4, 32, 241, 203, 63, 129, 8, 49, 5, 25, 240, 129
+            238, 89, 233, 14, 192, 100, 207, 44, 31, 96, 82, 254, 70, 71, 129, 237
         ],
-        // Alternative:
-        // vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 96, 82, 254, 70, 71, 129, 237],
-        // vec![238, 89, 233, 14, 192, 100, 207, 44, 31, 254, 230, 96, 82, 254, 70, 71]
+        // With all modes enabled the optimizer now picks an equally short
+        // (16 codeword) EDIFACT-based encoding instead:
+        // vec![240, 4, 32, 254, 4, 32, 241, 203, 63, 129, 8, 49, 5, 25, 240, 129],
     );
 }
 
@@ -367,7 +367,7 @@ fn test_edifact_5() {
 #[test]
 fn test_edifact_6() {
     assert_eq!(
-        enc(b".A.C1.3.X."),
+        enc_mode(b".A.C1.3.X.", EncodationType::Edifact),
         // 240 LATCH
         // ".A.C" 184 27 131
         // "1.3." 198 236 238
@@ -602,7 +602,7 @@ fn test_bug_3048549() {
     // There was an IllegalArgumentException for an illegal character here because
     // of an encoding problem of the character 0x0060 in Java source code.
     assert_eq!(
-        enc(b"fiykmj*Rh2`,e6"),
+        enc_mode(b"fiykmj*Rh2`,e6", EncodationType::Text),
         vec![
             239, 122, 87, 154, 40, 7, 171, 115, 207, 12, 130, 71, 155, 254, 129, 237
         ]
