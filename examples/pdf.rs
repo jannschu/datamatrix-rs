@@ -1,7 +1,11 @@
-use std::io::BufWriter;
+use std::io::Write;
 
 use datamatrix::{DataMatrix, SymbolList, placement::PathSegment};
-use printpdf::*;
+use krilla::Document;
+use krilla::color::rgb;
+use krilla::geom::PathBuilder;
+use krilla::page::PageSettings;
+use krilla::paint::{Fill, FillRule};
 
 fn main() {
     let s = concat!(
@@ -24,69 +28,67 @@ fn main() {
         .unwrap()
         .bitmap();
 
-    // Size of one black square, you also compute this with bitmap.width(),
-    // bitmap.height() and the available space.
-    const SIZE: Mm = Mm(1.);
+    // Size of one black square in PDF points (1/72 inch). Here one module is
+    // 1mm wide; you could also derive this from bitmap.width()/bitmap.height()
+    // and the available space.
+    const SIZE: f32 = 72.0 / 25.4;
 
-    // Construct a path starting from the top left corner.
-    let mut x: Mm = SIZE;
-    let mut y: Mm = SIZE * (bitmap.height() + 1) as f32;
-    let black = Color::Rgb(Rgb::new(0., 0., 0., None));
-    let mut ops = vec![Op::SetFillColor { col: black }];
-
-    // Remember last starting point
+    // krilla uses a top-left origin with the y-axis pointing downwards, which
+    // matches the coordinate system of Bitmap::path(), so the relative steps
+    // can be applied directly. We start one module in from the top-left corner
+    // to leave room for the quiet zone.
+    let mut x = SIZE;
+    let mut y = SIZE;
     let mut start = (x, y);
-    // The PDF coordinate system is centered in the bottom left, so we
-    // have to invert the relative y steps.
-    let mut ring_points = vec![];
-    let mut rings = vec![];
+
+    let mut pb = PathBuilder::new();
+    // The first subpath starts implicitly (path() does not emit a leading Move).
+    pb.move_to(x, y);
     for segment in bitmap.path() {
         match segment {
             PathSegment::Move(dx, dy) => {
                 x += SIZE * (dx as f32);
-                y -= SIZE * (dy as f32);
+                y += SIZE * (dy as f32);
                 start = (x, y);
+                pb.move_to(x, y);
             }
             PathSegment::Horizontal(dx) => {
                 x += SIZE * (dx as f32);
+                pb.line_to(x, y);
             }
             PathSegment::Vertical(dy) => {
-                y -= SIZE * (dy as f32);
+                y += SIZE * (dy as f32);
+                pb.line_to(x, y);
             }
             PathSegment::Close => {
+                pb.close();
                 x = start.0;
                 y = start.1;
             }
         };
-        ring_points.push(LinePoint {
-            p: Point::new(x, y),
-            bezier: false,
-        });
-        if matches!(segment, PathSegment::Close) {
-            let mut points = vec![];
-            std::mem::swap(&mut ring_points, &mut points);
-            rings.push(PolygonRing { points });
-        }
     }
-    let polygon = Polygon {
-        rings,
-        mode: PaintMode::Fill,
-        winding_order: WindingOrder::EvenOdd,
-    };
-    ops.push(Op::DrawPolygon { polygon });
+    let path = pb.finish().unwrap();
 
-    // Create PDF for only the Data Matrix and the minimal quiet zone around it
-    let page = PdfPage::new(
-        SIZE * (bitmap.width() + 2) as f32,
-        SIZE * (bitmap.height() + 2) as f32,
-        ops,
+    // Create a PDF with a single page holding the Data Matrix and a minimal
+    // quiet zone of one module around it.
+    let mut document = Document::new();
+    let mut page = document.start_page_with(
+        PageSettings::from_wh(
+            SIZE * (bitmap.width() + 2) as f32,
+            SIZE * (bitmap.height() + 2) as f32,
+        )
+        .unwrap(),
     );
-    let mut doc = PdfDocument::new("datamatrix example");
-    doc.pages.push(page);
+    let mut surface = page.surface();
+    surface.set_fill(Some(Fill {
+        paint: rgb::Color::black().into(),
+        rule: FillRule::EvenOdd,
+        ..Default::default()
+    }));
+    surface.draw_path(&path);
+    surface.finish();
+    page.finish();
 
-    doc.save_writer(
-        &mut BufWriter::new(std::io::stdout()),
-        &PdfSaveOptions::default(),
-        &mut vec![],
-    );
+    let pdf = document.finish().unwrap();
+    std::io::stdout().write_all(&pdf).unwrap();
 }
