@@ -3,7 +3,6 @@
 [![crates.io](https://img.shields.io/crates/d/datamatrix.svg)](https://crates.io/crates/datamatrix)
 [![Documentation](https://docs.rs/datamatrix/badge.svg)](https://docs.rs/datamatrix)
 ![License](https://img.shields.io/crates/l/datamatrix)
-![Lines of Code](https://tokei.rs/b1/github/jannschu/datamatrix-rs?category=code)
 
 Data Matrix (ECC 200) decoding and encoding library with an optimizing encoder.
 
@@ -48,13 +47,13 @@ this approach allows high flexibility.
 - [x] Optimizer for switching between encodation modes to find a minimal
       encodation size.
 - [x] Data part decoding.
-- [x] Fuzzed data de- and encoding (*no issues after 48h*)
+- [x] Fuzzed data de- and encoding (_no issues after 48h_)
 - [x] Check the open bug reports in other implementations.
 - [x] Reed Solomon de-/encoder.
 - [x] Tile placement encoding.
 - [x] Helpers for rendering
 - [x] Implement [Extended Rectangular Data Matrix (DMRE)](https://e-d-c.info/projekte/dmre.html)
-  defined in ISO 21471 which adds more rectangular symbol sizes
+      defined in ISO 21471 which adds more rectangular symbol sizes
 - [x] Tile placement decoding.
 - [ ] Visual detection in images.
 - [ ] Detailed decoder output.
@@ -106,3 +105,4 @@ and stealing some of their test cases and bug reports.
 - [iec16022](https://github.com/rdoeffinger/iec16022) is a Data Matrix encoder originally
   written by Andrews & Arnold Ltd. but is now maintained by Reimar Döffinger. It has a similar
   optimizing encoder.
+
