@@ -13,17 +13,13 @@ pub(super) struct EdifactPlan<T: ContextInformation> {
 }
 
 impl<T: ContextInformation> EdifactPlan<T> {
-    pub(super) fn with_free_unlatch(ctx: T, free_unlatch: bool) -> Self {
+    pub(super) fn new(ctx: T) -> Self {
         Self {
             ctx,
             ascii_end: None,
-            written: if free_unlatch { 3 } else { 0 },
+            written: 0,
             cost: 0.into(),
         }
-    }
-
-    pub(super) fn new(ctx: T) -> Self {
-        Self::with_free_unlatch(ctx, false)
     }
 
     pub(super) fn context(&self) -> &T {
@@ -36,7 +32,7 @@ impl<T: ContextInformation> Plan for EdifactPlan<T> {
 
     fn mode_switch_cost(&self) -> Option<Frac> {
         if self.written == 3 {
-            // this also correctly handles the free_unlatch case
+            // three of four values written, the UNLATCH is free
             Some(self.cost.ceil())
         } else {
             Some((self.cost + Frac::new(3, 4)).ceil())

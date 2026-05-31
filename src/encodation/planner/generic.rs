@@ -87,10 +87,6 @@ enum PlanImpl<'a> {
 
 impl<'a> GenericPlan<'a> {
     /// Create an instance which starts with the given encodation type.
-    ///
-    /// The `free_unlatch` is currently only used by EDIFACT, it marks
-    /// that 3 out of 4 values are read, a UNLATCH would now not
-    /// result in additional cost.
     pub(super) fn for_mode(
         mode: EncodationType,
         data: &'a [u8],
