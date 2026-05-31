@@ -13,6 +13,32 @@ use super::{
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 
+/// Run `$body` on the inner plan, regardless of which mode it is.
+///
+/// The inner plan is bound to `$pl`. Use the `mut` form for a mutable borrow.
+macro_rules! dispatch {
+    ($self:expr, $pl:ident => $body:expr) => {
+        match &$self.plan {
+            PlanImpl::Ascii($pl) => $body,
+            PlanImpl::C40($pl) => $body,
+            PlanImpl::Text($pl) => $body,
+            PlanImpl::X12($pl) => $body,
+            PlanImpl::Edifact($pl) => $body,
+            PlanImpl::Base256($pl) => $body,
+        }
+    };
+    (mut $self:expr, $pl:ident => $body:expr) => {
+        match &mut $self.plan {
+            PlanImpl::Ascii($pl) => $body,
+            PlanImpl::C40($pl) => $body,
+            PlanImpl::Text($pl) => $body,
+            PlanImpl::X12($pl) => $body,
+            PlanImpl::Edifact($pl) => $body,
+            PlanImpl::Base256($pl) => $body,
+        }
+    };
+}
+
 #[derive(Clone, PartialEq)]
 pub(super) struct GenericPlan<'a> {
     extra: Frac,
@@ -22,56 +48,15 @@ pub(super) struct GenericPlan<'a> {
 
 impl<'a> Debug for GenericPlan<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        match &self.plan {
-            PlanImpl::Ascii(pl) => f.write_fmt(format_args!(
-                "Ascii(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
-                self.start_mode(),
-                pl.cost() + self.extra,
-                pl.context().written,
-                pl.context().rest().len(),
-                self.switches,
-            )),
-            PlanImpl::C40(pl) => f.write_fmt(format_args!(
-                "C40(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
-                self.start_mode(),
-                pl.cost() + self.extra,
-                pl.context().written,
-                pl.context().rest().len(),
-                self.switches,
-            )),
-            PlanImpl::Text(pl) => f.write_fmt(format_args!(
-                "Text(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
-                self.start_mode(),
-                pl.cost() + self.extra,
-                pl.context().written,
-                pl.context().rest().len(),
-                self.switches,
-            )),
-            PlanImpl::Base256(pl) => f.write_fmt(format_args!(
-                "B256(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
-                self.start_mode(),
-                pl.cost() + self.extra,
-                pl.context().written,
-                pl.context().rest().len(),
-                self.switches,
-            )),
-            PlanImpl::Edifact(pl) => f.write_fmt(format_args!(
-                "EDF(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
-                self.start_mode(),
-                pl.cost() + self.extra,
-                pl.context().written,
-                pl.context().rest().len(),
-                self.switches,
-            )),
-            PlanImpl::X12(pl) => f.write_fmt(format_args!(
-                "X12(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
-                self.start_mode(),
-                pl.cost() + self.extra,
-                pl.context().written,
-                pl.context().rest().len(),
-                self.switches,
-            )),
-        }
+        dispatch!(self, pl => f.write_fmt(format_args!(
+            "{:?}(start {:?}, {:?}, cw {:?}, rest {:?}, switches = {:?})",
+            self.current(),
+            self.start_mode(),
+            pl.cost() + self.extra,
+            pl.context().written,
+            pl.context().rest().len(),
+            self.switches,
+        )))
     }
 }
 
@@ -232,48 +217,20 @@ impl<'a> Plan for GenericPlan<'a> {
 
     fn mode_switch_cost(&self) -> Option<Frac> {
         // only add costs from previous modes
-        match &self.plan {
-            PlanImpl::Ascii(pl) => pl.mode_switch_cost().map(|x| x + self.extra),
-            PlanImpl::C40(pl) => pl.mode_switch_cost().map(|x| x + self.extra),
-            PlanImpl::Text(pl) => pl.mode_switch_cost().map(|x| x + self.extra),
-            PlanImpl::X12(pl) => pl.mode_switch_cost().map(|x| x + self.extra),
-            PlanImpl::Base256(pl) => pl.mode_switch_cost().map(|x| x + self.extra),
-            PlanImpl::Edifact(pl) => pl.mode_switch_cost().map(|x| x + self.extra),
-        }
+        dispatch!(self, pl => pl.mode_switch_cost().map(|x| x + self.extra))
     }
 
     fn cost(&self) -> Frac {
         // only add costs from previous modes
-        match &self.plan {
-            PlanImpl::Ascii(pl) => pl.cost() + self.extra,
-            PlanImpl::C40(pl) => pl.cost() + self.extra,
-            PlanImpl::Text(pl) => pl.cost() + self.extra,
-            PlanImpl::X12(pl) => pl.cost() + self.extra,
-            PlanImpl::Base256(pl) => pl.cost() + self.extra,
-            PlanImpl::Edifact(pl) => pl.cost() + self.extra,
-        }
+        dispatch!(self, pl => pl.cost() + self.extra)
     }
 
     fn step(&mut self) -> Option<StepResult> {
-        match &mut self.plan {
-            PlanImpl::Ascii(pl) => pl.step(),
-            PlanImpl::C40(pl) => pl.step(),
-            PlanImpl::Text(pl) => pl.step(),
-            PlanImpl::X12(pl) => pl.step(),
-            PlanImpl::Base256(pl) => pl.step(),
-            PlanImpl::Edifact(pl) => pl.step(),
-        }
+        dispatch!(mut self, pl => pl.step())
     }
 
     fn write_unlatch(&self) -> Context<'a> {
-        match &self.plan {
-            PlanImpl::Ascii(pl) => pl.write_unlatch(),
-            PlanImpl::C40(pl) => pl.write_unlatch(),
-            PlanImpl::Text(pl) => pl.write_unlatch(),
-            PlanImpl::X12(pl) => pl.write_unlatch(),
-            PlanImpl::Base256(pl) => pl.write_unlatch(),
-            PlanImpl::Edifact(pl) => pl.write_unlatch(),
-        }
+        dispatch!(self, pl => pl.write_unlatch())
     }
 }
 
