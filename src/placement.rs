@@ -545,7 +545,7 @@ impl<B: Bit> Bitmap<B> {
     ///
     /// ```rust
     /// # use datamatrix::placement::Bitmap;
-    /// use qrcode::{QrCode, Color};
+    /// use qrcode2::{QrCode, Color};
     ///
     /// let code = QrCode::new(b"Hello, World!!").unwrap();
     /// let width = code.width();
