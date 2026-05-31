@@ -98,12 +98,10 @@ where
                 return Ok(());
             }
             // case d), implicit unlatch, then ascii
-            (1, 1) => {
-                if ascii::encoding_size(&[last_ch]) == 1 {
-                    ctx.set_ascii_until_end();
-                    ctx.backup(1);
-                    return Ok(());
-                }
+            (1, 1) if ascii::encoding_size(&[last_ch]) == 1 => {
+                ctx.set_ascii_until_end();
+                ctx.backup(1);
+                return Ok(());
             }
             _ => (),
         }

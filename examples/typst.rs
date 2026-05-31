@@ -14,15 +14,15 @@ fn bitmap_to_typst(bitmap: Bitmap<bool>) -> String {
     for part in bitmap.path() {
         match part {
             PathSegment::Horizontal(n) => {
-                write!(img, "  curve.line(({n}pt, 0pt), relative: true),\n")
+                writeln!(img, "  curve.line(({n}pt, 0pt), relative: true),")
             }
             PathSegment::Vertical(n) => {
-                write!(img, "  curve.line((0pt, {n}pt), relative: true),\n")
+                writeln!(img, "  curve.line((0pt, {n}pt), relative: true),")
             }
             PathSegment::Move(dx, dy) => {
-                write!(img, "  curve.move(({dx}pt, {dy}pt), relative: true),\n")
+                writeln!(img, "  curve.move(({dx}pt, {dy}pt), relative: true),")
             }
-            PathSegment::Close => write!(img, "  curve.close(),\n"),
+            PathSegment::Close => writeln!(img, "  curve.close(),"),
         }
         .unwrap();
     }
