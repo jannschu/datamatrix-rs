@@ -18,6 +18,9 @@ pub(crate) mod planner;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod proptests;
+
 pub use encodation_type::EncodationType;
 
 pub(crate) const MACRO05: u8 = 236;
@@ -215,6 +218,18 @@ impl<'a> GenericDataEncoder<'a> {
     }
 
     pub fn codewords(&mut self) -> Result<(Vec<u8>, SymbolSize), DataEncodingError> {
+        let symbol_size = self.encode_to_unpadded()?;
+        self.add_padding(symbol_size);
+
+        let mut codewords = vec![];
+        core::mem::swap(&mut codewords, &mut self.codewords);
+
+        Ok((codewords, symbol_size))
+    }
+
+    /// Run the planner and the encoders, leaving the unpadded data codewords
+    /// in `self.codewords`. Returns the symbol size chosen for them.
+    fn encode_to_unpadded(&mut self) -> Result<SymbolSize, DataEncodingError> {
         if self.symbol_list.is_empty() {
             return Err(DataEncodingError::SymbolListEmpty);
         }
@@ -255,15 +270,18 @@ impl<'a> GenericDataEncoder<'a> {
             }
         }
 
-        let symbol_size = self
-            .symbol_for(0)
-            .ok_or(DataEncodingError::TooMuchOrIllegalData)?;
-        self.add_padding(symbol_size);
+        self.symbol_for(0)
+            .ok_or(DataEncodingError::TooMuchOrIllegalData)
+    }
 
-        let mut codewords = vec![];
-        core::mem::swap(&mut codewords, &mut self.codewords);
-
-        Ok((codewords, symbol_size))
+    /// Number of data codewords the encoder emits before padding.
+    ///
+    /// Used by the consistency proptests to check that the planner's predicted
+    /// cost matches what the encoder actually produces.
+    #[cfg(test)]
+    pub(crate) fn unpadded_len(&mut self) -> Result<usize, DataEncodingError> {
+        self.encode_to_unpadded()?;
+        Ok(self.codewords.len())
     }
 
     fn symbol_for(&self, extra_codewords: usize) -> Option<SymbolSize> {

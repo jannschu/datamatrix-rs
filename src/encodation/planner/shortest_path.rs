@@ -28,6 +28,43 @@ pub(crate) fn optimize(
     symbol_list: &SymbolList,
     enabled_modes: FlagSet<EncodationType>,
 ) -> Option<Vec<(usize, EncodationType)>> {
+    let mut plan = optimize_plan(data, written, mode, symbol_list, enabled_modes)?;
+    plan.switches.push((0, plan.current()));
+
+    // Remove a "switch" to ASCII if we are at the very beginning
+    if written == 0 && plan.switches[0] == (data.len(), EncodationType::Ascii) {
+        plan.switches.remove(0);
+    }
+
+    Some(plan.switches)
+}
+
+/// Number of data codewords the optimal plan would use.
+///
+/// This is the cost the [`optimize`] plan is built to minimise. The actual
+/// encoder is expected to emit exactly this many codewords (before padding);
+/// see the consistency proptests.
+#[cfg(test)]
+pub(crate) fn optimize_cost(
+    data: &[u8],
+    written: usize,
+    mode: EncodationType,
+    symbol_list: &SymbolList,
+    enabled_modes: FlagSet<EncodationType>,
+) -> Option<usize> {
+    optimize_plan(data, written, mode, symbol_list, enabled_modes)
+        .map(|plan| plan.cost().ceil_codewords())
+}
+
+/// Run the shortest-path search and return the winning plan (before its
+/// `switches` are finalised for the encoder).
+fn optimize_plan<'a>(
+    data: &'a [u8],
+    written: usize,
+    mode: EncodationType,
+    symbol_list: &'a SymbolList,
+    enabled_modes: FlagSet<EncodationType>,
+) -> Option<GenericPlan<'a>> {
     let start_plan = GenericPlan::for_mode(mode, data, written, symbol_list);
 
     let mut plans = Vec::with_capacity(36);
@@ -87,7 +124,7 @@ pub(crate) fn optimize(
 
         if at_end {
             // all plans are at the end of data, pick the best one
-            let mut plan = new_plan
+            let plan = new_plan
                 .into_iter()
                 .min_by_key(|p| {
                     // To decide a tie we use the ordering given by ".index()"
@@ -95,14 +132,7 @@ pub(crate) fn optimize(
                     (p.cost().ceil(), max_enc, p.switches.len())
                 })
                 .unwrap();
-            plan.switches.push((0, plan.current()));
-
-            // Remove a "switch" to ASCII if we are at the very beginning
-            if written == 0 && plan.switches[0] == (data.len(), EncodationType::Ascii) {
-                plan.switches.remove(0);
-            }
-
-            return Some(plan.switches);
+            return Some(plan);
         }
         core::mem::swap(&mut plans, &mut new_plan);
     }

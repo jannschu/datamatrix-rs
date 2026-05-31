@@ -15,6 +15,8 @@ mod shortest_path;
 use frac::Frac;
 
 pub(crate) use shortest_path::optimize;
+#[cfg(test)]
+pub(crate) use shortest_path::optimize_cost;
 
 trait ContextInformation: Clone {
     fn symbol_size_left(&self, extra_chars: usize) -> Option<usize>;
