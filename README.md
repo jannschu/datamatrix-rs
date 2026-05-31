@@ -11,13 +11,16 @@ Data Matrix (ECC 200) decoding and encoding library with an optimizing encoder.
   <img src="src/datamatrix-rs.png" alt="Data Matrix encoding 'datamatrix-rs'">
 </p>
 
-This library features an optimzing, and linear time encoder which achieves
-the smallest possible encoding size.
+This library features an optimizing, linear time encoder which produces an
+encoding with the smallest possible number of codewords.
 
 The Data Matrix standard (ISO/IEC 16022:2006) contains a heuristic to decide
 which encoding modes to use, and in most cases that works. A straightforward
-implementation will not have linear runtime, though. This library uses an idea
-similar to the A\* algorithm.
+implementation will not have linear runtime, though. This library instead casts
+the mode selection as a shortest path problem over the encodation modes and
+solves it with a forward sweep that keeps, after each input character, only the
+cheapest plan per mode (dominance pruning). This bounds the work per character
+by a constant and yields linear runtime.
 
 The optimizer is special about this implementation, most implementations use the
 heuristic. See the list of related projects below for credits and references to
