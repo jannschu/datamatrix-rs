@@ -121,9 +121,8 @@ impl<'a> EncodingContext for GenericDataEncoder<'a> {
     }
 
     fn symbol_size_left(&mut self, extra_codewords: usize) -> Option<usize> {
-        let size_used = self.codewords.len() + extra_codewords;
-        let symbol = self.symbol_for(extra_codewords)?;
-        Some(symbol.num_data_codewords() - size_used)
+        self.symbol_list
+            .space_left_for(self.codewords.len() + extra_codewords)
     }
 
     fn eat(&mut self) -> Option<u8> {
