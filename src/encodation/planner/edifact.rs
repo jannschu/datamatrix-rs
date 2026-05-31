@@ -40,7 +40,29 @@ impl<T: ContextInformation> Plan for EdifactPlan<T> {
     }
 
     fn cost(&self) -> Frac {
-        self.cost
+        // The fractional estimate is exact while encoding; only the end of data
+        // needs the precise flush. The ASCII-tail case (`ascii_end`) already
+        // accounts for itself and never adds an UNLATCH.
+        if self.ctx.has_more_characters() || self.ascii_end.is_some() {
+            return self.cost;
+        }
+        // Mirror edifact.rs handle_end for the `written` values still buffered.
+        let w = self.written;
+        let space = self.ctx.symbol_size_left(w).unwrap_or(0);
+        let trailing = if w == 0 {
+            // Empty buffer: an UNLATCH before padding is only needed if more
+            // than two codewords remain; one or two are filled with ASCII pad
+            // without an UNLATCH (the EDIFACT end-of-data rule).
+            if space > 2 { 1 } else { 0 }
+        } else {
+            // Flush the buffered values as one group, appending an UNLATCH if
+            // the symbol has room or the group is full (three values).
+            let symbols = if space > 0 || w == 3 { w + 1 } else { w };
+            symbols.min(3)
+        };
+        // Replace the fractional estimate of the partial group with the exact
+        // number of codewords the encoder writes for it.
+        self.cost - Frac::new(3 * w as C, 4) + trailing as C
     }
 
     fn write_unlatch(&self) -> Self::Context {

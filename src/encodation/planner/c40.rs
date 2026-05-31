@@ -36,6 +36,8 @@ pub(super) struct C40LikePlan<T: ContextInformation, U: CharsetInfo> {
     unbeatable_reads: usize,
     ch: u8,
     two_digit_ascii_end: bool,
+    /// Codewords used by a two-trailing-digit ASCII ending (set at detection).
+    two_digit_tail: u8,
     cost: Frac,
     dummy: PhantomData<U>,
 }
@@ -49,6 +51,7 @@ impl<T: ContextInformation, U: CharsetInfo> C40LikePlan<T, U> {
             unbeatable_reads: 0,
             cost: 0.into(),
             two_digit_ascii_end: false,
+            two_digit_tail: 0,
             dummy: PhantomData,
         }
     }
@@ -108,6 +111,11 @@ impl<T: ContextInformation, U: CharsetInfo> Plan for C40LikePlan<T, U> {
         if self.ctx.has_more_characters() {
             return self.cost + Frac::new(2 * self.values as C, 3);
         }
+        if self.two_digit_ascii_end {
+            // Two trailing digits are encoded in ASCII; the tail (the ASCII
+            // codeword plus an optional UNLATCH) was costed at detection.
+            return self.cost + self.two_digit_tail as C;
+        }
         // compute additional cost to store remaining values
         let extra = if self.values == 2 {
             let space_left = self.ctx.symbol_size_left(2).unwrap_or(0);
@@ -119,8 +127,9 @@ impl<T: ContextInformation, U: CharsetInfo> Plan for C40LikePlan<T, U> {
                 3
             }
         } else if self.values == 1 {
+            // A single non-digit value is left (the two-trailing-digit ASCII
+            // ending returns earlier and never reaches here).
             let space_left = self.ctx.symbol_size_left(1).unwrap_or(0);
-            // this also includes the `self.two_digit_ascii_end` case...
             let ascii_size = ascii::encoding_size(&[self.ch]);
             if space_left == 0 {
                 if ascii_size == 1 {
@@ -129,12 +138,24 @@ impl<T: ContextInformation, U: CharsetInfo> Plan for C40LikePlan<T, U> {
                     // we need a bigger symbol in this case (if possible)
                     1 + ascii_size
                 }
-            } else {
-                // UNLATCH and then encode as ASCII
+            } else if space_left == 1 {
+                // UNLATCH and then encode as ASCII (c40.rs handle_end case c)
                 1 + ascii_size
+            } else {
+                // With two or more codewords left the encoder does not switch
+                // to ASCII for the single value: it pads it into a full C40
+                // triple (2 codewords) and then UNLATCHes before padding.
+                3
             }
         } else {
-            0
+            // Buffer empty at end of data. The encoder writes a trailing
+            // UNLATCH before padding unless the data fills the symbol exactly
+            // (must return to ASCII before pad characters, ISO 16022, 5.2.3).
+            if self.ctx.symbol_size_left(0).unwrap_or(0) > 0 {
+                1
+            } else {
+                0
+            }
         };
         self.cost + extra as C
     }
@@ -145,17 +166,15 @@ impl<T: ContextInformation, U: CharsetInfo> Plan for C40LikePlan<T, U> {
         if self.values == 0 && self.unbeatable_reads == 0 {
             // are the only remaining characters two ascii digits?
             if matches!(self.ctx.rest(), [a, b] if a.is_ascii_digit() && b.is_ascii_digit()) {
+                // The encoder always encodes two trailing digits as a single
+                // ASCII codeword, preceded by an UNLATCH if the symbol still
+                // has room (otherwise the UNLATCH is implicit at the symbol
+                // end). It never keeps them in the C40 stream.
                 let space_left = self.ctx.symbol_size_left(1)?;
-                self.two_digit_ascii_end = space_left <= 1;
-                if space_left == 1 {
-                    // UNLATCH + ASCII(two digits)
-                    self.unbeatable_reads = 2;
-                    self.ctx.write(2);
-                } else if space_left == 0 {
-                    // implicit UNLATCH, ASCII(two digits);
-                    self.unbeatable_reads = 2;
-                    self.ctx.write(1);
-                }
+                self.two_digit_ascii_end = true;
+                self.unbeatable_reads = 2;
+                self.two_digit_tail = if space_left >= 1 { 2 } else { 1 };
+                self.ctx.write(self.two_digit_tail as usize);
             }
             if !self.two_digit_ascii_end {
                 // count number of base set characters coming, watch out for digits
