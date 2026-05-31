@@ -137,6 +137,14 @@ impl SymbolList {
             .copied()
     }
 
+    /// Codewords left in the smallest symbol that can still hold `size_used` codewords.
+    ///
+    /// Returns `None` if no symbol in the list is big enough.
+    pub(crate) fn space_left_for(&self, size_used: usize) -> Option<usize> {
+        self.first_symbol_big_enough_for(size_used)
+            .map(|symbol| symbol.num_data_codewords() - size_used)
+    }
+
     pub(crate) fn upper_limit_for_number_of_codewords(&self, input_len: usize) -> Option<usize> {
         if self.symbols.len() == 1 {
             self.symbols

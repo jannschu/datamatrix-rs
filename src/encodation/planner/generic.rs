@@ -298,9 +298,7 @@ impl<'a> Context<'a> {
 
 impl<'a> ContextInformation for Context<'a> {
     fn symbol_size_left(&self, extra_chars: usize) -> Option<usize> {
-        let size_needed = self.written + extra_chars;
-        let symbol = self.symbol_list.first_symbol_big_enough_for(size_needed)?;
-        Some(symbol.num_data_codewords() - size_needed)
+        self.symbol_list.space_left_for(self.written + extra_chars)
     }
 
     fn write(&mut self, size: usize) {
