@@ -48,6 +48,12 @@ impl Frac {
         }
         self
     }
+
+    /// Round up to the next whole codeword count.
+    #[cfg(test)]
+    pub fn ceil_codewords(self) -> usize {
+        (self.ceil().0 / DENUM) as usize
+    }
 }
 
 impl From<C> for Frac {

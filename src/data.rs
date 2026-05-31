@@ -51,6 +51,20 @@ pub(crate) fn encode_data_internal(
     encoder.codewords()
 }
 
+/// Number of data codewords the encoder emits before padding.
+///
+/// Uses the same options as the default [`encode_data`] path (no ECI, no
+/// macros, no FNC1) so it can be compared against `planner::optimize_cost`.
+#[cfg(test)]
+pub(crate) fn encode_data_unpadded_len(
+    data: &[u8],
+    symbol_list: &SymbolList,
+    enabled_modes: impl Into<FlagSet<EncodationType>>,
+) -> Option<usize> {
+    let mut encoder = GenericDataEncoder::with_size(data, symbol_list, enabled_modes.into(), false);
+    encoder.unpadded_len().ok()
+}
+
 /// Compute a plan for when to switch encodation types during data encoding.
 ///
 /// Returns `None` if the `data` does not fit into the given `symbol_size`.
