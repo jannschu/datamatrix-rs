@@ -19,10 +19,8 @@ use pretty_assertions::assert_eq;
 /// - The current rest of the input characters are given in `data`.
 /// - In `written` the number of codewords (length of encoding) generated so far is given.
 /// - `mode` is the currently active encodation mode.
-/// - `free_unlatch` is only used when `mode` is EDIFACT (state: three values written),
-/// - `size` is the symbol size
-/// - `base256_written` is only used when `mode` is Base256, it contains the
-///   number data bytes written so far.
+/// - `symbol_list` is the set of symbol sizes the result may use.
+/// - `enabled_modes` restricts which encodation modes the plan may switch to.
 pub(crate) fn optimize(
     data: &[u8],
     written: usize,

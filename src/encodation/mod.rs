@@ -13,7 +13,6 @@ mod text;
 mod x12;
 
 mod encodation_type;
-// mod look_ahead;
 pub(crate) mod planner;
 
 #[cfg(test)]

@@ -9,23 +9,14 @@ pub(super) struct Base256Plan<T: ContextInformation> {
 }
 
 impl<T: ContextInformation> Base256Plan<T> {
-    pub(super) fn with_written(mut ctx: T, written: usize) -> Self {
-        let cost = if written == 0 {
-            // for length byte
-            ctx.write(1);
-            1
-        } else {
-            0
-        };
+    pub(super) fn new(mut ctx: T) -> Self {
+        // for the length byte
+        ctx.write(1);
         Self {
             ctx,
-            written,
-            cost: cost.into(), // initial length byte
+            written: 0,
+            cost: 1.into(), // initial length byte
         }
-    }
-
-    pub(super) fn new(ctx: T) -> Self {
-        Self::with_written(ctx, 0)
     }
 
     pub(super) fn context(&self) -> &T {
